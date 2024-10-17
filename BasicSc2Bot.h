@@ -13,7 +13,8 @@
 #include <vector>
 #include <unordered_set>
 #include <unordered_map>
-#include <functional> // Add this header for std::hash
+#include <functional>
+#include <iostream>
 
 using namespace sc2;
 
@@ -34,7 +35,6 @@ public:
     virtual void OnGameStart() final;
     virtual void OnStep() final;
     virtual void OnGameEnd() final;
-    virtual void OnUnitIdle(const Unit* unit) final;
     virtual void OnUnitCreated(const Unit* unit) final;
     virtual void OnBuildingConstructionComplete(const Unit* unit) final;
     virtual void OnUpgradeCompleted(UpgradeID upgrade_id) final;
@@ -67,6 +67,9 @@ private:
 
     // Expands to a new base when needed.
     void BuildExpansion();
+
+    // Reassigns workers to the closest mineral patch or gas.
+    void ReassignWorkers();
 
     // =========================
     // Build Order Execution
@@ -191,10 +194,6 @@ private:
     // Checks if the enemy is rushing.
     bool IsEnemyRushing() const;
 
-    // Checks if we can afford to build/train something.
-    bool CanAfford(UnitTypeID unit_type) const;
-    bool CanAfford(AbilityID ability_id) const;
-
     // Find a unit of a given type.
     const Unit* FindUnit(UnitTypeID unit_type) const;
 
@@ -209,9 +208,6 @@ private:
 
     // Returns the count of units being built of a given type.
     size_t CountUnitTypeBuilding(UnitTypeID unit_type) const;
-
-    // Assigns idle SCVs to minerals or gas.
-    void AssignIdleWorkers();
 
     // Returns true if the ability is being researched or built.
     bool IsAbilityInProgress(AbilityID ability_id) const;
@@ -309,4 +305,4 @@ private:
     std::unordered_map<Tag, const Unit*> enemy_unit_map;
 };
 
-#endif // BASIC_SC2_BOT_H_
+#endif

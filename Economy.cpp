@@ -7,32 +7,28 @@ void BasicSc2Bot::ManageEconomy() {
     AssignWorkers();
     TryBuildSupplyDepot();
     BuildRefineries();
-    
+    BuildExpansion();
+    ReassignWorkers();
 }
 
 void BasicSc2Bot::TrainSCVs() {
     const ObservationInterface* observation = Observation();
 
-    // Get all types of Command Centers
-    Units command_centers = observation->GetUnits(Unit::Alliance::Self, [](const Unit& unit) {
-        return unit.unit_type == UNIT_TYPEID::TERRAN_COMMANDCENTER ||
-               unit.unit_type == UNIT_TYPEID::TERRAN_ORBITALCOMMAND ||
-               unit.unit_type == UNIT_TYPEID::TERRAN_PLANETARYFORTRESS;
-    });
+    // Get all Command Centers, Orbital Commands, and Planetary Fortresses
+    Units command_centers = observation->GetUnits(Unit::Alliance::Self, IsTownHall());
     if (command_centers.empty()) return;
 
     // Calculate desired SCV count
-    size_t desired_scv = bases.size() * 16 + bases.size() * 6; // 16 for minerals, 6 for gas per base
-    if (num_scvs >= desired_scv) return;
+    size_t desired_scv_count = bases.size() * 22; // 16 for minerals, 6 for gas per base
+    if (num_scvs >= desired_scv_count) return;
 
     // Ensure we have enough supply
     if (observation->GetFoodUsed() >= observation->GetFoodCap() - 1) {
-        return; // We can't train more SCVs if we're at or near supply cap
+        return; // No point training if we're near supply cap
     }
 
-    // Loop through each Command Center
+    // Train SCVs at available Command Centers
     for (const auto& cc : command_centers) {
-        // Check if Command Center is able to train SCVs
         bool is_training_scv = false;
         for (const auto& order : cc->orders) {
             if (order.ability_id == ABILITY_ID::TRAIN_SCV) {
@@ -40,64 +36,62 @@ void BasicSc2Bot::TrainSCVs() {
                 break;
             }
         }
-        // If not training an SCV, and can afford one, train it
-        if (!is_training_scv && observation->GetMinerals() >= 50) {
+        if (is_training_scv) {
+            continue;
+        }
+        if (observation->GetMinerals() >= 50) {
             Actions()->UnitCommand(cc, ABILITY_ID::TRAIN_SCV);
         }
     }
 }
 
-
 bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_TYPEID unit_type) {
-    // Attempts to build a structure with an available SCV.
     const ObservationInterface* observation = Observation();
+    if (observation->GetMinerals() < 100) {
+        return false; // Not enough minerals to build
+    }
 
-    const Unit* unit_to_build = nullptr;
-    Units units = observation->GetUnits(Unit::Alliance::Self, IsUnit(unit_type));
+    Units scvs = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SCV));
+    const Unit* builder = nullptr;
 
-    for (const auto& unit : units) {
-        // Use the first SCV that is not currently constructing.
+    for (const auto& scv : scvs) {
         bool is_constructing = false;
-        for (const auto& order : unit->orders) {
+        for (const auto& order : scv->orders) {
             if (order.ability_id == ABILITY_ID::BUILD_SUPPLYDEPOT ||
                 order.ability_id == ABILITY_ID::BUILD_REFINERY ||
                 order.ability_id == ABILITY_ID::BUILD_BARRACKS ||
-                // Add other building abilities as needed
-                false) {
+                order.ability_id == ABILITY_ID::BUILD_COMMANDCENTER) {
                 is_constructing = true;
                 break;
             }
         }
         if (!is_constructing) {
-            unit_to_build = unit;
+            builder = scv;
             break;
         }
     }
 
-    if (unit_to_build) {
+    if (builder) {
         float rx = GetRandomScalar();
         float ry = GetRandomScalar();
-        Actions()->UnitCommand(unit_to_build,
-                               ability_type_for_structure,
-                               Point2D(unit_to_build->pos.x + rx * 15.0f,
-                                       unit_to_build->pos.y + ry * 15.0f));
-        return true;
+        Point2D build_location(builder->pos.x + rx * 15.0f, builder->pos.y + ry * 15.0f);
+        // Check if the location is valid
+        if (Query()->Placement(ability_type_for_structure, build_location)) {
+            Actions()->UnitCommand(builder, ability_type_for_structure, build_location);
+            return true;
+        }
     }
     return false;
 }
 
-
-
 bool BasicSc2Bot::TryBuildSupplyDepot() {
-    // Try to build a supply depot if needed.
     const ObservationInterface* observation = Observation();
-
     int32_t supply_used = observation->GetFoodUsed();
     int32_t supply_cap = observation->GetFoodCap();
 
-    // Build a supply depot when supply used reaches a certain percentage of supply cap.
+    // Build a supply depot when supply used reaches a certain threshold
     if (supply_used >= supply_cap - 4) {
-        // Check if a supply depot is already under construction.
+        // Check if a supply depot is already under construction
         Units supply_depots_building = observation->GetUnits(Unit::Self, [](const Unit& unit) {
             return unit.unit_type == UNIT_TYPEID::TERRAN_SUPPLYDEPOT && unit.build_progress < 1.0f;
         });
@@ -109,9 +103,7 @@ bool BasicSc2Bot::TryBuildSupplyDepot() {
     return false;
 }
 
-
 void BasicSc2Bot::AssignWorkers() {
-    // Assign idle SCVs to minerals or gas
     Units idle_scvs = Observation()->GetUnits(Unit::Alliance::Self, [](const Unit& unit) {
         return unit.unit_type == UNIT_TYPEID::TERRAN_SCV && unit.orders.empty();
     });
@@ -120,13 +112,9 @@ void BasicSc2Bot::AssignWorkers() {
     Units refineries = Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_REFINERY));
 
     for (const auto& scv : idle_scvs) {
-        // Assign to minerals first if available
         if (!minerals.empty()) {
-            const Unit* mineral = minerals.front();
-            Actions()->UnitCommand(scv, ABILITY_ID::HARVEST_GATHER, mineral);
-        }
-        // Otherwise assign to gas if available
-        else if (!refineries.empty()) {
+            Actions()->UnitCommand(scv, ABILITY_ID::HARVEST_GATHER, minerals.front());
+        } else {
             for (const auto& refinery : refineries) {
                 if (refinery->assigned_harvesters < refinery->ideal_harvesters) {
                     Actions()->UnitCommand(scv, ABILITY_ID::HARVEST_GATHER, refinery);
@@ -137,84 +125,127 @@ void BasicSc2Bot::AssignWorkers() {
     }
 }
 
-void BasicSc2Bot::BuildRefineries() {
+void BasicSc2Bot::ReassignWorkers() {
     const ObservationInterface* observation = Observation();
 
-    // Get all Command Centers, Orbital Commands, and Planetary Fortresses
-    Units bases = observation->GetUnits(Unit::Alliance::Self, [](const Unit& unit) {
-        return unit.unit_type == UNIT_TYPEID::TERRAN_COMMANDCENTER ||
-               unit.unit_type == UNIT_TYPEID::TERRAN_ORBITALCOMMAND ||
-               unit.unit_type == UNIT_TYPEID::TERRAN_PLANETARYFORTRESS;
-    });
+    // Get all refineries and mineral patches
+    Units refineries = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_REFINERY));
+    Units minerals = observation->GetUnits(Unit::Alliance::Neutral, IsMineralPatch());
 
-    // For each base, attempt to build refineries on nearby vespene geysers
-    for (const auto& base : bases) {
-        // Create a filter that checks for vespene geysers within 10 units of the base
-        auto geyser_filter = [this, base](const Unit& unit) {
-            return unit.unit_type == UNIT_TYPEID::NEUTRAL_VESPENEGEYSER &&
-                   Distance2D(unit.pos, base->pos) < 10.0f;
-        };
-
-        // Get vespene geysers near the base
-        Units geysers = observation->GetUnits(Unit::Alliance::Neutral, geyser_filter);
-
-        for (const auto& geyser : geysers) {
-            // Check if a refinery already exists on the geyser
-            bool has_refinery = false;
-
-            // Get units at the geyser's position
-            Units units_on_geyser = observation->GetUnits(Unit::Alliance::Self, [geyser](const Unit& unit) {
-                return unit.unit_type == UNIT_TYPEID::TERRAN_REFINERY &&
-                       Distance2D(unit.pos, geyser->pos) < 1.0f;
-            });
-
-            // Check if any refineries are present or under construction on this geyser
-            if (!units_on_geyser.empty()) {
-                has_refinery = true;
+    // Loop through all refineries to check if we need to reassign workers
+    for (const auto& refinery : refineries) {
+        if (refinery->assigned_harvesters > refinery->ideal_harvesters) {
+            // If there are too many harvesters, reassign the excess
+            int excess_harvesters = refinery->assigned_harvesters - refinery->ideal_harvesters;
+            for (int i = 0; i < excess_harvesters; ++i) {
+                Units scvs = observation->GetUnits(Unit::Alliance::Self, [refinery](const Unit& unit) {
+                    return unit.unit_type == UNIT_TYPEID::TERRAN_SCV && unit.orders.size() == 1 && unit.orders.front().target_unit_tag == refinery->tag;
+                });
+                if (!scvs.empty() && !minerals.empty()) {
+                    Actions()->UnitCommand(scvs.front(), ABILITY_ID::HARVEST_GATHER, minerals.front());
+                }
             }
+        }
+    }
 
-            // If no refinery exists, try to build one
-            if (!has_refinery) {
-                TryBuildRefinery(geyser);
+    // Loop through all bases to balance worker distribution
+    Units bases = observation->GetUnits(Unit::Alliance::Self, IsTownHall());
+    for (const auto& base : bases) {
+        if (base->assigned_harvesters > base->ideal_harvesters) {
+            int excess_harvesters = base->assigned_harvesters - base->ideal_harvesters;
+            for (int i = 0; i < excess_harvesters; ++i) {
+                Units scvs = observation->GetUnits(Unit::Alliance::Self, [base](const Unit& unit) {
+                    return unit.unit_type == UNIT_TYPEID::TERRAN_SCV && unit.orders.size() == 1 && unit.orders.front().target_unit_tag == base->tag;
+                });
+                if (!scvs.empty()) {
+                    // Find another base or refinery that needs more workers
+                    for (const auto& target_base : bases) {
+                        if (target_base->assigned_harvesters < target_base->ideal_harvesters) {
+                            Actions()->UnitCommand(scvs.front(), ABILITY_ID::HARVEST_GATHER, target_base);
+                            break;
+                        }
+                    }
+                    for (const auto& refinery : refineries) {
+                        if (refinery->assigned_harvesters < refinery->ideal_harvesters) {
+                            Actions()->UnitCommand(scvs.front(), ABILITY_ID::HARVEST_GATHER, refinery);
+                            break;
+                        }
+                    }
+                }
             }
         }
     }
 }
 
+void BasicSc2Bot::BuildRefineries() {
+    Units bases = Observation()->GetUnits(Unit::Alliance::Self, IsTownHall());
 
-void BasicSc2Bot::TryBuildRefinery(const Unit* geyser) {
-    const ObservationInterface* observation = Observation();
+    for (const auto& base : bases) {
+        Units geysers = Observation()->GetUnits(Unit::Alliance::Neutral, [base](const Unit& unit) {
+            return unit.unit_type == UNIT_TYPEID::NEUTRAL_VESPENEGEYSER && Distance2D(unit.pos, base->pos) < 10.0f;
+        });
 
-    // Check if we have enough minerals to build a refinery (75 minerals)
-    if (observation->GetMinerals() < 75) {
-        return;
+        for (const auto& geyser : geysers) {
+            Units refineries = Observation()->GetUnits(Unit::Alliance::Self, [geyser](const Unit& unit) {
+                return unit.unit_type == UNIT_TYPEID::TERRAN_REFINERY && Distance2D(unit.pos, geyser->pos) < 1.0f;
+            });
+            if (refineries.empty() && Observation()->GetMinerals() >= 75) {
+                Units scvs = Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SCV));
+                const Unit* builder = nullptr;
+
+                for (const auto& scv : scvs) {
+                    bool is_constructing = false;
+                    for (const auto& order : scv->orders) {
+                        if (order.ability_id == ABILITY_ID::BUILD_SUPPLYDEPOT ||
+                            order.ability_id == ABILITY_ID::BUILD_REFINERY ||
+                            order.ability_id == ABILITY_ID::BUILD_BARRACKS ||
+                            order.ability_id == ABILITY_ID::BUILD_COMMANDCENTER) {
+                            is_constructing = true;
+                            break;
+                        }
+                    }
+                    if (!is_constructing) {
+                        builder = scv;
+                        break;
+                    }
+                }
+                if (builder) {
+                    if (Query()->Placement(ABILITY_ID::BUILD_REFINERY, geyser->pos)) {
+                        Actions()->UnitCommand(builder, ABILITY_ID::BUILD_REFINERY, geyser);
+                    }
+                }
+            }
+        }
     }
+}
 
-    // Find an available SCV to build the refinery
-    const Unit* scv = nullptr;
-    Units scvs = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SCV));
+void BasicSc2Bot::BuildExpansion() {
+    if (!NeedExpansion()) return;
 
-    for (const auto& unit : scvs) {
-        // Use the first SCV that is not currently constructing
+    Point3D next_expansion = GetNextExpansion();
+    Units scvs = Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SCV));
+    const Unit* builder = nullptr;
+
+    for (const auto& scv : scvs) {
         bool is_constructing = false;
-        for (const auto& order : unit->orders) {
-            if (order.ability_id == ABILITY_ID::BUILD_SUPPLYDEPOT ||
+        for (const auto& order : scv->orders) {
+            if (order.ability_id == ABILITY_ID::BUILD_COMMANDCENTER ||
+                order.ability_id == ABILITY_ID::BUILD_SUPPLYDEPOT ||
                 order.ability_id == ABILITY_ID::BUILD_REFINERY ||
-                order.ability_id == ABILITY_ID::BUILD_BARRACKS ||
-                // Add other building abilities as needed
-                false) {
+                order.ability_id == ABILITY_ID::BUILD_BARRACKS) {
                 is_constructing = true;
                 break;
             }
         }
         if (!is_constructing) {
-            scv = unit;
+            builder = scv;
             break;
         }
     }
 
-    if (scv) {
-        // Command the SCV to build a refinery on the geyser
-        Actions()->UnitCommand(scv, ABILITY_ID::BUILD_REFINERY, geyser);
+    if (builder) {
+        if (Query()->Placement(ABILITY_ID::BUILD_COMMANDCENTER, next_expansion)) {
+            Actions()->UnitCommand(builder, ABILITY_ID::BUILD_COMMANDCENTER, next_expansion);
+        }
     }
 }
