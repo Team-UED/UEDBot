@@ -1,6 +1,62 @@
 #include "BasicSc2Bot.h"
 
-void BasicSc2Bot::OnGameStart() { return; }
+BasicSc2Bot::BasicSc2Bot()
+    : current_build_order_index(0),
+      num_scvs(0),
+      num_marines(0),
+      num_battlecruisers(0),
+      is_under_attack(false),
+      is_attacking(false),
+      need_expansion(false),
+      game_time(0.0),
+      last_supply_check(0),
+      last_expansion_check(0),
+      last_scout_time(0),
+      yamato_cannon_researched(false),
+      enemy_strategy(EnemyStrategy::Unknown) {
+    
+    build_order = {
+        ABILITY_ID::BUILD_SUPPLYDEPOT,
+        ABILITY_ID::BUILD_BARRACKS,
+        ABILITY_ID::BUILD_REFINERY,
+        ABILITY_ID::BUILD_FACTORY,
+        ABILITY_ID::BUILD_STARPORT,
+        ABILITY_ID::BUILD_TECHLAB,
+        ABILITY_ID::BUILD_FUSIONCORE,
+        ABILITY_ID::BUILD_ARMORY,
+        ABILITY_ID::BUILD_COMMANDCENTER 
+    };
+}
+
+void BasicSc2Bot::OnGameStart() {
+    // Initialize start locations, expansion locations, chokepoints, etc.
+    start_location = Observation()->GetStartLocation();
+    enemy_start_location = Observation()->GetGameInfo().enemy_start_locations[0];
+    expansion_locations = search::CalculateExpansionLocations(Observation(), Query());
+
+    // Initialize chokepoints
+    for (auto& expansion : expansion_locations) {
+        Units units = Observation()->GetUnits(Unit::Alliance::Neutral, IsUnit(UNIT_TYPEID::NEUTRAL_MINERALFIELD));
+        if (!units.empty()) {
+            bases.push_back(units.front());
+        }
+    }
+
+    // Initialize build tasks based on build order
+    for (auto ability : build_order) {
+        BuildTask task;
+        task.ability_id = ability;
+        task.is_complete = false;
+        build_tasks.push_back(task);
+    }
+
+    // Initialize other game state variables
+    is_under_attack = false;
+    is_attacking = false;
+    need_expansion = false;
+    yamato_cannon_researched = false;
+
+}
 
 void BasicSc2Bot::OnGameEnd() { 
     // Get the game info
@@ -33,112 +89,15 @@ void BasicSc2Bot::OnGameEnd() {
 }
 
 void BasicSc2Bot::OnStep() { 
-    TryBuildSupplyDepot();
-    TryBuildBarracks();
+    BasicSc2Bot::ManageEconomy();
  }
 
-void BasicSc2Bot::OnUnitIdle(const Unit* unit) {
-    // Called when a unit becomes idle.
-    const ObservationInterface* observation = Observation();
+void BasicSc2Bot::OnUnitCreated(const Unit* unit) {}
 
-    auto unit_type = unit->unit_type.ToType();
+void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {}
 
-    if (unit_type == UNIT_TYPEID::TERRAN_SCV) {
-        // If an SCV is idle, send it to gather minerals.
-        const Unit* mineral_target = FindNearestMineralPatch(unit->pos);
-        if (!mineral_target) {
-            return;
-        }
-        Actions()->UnitCommand(unit, ABILITY_ID::SMART, mineral_target);
-    }
-    else if (unit_type == UNIT_TYPEID::TERRAN_COMMANDCENTER) {
-        // If the Command Center is idle, train an SCV if we have less than 15.
-        if (CountUnitType(UNIT_TYPEID::TERRAN_SCV) < 15) {
-            Actions()->UnitCommand(unit, ABILITY_ID::TRAIN_SCV);
-        }
-    }
-    else if (unit_type == UNIT_TYPEID::TERRAN_BARRACKS) {
-        // If the Barracks is idle, train a Marine.
-        Actions()->UnitCommand(unit, ABILITY_ID::TRAIN_MARINE);
-    }
-}
+void BasicSc2Bot::OnUpgradeCompleted(UpgradeID upgrade_id) { }
 
+void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) { return; }
 
-bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_TYPEID unit_type) {
-    // Attempts to build a structure with an available SCV.
-    const ObservationInterface* observation = Observation();
-
-    const Unit* unit_to_build = nullptr;
-    Units units = observation->GetUnits(Unit::Alliance::Self, IsUnit(unit_type));
-
-    for (const auto& unit : units) {
-        // Use the first idle SCV found.
-        if (unit->orders.empty()) {
-            unit_to_build = unit;
-            break;
-        }
-    }
-
-    if (unit_to_build) {
-        float rx = GetRandomScalar();
-        float ry = GetRandomScalar();
-        Actions()->UnitCommand(unit_to_build,
-                               ability_type_for_structure,
-                               Point2D(unit_to_build->pos.x + rx * 15.0f,
-                                       unit_to_build->pos.y + ry * 15.0f));
-        return true;
-    }
-    return false;
-}
-
-bool BasicSc2Bot::TryBuildSupplyDepot() {
-    // Try to build a supply depot.
-    const ObservationInterface* observation = Observation();
-    Units units = observation->GetUnits(Unit::Alliance::Self);
-    int32_t supply = observation->GetFoodUsed();
-    if (supply >= observation->GetFoodCap() - 2) {
-        return TryBuildStructure(ABILITY_ID::BUILD_SUPPLYDEPOT);
-    }
-    return false;
-}
-
-bool BasicSc2Bot::TryBuildBarracks() {
-    // Try to build a barracks.
-    const ObservationInterface* observation = Observation();
-
-    if (CountUnitType(UNIT_TYPEID::TERRAN_BARRACKS) > 0) {
-        return false;  // Already have a Barracks.
-    }
-
-    return TryBuildStructure(ABILITY_ID::BUILD_BARRACKS);
-}
-
-size_t BasicSc2Bot::CountUnitType(UNIT_TYPEID unit_type) {
-    // Counts the number of units of a specific type.
-    return Observation()->GetUnits(Unit::Alliance::Self, IsUnit(unit_type)).size();
-}
-
-void BasicSc2Bot::Scout(const Unit* unit) {
-    // Very simple scouting function.
-    const GameInfo& game_info = Observation()->GetGameInfo();
-    auto enemy_start_locations = game_info.enemy_start_locations;
-    Actions()->UnitCommand(unit, ABILITY_ID:: GENERAL_PATROL, GetRandomEntry(enemy_start_locations));
-}
-
-const Unit* BasicSc2Bot::FindNearestMineralPatch(const Point2D& start) {
-    // Finds the nearest mineral patch to a given point.
-    Units units = Observation()->GetUnits(Unit::Alliance::Neutral);
-    float distance = std::numeric_limits<float>::max();
-    const Unit* target = nullptr;
-    for (const auto& u : units) {
-        if (u->unit_type == UNIT_TYPEID::NEUTRAL_MINERALFIELD ||
-            u->unit_type == UNIT_TYPEID::NEUTRAL_RICHMINERALFIELD) {
-            float d = DistanceSquared2D(u->pos, start);
-            if (d < distance) {
-                distance = d;
-                target = u;
-            }
-        }
-    }
-    return target;
-}
+void BasicSc2Bot::OnUnitEnterVision(const Unit* unit) { return; }
