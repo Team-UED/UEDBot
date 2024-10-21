@@ -90,6 +90,7 @@ void BasicSc2Bot::OnGameEnd() {
 
 void BasicSc2Bot::OnStep() { 
     BasicSc2Bot::ManageEconomy();
+    BasicSc2Bot::ExecuteBuildOrder();
  }
 
 void BasicSc2Bot::OnUnitCreated(const Unit* unit) {}
