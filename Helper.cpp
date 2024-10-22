@@ -55,3 +55,87 @@ Point3D BasicSc2Bot::GetNextExpansion() const {
 
     return next_expansion;
 }
+
+
+// Helper function to detect dangerous positions
+bool BasicSc2Bot::IsDangerousPosition(const Point2D &pos) {
+    // Example logic: if enemy units are within a certain radius
+    auto enemy_units = Observation()->GetUnits(Unit::Alliance::Enemy);
+    for (const auto &enemy : enemy_units) {
+        if (Distance2D(pos, enemy->pos) < 10.0f) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Helper function to find a safe position for retreat
+Point2D BasicSc2Bot::GetSafePosition() {
+    // Example logic: move SCV towards command center
+    const Unit *command_center = nullptr;
+    for (const auto &unit : Observation()->GetUnits(Unit::Alliance::Self)) {
+        if (unit->unit_type == UNIT_TYPEID::TERRAN_COMMANDCENTER) {
+            command_center = unit;
+            break;
+        }
+    }
+    return command_center ? command_center->pos : Point2D(0, 0);
+}
+
+// Helper function to find damaged units for repair
+const Unit *BasicSc2Bot::FindDamagedUnit() {
+    for (const auto &unit : Observation()->GetUnits(Unit::Alliance::Self)) {
+        if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER &&
+            unit->health < unit->health_max) {
+            return unit;
+        }
+    }
+    return nullptr;
+}
+
+// Helper function to find damaged structures for repair
+const Unit *BasicSc2Bot::FindDamagedStructure() {
+   for (const auto &unit : Observation()->GetUnits(Unit::Alliance::Self)) {
+       if (unit->unit_type == UNIT_TYPEID::TERRAN_COMMANDCENTER ||
+           unit->unit_type == UNIT_TYPEID::TERRAN_ORBITALCOMMAND ||
+           unit->unit_type == UNIT_TYPEID::TERRAN_PLANETARYFORTRESS ||
+           unit->unit_type == UNIT_TYPEID::TERRAN_SUPPLYDEPOT ||
+           unit->unit_type == UNIT_TYPEID::TERRAN_BARRACKS ||
+           unit->unit_type == UNIT_TYPEID::TERRAN_FACTORY ||
+           unit->unit_type == UNIT_TYPEID::TERRAN_STARPORT) {
+           if (unit->health < unit->health_max) {
+               return unit;
+           }
+       }
+   }
+   return nullptr;
+}
+
+bool BasicSc2Bot::IsMainBaseUnderAttack() {
+    // If any structure in the main base is under attack, return true
+    for (const auto &unit : Observation()->GetUnits(Unit::Alliance::Self)) {
+        if (unit->unit_type == UNIT_TYPEID::TERRAN_COMMANDCENTER ||
+            unit->unit_type == UNIT_TYPEID::TERRAN_ORBITALCOMMAND ||
+            unit->unit_type == UNIT_TYPEID::TERRAN_PLANETARYFORTRESS) {
+            if (unit->health < unit->health_max) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+// Helper function to find the closest enemy unit
+const Unit *BasicSc2Bot::FindClosestEnemy(const Point2D &pos) {
+    const Unit *closest_enemy = nullptr;
+    float closest_distance = std::numeric_limits<float>::max();
+
+    for (const auto &unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
+        float distance = Distance2D(pos, unit->pos);
+        if (distance < closest_distance) {
+            closest_distance = distance;
+            closest_enemy = unit;
+        }
+    }
+    return closest_enemy;
+}

@@ -160,6 +160,18 @@ private:
     // Controls SCVs during dangerous situations and repairs.
     void ControlSCVs();
 
+    // Manages SCVs during dangerous situations.
+    void RetreatFromDanger();
+
+    // Repairs damaged units during or after engagements.
+    void RepairUnits();
+
+    // Repairs damaged structures during enemy attacks.
+    void RepairStructures();
+
+    // SCVs attack in urgent situations (e.g., enemy attacking the main base).
+    void SCVAttackEmergency();
+
     // Controls Marines with micro (kiting, focus fire).
     void ControlMarines();
 
@@ -211,6 +223,24 @@ private:
 
     // Returns true if the ability is being researched or built.
     bool IsAbilityInProgress(AbilityID ability_id) const;
+
+    // Returns true if the position is dangerous. (e.g., enemy units nearby)
+    bool IsDangerousPosition(const Point2D &pos);
+
+    // Gets the closest safe position for SCVs. (e.g., towards the main base)
+    Point2D GetSafePosition();
+
+    // Finds the closest damaged unit for repair.
+    const Unit *FindDamagedUnit();
+
+    // Finds the closest damaged structure for repair.
+    const Unit *FindDamagedStructure();
+
+    // Returns true if the main base is under attack.
+    bool IsMainBaseUnderAttack();
+
+    // Finds the closest enemy unit to a given position.
+    const Unit *FindClosestEnemy(const Point2D &pos);
 
     // =========================
     // Member Variables
