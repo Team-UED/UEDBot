@@ -99,6 +99,16 @@ private:
     // Builds a second base (Command Center).
     void BuildSecondBase();
 
+    void Swap();
+
+    bool swappable;
+
+    bool swap_in_progress;
+
+    Point2D swap_factory_position;
+
+    Point2D swap_starport_position;
+
     // =========================
     // Unit Production and Upgrades
     // =========================
