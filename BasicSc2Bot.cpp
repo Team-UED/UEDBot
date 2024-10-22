@@ -13,7 +13,9 @@ BasicSc2Bot::BasicSc2Bot()
       last_expansion_check(0),
       last_scout_time(0),
       yamato_cannon_researched(false),
-      enemy_strategy(EnemyStrategy::Unknown) {
+      enemy_strategy(EnemyStrategy::Unknown),
+      swappable(false),
+      swap_in_progress(false){
     
     build_order = {
         ABILITY_ID::BUILD_SUPPLYDEPOT,
@@ -96,7 +98,20 @@ void BasicSc2Bot::OnStep() {
 
 void BasicSc2Bot::OnUnitCreated(const Unit* unit) {}
 
-void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {}
+void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
+    if (unit->unit_type == UNIT_TYPEID::TERRAN_STARPORT) {
+        const ObservationInterface* observation = Observation();
+        Units factories = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FACTORY));
+		Units starports = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_STARPORT));
+		if (!factories.empty() && !starports.empty()) {
+            const Unit* factory = factories.front();
+            const Unit* starport = starports.front();
+            Actions()->UnitCommand(factory, ABILITY_ID::LIFT);
+            Actions()->UnitCommand(starport, ABILITY_ID::LIFT);
+            swappable = true;
+		}
+    }
+}
 
 void BasicSc2Bot::OnUpgradeCompleted(UpgradeID upgrade_id) { }
 
