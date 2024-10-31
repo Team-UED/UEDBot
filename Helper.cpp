@@ -59,7 +59,7 @@ Point3D BasicSc2Bot::GetNextExpansion() const {
 
 // Helper function to detect dangerous positions
 bool BasicSc2Bot::IsDangerousPosition(const Point2D &pos) {
-    // Example logic: if enemy units are within a certain radius
+    // if enemy units are within a certain radius (run!!!!)
     auto enemy_units = Observation()->GetUnits(Unit::Alliance::Enemy);
     for (const auto &enemy : enemy_units) {
         if (Distance2D(pos, enemy->pos) < 10.0f) {
@@ -71,7 +71,7 @@ bool BasicSc2Bot::IsDangerousPosition(const Point2D &pos) {
 
 // Helper function to find a safe position for retreat
 Point2D BasicSc2Bot::GetSafePosition() {
-    // Example logic: move SCV towards command center
+    // currently set up to return the location of command center
     const Unit *command_center = nullptr;
     for (const auto &unit : Observation()->GetUnits(Unit::Alliance::Self)) {
         if (unit->unit_type == UNIT_TYPEID::TERRAN_COMMANDCENTER) {
