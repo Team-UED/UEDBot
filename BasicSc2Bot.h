@@ -9,6 +9,8 @@
 #include "sc2api/sc2_unit.h"
 #include "cpp-sc2/include/sc2api/sc2_interfaces.h"
 #include "sc2api/sc2_unit_filters.h"
+#include "sc2lib/sc2_search.h"
+
 
 #include <vector>
 #include <unordered_set>
@@ -251,6 +253,8 @@ private:
 
     // Finds the closest enemy unit to a given position.
     const Unit *FindClosestEnemy(const Point2D &pos);
+
+    bool TryBuildStructureAtLocation(ABILITY_ID ability_type_for_structure, UNIT_TYPEID unit_type, const Point2D& location);
 
     // =========================
     // Member Variables

@@ -37,29 +37,53 @@ bool BasicSc2Bot::NeedExpansion() const {
 }
 
 Point3D BasicSc2Bot::GetNextExpansion() const {
-    // Get the next available expansion location
     const ObservationInterface* observation = Observation();
-    Units possible_expansions = observation->GetUnits(Unit::Alliance::Neutral, IsUnit(UNIT_TYPEID::NEUTRAL_MINERALFIELD));
 
-    Point3D main_base_location = GetMainBase()->pos;
-    float distance = std::numeric_limits<float>::max();
-    Point3D next_expansion;
+    // All expansion locations
+    const std::vector<Point3D>& expansions = expansion_locations;
 
-    for (const auto& expansion : possible_expansions) {
-        float current_distance = DistanceSquared3D(expansion->pos, main_base_location);
-        if (current_distance < distance) {
-            distance = current_distance;
-            next_expansion = expansion->pos;
-        }
+    // Check if we have enough resources to expand
+    if (observation->GetMinerals() < 400) {
+        return Point3D(0.0f, 0.0f, 0.0f);
     }
 
+    // Get our bases
+    Units townhalls = observation->GetUnits(Unit::Alliance::Self, IsTownHall());
+    if (townhalls.empty()) {
+        return Point3D(0.0f, 0.0f, 0.0f);
+    }
+
+    // Find the closest expansion location that is not occupied
+    Point3D main_base_location = GetMainBase()->pos;
+    float closest_distance = std::numeric_limits<float>::max();
+    Point3D next_expansion = Point3D(0.0f, 0.0f, 0.0f);
+
+    for (const auto& expansion_pos : expansions) {
+        // Check if the expansion is already occupied
+        bool occupied = false;
+        for (const auto& townhall : townhalls) {
+            if (Distance2D(expansion_pos, townhall->pos) < 5.0f) {  // Use a threshold distance
+                occupied = true;
+                break;
+            }
+        }
+        if (occupied) {
+            continue;
+        }
+
+        float distance = DistanceSquared3D(expansion_pos, main_base_location);
+        if (distance < closest_distance) {
+            closest_distance = distance;
+            next_expansion = expansion_pos;
+        }
+    }
     return next_expansion;
 }
 
 
 // Helper function to detect dangerous positions
 bool BasicSc2Bot::IsDangerousPosition(const Point2D &pos) {
-    // if enemy units are within a certain radius (run!!!!)
+    // Example logic: if enemy units are within a certain radius
     auto enemy_units = Observation()->GetUnits(Unit::Alliance::Enemy);
     for (const auto &enemy : enemy_units) {
         if (Distance2D(pos, enemy->pos) < 10.0f) {
@@ -71,7 +95,7 @@ bool BasicSc2Bot::IsDangerousPosition(const Point2D &pos) {
 
 // Helper function to find a safe position for retreat
 Point2D BasicSc2Bot::GetSafePosition() {
-    // currently set up to return the location of command center
+    // Example logic: move SCV towards command center
     const Unit *command_center = nullptr;
     for (const auto &unit : Observation()->GetUnits(Unit::Alliance::Self)) {
         if (unit->unit_type == UNIT_TYPEID::TERRAN_COMMANDCENTER) {
@@ -138,4 +162,37 @@ const Unit *BasicSc2Bot::FindClosestEnemy(const Point2D &pos) {
         }
     }
     return closest_enemy;
+}
+
+const Unit* BasicSc2Bot::FindUnit(sc2::UnitTypeID unit_type) const {
+    const ObservationInterface* observation = Observation();
+    Units units = observation->GetUnits(Unit::Alliance::Self, IsUnit(unit_type));
+    for (const auto& unit : units) {
+        // Exclude SCVs that are currently constructing
+        if (unit->orders.empty() || unit->orders.front().ability_id == ABILITY_ID::HARVEST_GATHER) {
+            return unit;
+        }
+    }
+    return nullptr;
+}
+
+
+
+bool BasicSc2Bot::TryBuildStructureAtLocation(ABILITY_ID ability_type_for_structure, UNIT_TYPEID unit_type, const Point2D& location) {
+    const ObservationInterface* observation = Observation();
+
+    // Get a worker unit to build the structure.
+    const Unit* unit_to_build = FindUnit(unit_type);
+    if (!unit_to_build) {
+        return false;
+    }
+
+    // Check if the location is valid for building.
+    if (Query()->Placement(ability_type_for_structure, location, unit_to_build)) {
+        Actions()->UnitCommand(unit_to_build, ability_type_for_structure, location);
+        return true;
+    } else {
+        // If the location is not valid, you might want to try nearby locations or handle it accordingly.
+        return false;
+    }
 }
