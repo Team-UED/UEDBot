@@ -11,6 +11,7 @@ void BasicSc2Bot::ExecuteBuildOrder() {
 	Swap();
 	BuildFusionCore();
 	BuildArmory();
+	BuildSecondBase();
 }
 
 // Build Barracks if we have a supply depot and enough resources
@@ -144,4 +145,32 @@ void BasicSc2Bot::BuildArmory() {
     if (observation->GetMinerals() >= 150 && observation->GetVespene() >= 100) {
         TryBuildStructure(ABILITY_ID::BUILD_ARMORY, UNIT_TYPEID::TERRAN_SCV);
     }
+}
+
+void BasicSc2Bot::BuildSecondBase() {
+    const ObservationInterface* observation = Observation();
+
+    // Check if we already have at least two bases.
+    Units command_centers = observation->GetUnits(Unit::Alliance::Self, IsTownHall());
+    if (command_centers.size() >= 2) {
+        return;  // We already have two or more bases.
+    }
+
+    // Check if a Command Center is already being built.
+    Units command_centers_under_construction = observation->GetUnits(Unit::Alliance::Self, [](const Unit& unit) {
+        return unit.unit_type == UNIT_TYPEID::TERRAN_COMMANDCENTER && unit.build_progress < 1.0f;
+    });
+    if (!command_centers_under_construction.empty()) {
+        return;  // A Command Center is already under construction.
+    }
+
+    // Get the next expansion location.
+    Point3D expansion_location = GetNextExpansion();
+    if (expansion_location == Point3D(0.0f, 0.0f, 0.0f)) {
+        return;  // No expansion location found.
+    }
+
+    // Attempt to build the Command Center at the expansion location.
+    TryBuildStructureAtLocation(ABILITY_ID::BUILD_COMMANDCENTER, UNIT_TYPEID::TERRAN_SCV, Point2D(expansion_location));
+
 }
