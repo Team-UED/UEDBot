@@ -38,6 +38,7 @@ void BasicSc2Bot::TrainBattlecruisers() {
                 if (starport->orders.empty()) {
                     // Build a Battlecruiser (One at a time)
                     Actions()->UnitCommand(starport, ABILITY_ID::TRAIN_BATTLECRUISER);
+					producing_battlecruiser = true;
                 }
             }
         }
