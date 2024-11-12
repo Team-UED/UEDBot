@@ -46,8 +46,6 @@ void BasicSc2Bot::TrainBattlecruisers() {
     }
 }
 
-#include <iostream>
-
 void BasicSc2Bot::UpgradeBattlecruisers() {
     const ObservationInterface* observation = Observation();
 
