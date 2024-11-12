@@ -72,6 +72,8 @@ private:
     // Reassigns workers to the closest mineral patch or gas.
     void ReassignWorkers();
 
+    void UseMULE();
+
     // =========================
     // Build Order Execution
     // =========================
@@ -99,6 +101,12 @@ private:
 
     // Builds a second base (Command Center).
     void BuildSecondBase();
+
+    // Builds an Engineering bay
+    void BuildEngineeringBay();
+
+	// Builds an Orbital Command
+    void BuildOrbitalCommand();
 
     void Swap();
 

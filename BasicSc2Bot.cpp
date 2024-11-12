@@ -21,6 +21,8 @@ BasicSc2Bot::BasicSc2Bot()
         ABILITY_ID::BUILD_SUPPLYDEPOT,
         ABILITY_ID::BUILD_BARRACKS,
         ABILITY_ID::BUILD_REFINERY,
+        ABILITY_ID::BUILD_ENGINEERINGBAY,
+        ABILITY_ID::BUILD_BUNKER,
         ABILITY_ID::BUILD_FACTORY,
         ABILITY_ID::BUILD_STARPORT,
         ABILITY_ID::BUILD_TECHLAB,
@@ -36,13 +38,17 @@ void BasicSc2Bot::OnGameStart() {
     enemy_start_location = Observation()->GetGameInfo().enemy_start_locations[0];
     expansion_locations = search::CalculateExpansionLocations(Observation(), Query());
 
-    // Initialize chokepoints
-    for (auto& expansion : expansion_locations) {
-        Units units = Observation()->GetUnits(Unit::Alliance::Neutral, IsUnit(UNIT_TYPEID::NEUTRAL_MINERALFIELD));
-        if (!units.empty()) {
-            bases.push_back(units.front());
-        }
-    }
+    // Initialize base
+	Units command_centers = Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_COMMANDCENTER));
+    bases.push_back(command_centers.front());
+
+    // Initialize chokepoints (Why push mineral to the base?)
+    //for (auto& expansion : expansion_locations) {
+    //    Units units = Observation()->GetUnits(Unit::Alliance::Neutral, IsUnit(UNIT_TYPEID::NEUTRAL_MINERALFIELD));
+    //    if (!units.empty()) {
+    //        bases.push_back(units.front());
+    //    }
+    //}
 
     // Initialize build tasks based on build order
     for (auto ability : build_order) {

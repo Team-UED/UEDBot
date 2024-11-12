@@ -3,8 +3,26 @@
 using namespace sc2;
 
 void BasicSc2Bot::ManageProduction() {
-    //TrainMarines();
+    TrainMarines();
     TrainBattlecruisers();
+}
+
+void BasicSc2Bot::TrainMarines() {
+    const ObservationInterface* observation = Observation();
+    // Check if we have the resources
+    if (observation->GetMinerals() >= 50) {
+        // Find Barracks
+        Units barracks = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKS));
+
+        if (!barracks.empty()) {
+            const Unit* barrack = barracks.front();
+            if (barrack->orders.empty()) {
+            // Build a Battlecruiser (One at a time)
+            Actions()->UnitCommand(barrack, ABILITY_ID::TRAIN_MARINE);
+            
+            }
+        }
+    }
 }
 
 void BasicSc2Bot::TrainBattlecruisers() {

@@ -9,6 +9,7 @@ void BasicSc2Bot::ManageEconomy() {
     BuildRefineries();
     BuildExpansion();
     ReassignWorkers();
+	UseMULE();
 }
 
 void BasicSc2Bot::TrainSCVs() {
@@ -19,8 +20,9 @@ void BasicSc2Bot::TrainSCVs() {
     if (command_centers.empty()) return;
 
     // Calculate desired SCV count
-    size_t desired_scv_count = bases.size() * 22; // 16 for minerals, 6 for gas per base
-    if (num_scvs >= desired_scv_count) return;
+    size_t desired_scv_count = bases.size() * 23; // 16 for minerals, 6 for gas per base + 1 for building
+    Units scvs = Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SCV));
+    if (static_cast<int>(scvs.size()) >= desired_scv_count) return;
 
     // Ensure we have enough supply
     if (observation->GetFoodUsed() >= observation->GetFoodCap() - 1) {
@@ -41,6 +43,37 @@ void BasicSc2Bot::TrainSCVs() {
         }
         if (observation->GetMinerals() >= 50) {
             Actions()->UnitCommand(cc, ABILITY_ID::TRAIN_SCV);
+        }
+    }
+}
+
+void BasicSc2Bot::UseMULE() {
+    const ObservationInterface* observation = Observation();
+
+    // Find all Orbital Commands
+    Units orbital_commands = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_ORBITALCOMMAND));
+
+    // Loop Orbital Command to check if it has enough energy
+    for (const auto& orbital : orbital_commands) {
+        if (orbital->energy >= 50) { 
+            // Find the nearest mineral patch to the Orbital Command
+            Units mineral_patches = observation->GetUnits(Unit::Alliance::Neutral, IsMineralPatch());
+            const Unit* closest_mineral = nullptr;
+            float min_distance = std::numeric_limits<float>::max();
+
+            for (const auto& mineral : mineral_patches) {
+                float distance = sc2::Distance2D(orbital->pos, mineral->pos);
+                if (distance < min_distance) {
+                    min_distance = distance;
+                    closest_mineral = mineral;
+                }
+            }
+
+            // use MULE on nearest mineral patch
+            if (closest_mineral) {
+                Actions()->UnitCommand(orbital, ABILITY_ID::EFFECT_CALLDOWNMULE, closest_mineral);
+                return;
+            }
         }
     }
 }
@@ -90,7 +123,7 @@ bool BasicSc2Bot::TryBuildSupplyDepot() {
     int32_t supply_cap = observation->GetFoodCap();
 
     // Build a supply depot when supply used reaches a certain threshold
-    if (supply_used >= supply_cap - 4) {
+    if (supply_used >= supply_cap - 6) {
         // Check if a supply depot is already under construction
         Units supply_depots_building = observation->GetUnits(Unit::Self, [](const Unit& unit) {
             return unit.unit_type == UNIT_TYPEID::TERRAN_SUPPLYDEPOT && unit.build_progress < 1.0f;
@@ -106,20 +139,47 @@ bool BasicSc2Bot::TryBuildSupplyDepot() {
 void BasicSc2Bot::AssignWorkers() {
     Units idle_scvs = Observation()->GetUnits(Unit::Alliance::Self, [](const Unit& unit) {
         return unit.unit_type == UNIT_TYPEID::TERRAN_SCV && unit.orders.empty();
-    });
+        });
 
     Units minerals = Observation()->GetUnits(Unit::Alliance::Neutral, IsMineralPatch());
     Units refineries = Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_REFINERY));
 
+    // Find all idle scvs
     for (const auto& scv : idle_scvs) {
-        if (!minerals.empty()) {
-            Actions()->UnitCommand(scv, ABILITY_ID::HARVEST_GATHER, minerals.front());
-        } else {
-            for (const auto& refinery : refineries) {
-                if (refinery->assigned_harvesters < refinery->ideal_harvesters) {
-                    Actions()->UnitCommand(scv, ABILITY_ID::HARVEST_GATHER, refinery);
-                    break;
+
+        const Unit* nearest_mineral = nullptr;
+        float min_distance = std::numeric_limits<float>::max();
+
+        const Unit* nearest_refinery = nullptr;
+        min_distance = std::numeric_limits<float>::max();
+
+
+        // Find the nearest refinery needing more workers
+        for (const auto& refinery : refineries) {
+            if (refinery->assigned_harvesters < refinery->ideal_harvesters) {
+                float distance = sc2::Distance2D(scv->pos, refinery->pos);
+                if (distance < min_distance) {
+                    min_distance = distance;
+                    nearest_refinery = refinery;
                 }
+            }
+        }
+        // Assign the SCV to it
+        if (nearest_refinery) {
+            Actions()->UnitCommand(scv, ABILITY_ID::HARVEST_GATHER, nearest_refinery);
+        }
+        else {
+            // Find the nearest mineral patch
+            for (const auto& mineral : minerals) {
+                float distance = sc2::Distance2D(scv->pos, mineral->pos);
+                if (distance < min_distance) {
+                    min_distance = distance;
+                    nearest_mineral = mineral;
+                }
+            }
+            // Assign the SCV to it
+            if (nearest_mineral) {
+                Actions()->UnitCommand(scv, ABILITY_ID::HARVEST_GATHER, nearest_mineral);
             }
         }
     }
@@ -128,53 +188,40 @@ void BasicSc2Bot::AssignWorkers() {
 void BasicSc2Bot::ReassignWorkers() {
     const ObservationInterface* observation = Observation();
 
-    // Get all refineries and mineral patches
+    // Get Minerals and refineries
     Units refineries = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_REFINERY));
     Units minerals = observation->GetUnits(Unit::Alliance::Neutral, IsMineralPatch());
 
-    // Loop through all refineries to check if we need to reassign workers
+	// Check if any refineries have too many workers
     for (const auto& refinery : refineries) {
         if (refinery->assigned_harvesters > refinery->ideal_harvesters) {
-            // If there are too many harvesters, reassign the excess
             int excess_harvesters = refinery->assigned_harvesters - refinery->ideal_harvesters;
             for (int i = 0; i < excess_harvesters; ++i) {
                 Units scvs = observation->GetUnits(Unit::Alliance::Self, [refinery](const Unit& unit) {
                     return unit.unit_type == UNIT_TYPEID::TERRAN_SCV && unit.orders.size() == 1 && unit.orders.front().target_unit_tag == refinery->tag;
-                });
-                if (!scvs.empty() && !minerals.empty()) {
-                    Actions()->UnitCommand(scvs.front(), ABILITY_ID::HARVEST_GATHER, minerals.front());
+                    });
+
+				// Assign excess scvs to nearest minerals
+                if (!scvs.empty()) {
+                    const Unit* nearest_mineral = nullptr;
+                    float min_distance = std::numeric_limits<float>::max();
+                    for (const auto& mineral : minerals) {
+                        float distance = sc2::Distance2D(scvs.front()->pos, mineral->pos);
+                        if (distance < min_distance) {
+                            min_distance = distance;
+                            nearest_mineral = mineral;
+                        }
+                    }
+                    if (nearest_mineral) {
+                        Actions()->UnitCommand(scvs.front(), ABILITY_ID::HARVEST_GATHER, nearest_mineral);
+                    }
                 }
             }
         }
     }
 
-    // Loop through all bases to balance worker distribution
+	// Check if any bases have too many workers (This should be done after expanding base)
     Units bases = observation->GetUnits(Unit::Alliance::Self, IsTownHall());
-    for (const auto& base : bases) {
-        if (base->assigned_harvesters > base->ideal_harvesters) {
-            int excess_harvesters = base->assigned_harvesters - base->ideal_harvesters;
-            for (int i = 0; i < excess_harvesters; ++i) {
-                Units scvs = observation->GetUnits(Unit::Alliance::Self, [base](const Unit& unit) {
-                    return unit.unit_type == UNIT_TYPEID::TERRAN_SCV && unit.orders.size() == 1 && unit.orders.front().target_unit_tag == base->tag;
-                });
-                if (!scvs.empty()) {
-                    // Find another base or refinery that needs more workers
-                    for (const auto& target_base : bases) {
-                        if (target_base->assigned_harvesters < target_base->ideal_harvesters) {
-                            Actions()->UnitCommand(scvs.front(), ABILITY_ID::HARVEST_GATHER, target_base);
-                            break;
-                        }
-                    }
-                    for (const auto& refinery : refineries) {
-                        if (refinery->assigned_harvesters < refinery->ideal_harvesters) {
-                            Actions()->UnitCommand(scvs.front(), ABILITY_ID::HARVEST_GATHER, refinery);
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
 
 void BasicSc2Bot::BuildRefineries() {
