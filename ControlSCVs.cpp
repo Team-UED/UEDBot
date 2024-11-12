@@ -21,10 +21,21 @@ using namespace sc2;
 
 // Main function to control SCVs
 void BasicSc2Bot::ControlSCVs() {
+	SCVScout();
     RetreatFromDanger();
     RepairUnits();
     RepairStructures();
     SCVAttackEmergency();
+}
+
+// SCVs scout the map to find enemy bases
+void BasicSc2Bot::SCVScout() {
+    if (is_scouting) {
+        return;
+    }
+
+
+    
 }
 
 // SCVs retreat from dangerous situations (e.g., enemy rushes)

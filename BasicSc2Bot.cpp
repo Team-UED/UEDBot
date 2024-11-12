@@ -16,7 +16,9 @@ BasicSc2Bot::BasicSc2Bot()
       enemy_strategy(EnemyStrategy::Unknown),
       swappable(false),
       swap_in_progress(false),
-      first_battlecruiser(false){
+      producing_battlecruiser(false),
+      first_battlecruiser(false),
+      is_scouting(false){
     
     build_order = {
         ABILITY_ID::BUILD_SUPPLYDEPOT,
@@ -105,9 +107,7 @@ void BasicSc2Bot::OnStep() {
  }
 
 void BasicSc2Bot::OnUnitCreated(const Unit* unit) {
-    if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER) {
-        first_battlecruiser == true;
-	}
+
 }
 
 void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {

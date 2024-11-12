@@ -114,8 +114,6 @@ private:
 
     bool swap_in_progress;
 
-    bool first_battlecruiser;
-
     Point2D swap_factory_position;
 
     Point2D swap_starport_position;
@@ -141,6 +139,10 @@ private:
 
     // Manages research of upgrades.
     void ManageUpgrades();
+
+    bool first_battlecruiser;
+
+    bool producing_battlecruiser;
 
     // =========================
     // Defense Management
@@ -193,6 +195,9 @@ private:
     // SCVs attack in urgent situations (e.g., enemy attacking the main base).
     void SCVAttackEmergency();
 
+    // SCVs scouting enemy base.
+    void SCVScout();
+
     // Controls Marines with micro (kiting, focus fire).
     void ControlMarines();
 
@@ -207,6 +212,8 @@ private:
 
     // Controls Battlecruisers to retreat
     void Retreat();
+
+    bool is_scouting;
 
     // =========================
     // Helper Methods
