@@ -17,7 +17,7 @@ void BasicSc2Bot::TrainMarines() {
         if (!barracks.empty()) {
             const Unit* barrack = barracks.front();
             if (barrack->orders.empty()) {
-            // Build a Battlecruiser (One at a time)
+            // Build a Marine (One at a time)
             Actions()->UnitCommand(barrack, ABILITY_ID::TRAIN_MARINE);
             
             }
