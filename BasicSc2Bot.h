@@ -189,6 +189,15 @@ private:
     // Controls Battlecruisers (abilities, targeting, positioning).
     void ControlBattlecruisers();
 
+    // Controls Battlecruisers to jump into enemy base
+    void Jump();
+
+	// Controls Battlecruisers to target enemy units
+    void Target();
+
+    // Controls Battlecruisers to retreat
+    void Retreat();
+
     // =========================
     // Helper Methods
     // =========================
