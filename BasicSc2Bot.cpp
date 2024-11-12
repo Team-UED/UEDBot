@@ -100,6 +100,26 @@ void BasicSc2Bot::OnStep() {
 void BasicSc2Bot::OnUnitCreated(const Unit* unit) {}
 
 void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
+    if (unit->unit_type == UNIT_TYPEID::TERRAN_REFINERY) {
+        const ObservationInterface* observation = Observation();
+
+		// Get all SCVs that are free
+        Units scvs = observation->GetUnits(Unit::Alliance::Self, [](const Unit& unit) {
+            return unit.unit_type == UNIT_TYPEID::TERRAN_SCV && !unit.orders.empty() &&
+                unit.orders.front().ability_id == ABILITY_ID::HARVEST_GATHER;
+            });
+
+        // Assign them to gas
+        int scv_count = 0;
+        for (const auto& scv : scvs) {
+            // Assign SCV to the refinery
+            Actions()->UnitCommand(scv, ABILITY_ID::HARVEST_GATHER, unit); 
+            scv_count++;
+            // Stop after assigning 3 SCVs
+            if (scv_count >= 3) break;
+        }
+    }
+
     if (unit->unit_type == UNIT_TYPEID::TERRAN_STARPORT) {
         const ObservationInterface* observation = Observation();
         Units factories = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FACTORY));
