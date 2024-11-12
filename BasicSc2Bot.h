@@ -114,6 +114,8 @@ private:
 
     bool swap_in_progress;
 
+    bool first_battlecruiser;
+
     Point2D swap_factory_position;
 
     Point2D swap_starport_position;

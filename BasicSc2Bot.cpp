@@ -15,7 +15,8 @@ BasicSc2Bot::BasicSc2Bot()
       yamato_cannon_researched(false),
       enemy_strategy(EnemyStrategy::Unknown),
       swappable(false),
-      swap_in_progress(false){
+      swap_in_progress(false),
+      first_battlecruiser(false){
     
     build_order = {
         ABILITY_ID::BUILD_SUPPLYDEPOT,
@@ -103,7 +104,11 @@ void BasicSc2Bot::OnStep() {
     BasicSc2Bot::ControlUnits();
  }
 
-void BasicSc2Bot::OnUnitCreated(const Unit* unit) {}
+void BasicSc2Bot::OnUnitCreated(const Unit* unit) {
+    if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER) {
+        first_battlecruiser == true;
+	}
+}
 
 void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
     if (unit->unit_type == UNIT_TYPEID::TERRAN_REFINERY) {
