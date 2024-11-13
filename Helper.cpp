@@ -48,7 +48,7 @@ Point3D BasicSc2Bot::GetNextExpansion() const {
     const ObservationInterface* observation = Observation();
 
     // Check if we have enough resources to expand
-    if (observation->GetMinerals() < 600) {
+    if (observation->GetMinerals() < 400) {
         return Point3D(0.0f, 0.0f, 0.0f);
     }
 
