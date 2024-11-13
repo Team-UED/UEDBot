@@ -19,18 +19,28 @@ void BasicSc2Bot::TrainSCVs() {
     Units command_centers = observation->GetUnits(Unit::Alliance::Self, IsTownHall());
     if (command_centers.empty()) return;
 
-    // Use command centers as bases
-    size_t desired_scv_count = command_centers.size() * 23; // 16 for minerals, 6 for gas per base + 1 for building
+    // Calculate desired SCV count based on ideal harvesters
+    size_t desired_scv_count = 0;
+    for (const auto& base : command_centers) {
+        if (base->build_progress == 1.0f && !base->is_flying) {
+            desired_scv_count += base->ideal_harvesters;
+        }
+    }
+    desired_scv_count += 5; // Additional SCVs for building and contingency
+
     Units scvs = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SCV));
     if (scvs.size() >= desired_scv_count) return;
 
     // Ensure we have enough supply
     if (observation->GetFoodUsed() >= observation->GetFoodCap() - 1) {
-        return; // No point training if we're near supply cap
+        return; // Avoid training if we're near supply cap
     }
 
     // Train SCVs at available Command Centers
     for (const auto& cc : command_centers) {
+        if (cc->build_progress < 1.0f || cc->is_flying) {
+            continue; // Skip unfinished or flying Command Centers
+        }
         bool is_training_scv = false;
         for (const auto& order : cc->orders) {
             if (order.ability_id == ABILITY_ID::TRAIN_SCV) {
@@ -46,7 +56,6 @@ void BasicSc2Bot::TrainSCVs() {
         }
     }
 }
-
 
 void BasicSc2Bot::UseMULE() {
     const ObservationInterface* observation = Observation();
@@ -85,11 +94,11 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
         return false; // Not enough minerals to build
     }
 
+    // Find an SCV to build with
     Units scvs = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SCV));
     const Unit* builder = nullptr;
 
     for (const auto& scv : scvs) {
-
         if (scv == scv_scout) {
             continue;
         }
@@ -111,13 +120,30 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
     }
 
     if (builder) {
-        float rx = GetRandomScalar();
-        float ry = GetRandomScalar();
-        Point2D build_location(builder->pos.x + rx * 15.0f, builder->pos.y + ry * 15.0f);
-        // Check if the location is valid
+        // Get main base location
+        const Unit* main_base = GetMainBase();
+        if (!main_base) {
+            return false;
+        }
+
+        // Define a build location offset from the main base
+        Point2D build_location = main_base->pos + Point2D(10.0f, 0.0f); // Adjust offset as needed
+
+        // Check for a valid build location
         if (Query()->Placement(ability_type_for_structure, build_location)) {
             Actions()->UnitCommand(builder, ability_type_for_structure, build_location);
             return true;
+        } else {
+            // Try to find a nearby valid location
+            for (float x = -15.0f; x <= 15.0f; x += 2.0f) {
+                for (float y = -15.0f; y <= 15.0f; y += 2.0f) {
+                    Point2D test_location = main_base->pos + Point2D(x, y);
+                    if (Query()->Placement(ability_type_for_structure, test_location)) {
+                        Actions()->UnitCommand(builder, ability_type_for_structure, test_location);
+                        return true;
+                    }
+                }
+            }
         }
     }
     return false;
@@ -147,26 +173,31 @@ void BasicSc2Bot::AssignWorkers() {
         return unit.unit_type == UNIT_TYPEID::TERRAN_SCV && unit.orders.empty();
     });
 
-    Units minerals = Observation()->GetUnits(Unit::Alliance::Neutral, IsMineralPatch());
+    Units bases = Observation()->GetUnits(Unit::Alliance::Self, IsTownHall());
     Units refineries = Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_REFINERY));
 
-    // Find all idle SCVs
-    for (const auto& scv : idle_scvs) {
+    // Map of base positions to their nearby mineral patches
+    std::map<const Unit*, Units> base_minerals_map;
+    for (const auto& base : bases) {
+        Units nearby_minerals = Observation()->GetUnits(Unit::Alliance::Neutral, [base](const Unit& unit) {
+            return IsMineralPatch()(unit) && Distance2D(unit.pos, base->pos) < 10.0f;
+        });
+        base_minerals_map[base] = nearby_minerals;
+    }
 
+    // Assign each idle SCV to the nearest mineral patch associated with our bases
+    for (const auto& scv : idle_scvs) {
         if (scv == scv_scout) {
             continue;
         }
 
-        const Unit* nearest_mineral = nullptr;
-        float min_distance = std::numeric_limits<float>::max();
-
         const Unit* nearest_refinery = nullptr;
-        float min_distance_refinery = std::numeric_limits<float>::max(); // Separate distance for refinery
+        float min_distance_refinery = std::numeric_limits<float>::max();
 
-        // Find the nearest refinery needing more workers
+        // Assign to refineries needing workers
         for (const auto& refinery : refineries) {
             if (refinery->assigned_harvesters < refinery->ideal_harvesters) {
-                float distance = sc2::Distance2D(scv->pos, refinery->pos);
+                float distance = Distance2D(scv->pos, refinery->pos);
                 if (distance < min_distance_refinery) {
                     min_distance_refinery = distance;
                     nearest_refinery = refinery;
@@ -174,181 +205,130 @@ void BasicSc2Bot::AssignWorkers() {
             }
         }
 
-        // Assign the SCV to it
         if (nearest_refinery) {
             Actions()->UnitCommand(scv, ABILITY_ID::HARVEST_GATHER, nearest_refinery);
-        } else {
-            // Reset min_distance before searching for minerals
-            min_distance = std::numeric_limits<float>::max();
+            continue;
+        }
 
-            // Find the nearest mineral patch
-            for (const auto& mineral : minerals) {
-                float distance = sc2::Distance2D(scv->pos, mineral->pos);
-                if (distance < min_distance) {
-                    min_distance = distance;
-                    nearest_mineral = mineral;
+        // Assign to the nearest mineral patch at our bases
+        const Unit* closest_mineral = nullptr;
+        float min_distance_mineral = std::numeric_limits<float>::max();
+
+        for (const auto& base_pair : base_minerals_map) {
+            for (const auto& mineral : base_pair.second) {
+                float distance = Distance2D(scv->pos, mineral->pos);
+                if (distance < min_distance_mineral) {
+                    min_distance_mineral = distance;
+                    closest_mineral = mineral;
                 }
             }
-            // Assign the SCV to it
-            if (nearest_mineral) {
-                Actions()->UnitCommand(scv, ABILITY_ID::HARVEST_GATHER, nearest_mineral);
-            }
+        }
+
+        if (closest_mineral) {
+            Actions()->UnitCommand(scv, ABILITY_ID::HARVEST_GATHER, closest_mineral);
         }
     }
 }
+
 
 
 void BasicSc2Bot::ReassignWorkers() {
     const ObservationInterface* observation = Observation();
-    
-    // Get all resource structures and patches
-    Units refineries = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_REFINERY));
-    Units minerals = observation->GetUnits(Unit::Alliance::Neutral, IsMineralPatch());
+
     Units bases = observation->GetUnits(Unit::Alliance::Self, IsTownHall());
-    
-    // Create a map of mineral patches to their assigned base
-    std::map<const Unit*, const Unit*> mineral_to_base;
-    for (const auto& mineral : minerals) {
-        float closest_distance = std::numeric_limits<float>::max();
-        const Unit* closest_base = nullptr;
-        
-        for (const auto& base : bases) {
-            float distance = Distance2D(mineral->pos, base->pos);
-            if (distance < closest_distance) {
-                closest_distance = distance;
-                closest_base = base;
-            }
-        }
-        
-        if (closest_base && closest_distance < 12.0f) {  // Maximum distance for mineral-base association
-            mineral_to_base[mineral] = closest_base;
-        }
-    }
-    
-    // Track workers that need reassignment
-    std::vector<const Unit*> workers_to_reassign;
-    
-    // Handle excess refinery workers
-    for (const auto& refinery : refineries) {
-        if (refinery->assigned_harvesters > refinery->ideal_harvesters) {
-            int excess_workers = refinery->assigned_harvesters - refinery->ideal_harvesters;
-            
-            // Find workers currently harvesting from this refinery
-            Units gas_workers = observation->GetUnits(Unit::Alliance::Self, 
-                [refinery](const Unit& unit) {
-                    return unit.unit_type == UNIT_TYPEID::TERRAN_SCV && 
-                           !unit.orders.empty() &&
-                           unit.orders.front().target_unit_tag == refinery->tag;
-                });
-            
-            // Add excess workers to reassignment list
-            for (int i = 0; i < excess_workers && i < gas_workers.size(); ++i) {
-                workers_to_reassign.push_back(gas_workers[i]);
-            }
-        }
-    }
-    
-    // Handle bases with too many workers
+    Units refineries = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_REFINERY));
+
+    // Collect under-saturated and over-saturated bases
+    std::vector<const Unit*> under_saturated_bases;
+    std::vector<const Unit*> over_saturated_bases;
+
     for (const auto& base : bases) {
-        if (base->assigned_harvesters > base->ideal_harvesters) {
-            int excess_workers = base->assigned_harvesters - base->ideal_harvesters;
-            
-            // Find mineral patches associated with this base
-            std::vector<const Unit*> base_minerals;
-            for (const auto& pair : mineral_to_base) {
-                if (pair.second == base) {
-                    base_minerals.push_back(pair.first);
+        if (base->build_progress < 1.0f || base->is_flying) {
+            continue; // Skip unfinished or flying bases
+        }
+
+        int worker_diff = base->ideal_harvesters - base->assigned_harvesters;
+        if (worker_diff > 0) {
+            under_saturated_bases.push_back(base);
+        } else if (worker_diff < 0) {
+            over_saturated_bases.push_back(base);
+        }
+    }
+
+    // Reassign workers from over-saturated to under-saturated bases
+    for (const auto& over_base : over_saturated_bases) {
+        int excess_workers = over_base->assigned_harvesters - over_base->ideal_harvesters;
+
+        Units workers_at_base = observation->GetUnits(Unit::Alliance::Self, [over_base](const Unit& unit) {
+            return unit.unit_type == UNIT_TYPEID::TERRAN_SCV &&
+                   !unit.orders.empty() &&
+                   Distance2D(unit.pos, over_base->pos) < 10.0f;
+        });
+
+        for (int i = 0; i < excess_workers && i < workers_at_base.size(); ++i) {
+            const Unit* worker = workers_at_base[i];
+
+            // Assign to the closest under-saturated base
+            const Unit* closest_base = nullptr;
+            float min_distance = std::numeric_limits<float>::max();
+
+            for (const auto& under_base : under_saturated_bases) {
+                float distance = Distance2D(worker->pos, under_base->pos);
+                if (distance < min_distance) {
+                    min_distance = distance;
+                    closest_base = under_base;
                 }
             }
-            
-            // Find workers mining from these minerals
-            for (const auto& mineral : base_minerals) {
-                Units mineral_workers = observation->GetUnits(Unit::Alliance::Self,
-                    [mineral](const Unit& unit) {
-                        return unit.unit_type == UNIT_TYPEID::TERRAN_SCV &&
-                               !unit.orders.empty() &&
-                               unit.orders.front().target_unit_tag == mineral->tag;
-                    });
-                
-                // Add excess workers to reassignment list
-                for (int i = 0; i < excess_workers && i < mineral_workers.size(); ++i) {
-                    workers_to_reassign.push_back(mineral_workers[i]);
-                }
-                
-                if (workers_to_reassign.size() >= excess_workers) {
-                    break;
+
+            if (closest_base) {
+                // Assign worker to a mineral patch near the under-saturated base
+                Units minerals = observation->GetUnits(Unit::Alliance::Neutral, [closest_base](const Unit& unit) {
+                    return IsMineralPatch()(unit) && Distance2D(unit.pos, closest_base->pos) < 10.0f;
+                });
+
+                if (!minerals.empty()) {
+                    const Unit* closest_mineral = *std::min_element(minerals.begin(), minerals.end(),
+                        [worker](const Unit* a, const Unit* b) {
+                            return Distance2D(worker->pos, a->pos) < Distance2D(worker->pos, b->pos);
+                        });
+
+                    Actions()->UnitCommand(worker, ABILITY_ID::HARVEST_GATHER, closest_mineral);
                 }
             }
         }
     }
-    
-    // Reassign workers to understaffed bases or refineries
-    for (const auto& worker : workers_to_reassign) {
-        // First priority: understaffed refineries that need exactly one more worker
-        for (const auto& refinery : refineries) {
-            if (refinery->assigned_harvesters < refinery->ideal_harvesters) {
-                Actions()->UnitCommand(worker, ABILITY_ID::HARVEST_GATHER, refinery);
-            }
-        }
-        
-        // Second priority: understaffed bases
-        const Unit* target_base = nullptr;
-        int largest_worker_deficit = 0;
-        
-        for (const auto& base : bases) {
-            int deficit = base->ideal_harvesters - base->assigned_harvesters;
-            if (deficit > largest_worker_deficit) {
-                largest_worker_deficit = deficit;
-                target_base = base;
-            }
-        }
-        
-        if (target_base) {
-            // Find closest mineral patch near the target base
-            const Unit* target_mineral = nullptr;
-            float min_distance = std::numeric_limits<float>::max();
-            
-            for (const auto& pair : mineral_to_base) {
-                if (pair.second == target_base) {
-                    float distance = Distance2D(worker->pos, pair.first->pos);
-                    if (distance < min_distance) {
-                        min_distance = distance;
-                        target_mineral = pair.first;
-                    }
+
+    // Handle over-saturated refineries
+    for (const auto& refinery : refineries) {
+        int excess_workers = refinery->assigned_harvesters - refinery->ideal_harvesters;
+
+        if (excess_workers > 0) {
+            Units gas_workers = observation->GetUnits(Unit::Alliance::Self, [refinery](const Unit& unit) {
+                return unit.unit_type == UNIT_TYPEID::TERRAN_SCV &&
+                       !unit.orders.empty() &&
+                       unit.orders.front().target_unit_tag == refinery->tag;
+            });
+
+            for (int i = 0; i < excess_workers && i < gas_workers.size(); ++i) {
+                const Unit* worker = gas_workers[i];
+
+                // Assign worker to the closest mineral patch
+                Units minerals = observation->GetUnits(Unit::Alliance::Neutral, [worker](const Unit& unit) {
+                    return IsMineralPatch()(unit);
+                });
+
+                if (!minerals.empty()) {
+                    const Unit* closest_mineral = *std::min_element(minerals.begin(), minerals.end(),
+                        [worker](const Unit* a, const Unit* b) {
+                            return Distance2D(worker->pos, a->pos) < Distance2D(worker->pos, b->pos);
+                        });
+
+                    Actions()->UnitCommand(worker, ABILITY_ID::HARVEST_GATHER, closest_mineral);
                 }
             }
-            
-            if (target_mineral) {
-                Actions()->UnitCommand(worker, ABILITY_ID::HARVEST_GATHER, target_mineral);
-                goto worker_reassigned;
-            }
         }
-        
-        // If no understaffed base found, assign to nearest mineral patch
-        {
-            const Unit* nearest_mineral = nullptr;
-            float min_distance = std::numeric_limits<float>::max();
-            
-            for (const auto& mineral : minerals) {
-                if (mineral->mineral_contents > 0) {
-                    float distance = Distance2D(worker->pos, mineral->pos);
-                    if (distance < min_distance) {
-                        min_distance = distance;
-                        nearest_mineral = mineral;
-                    }
-                }
-            }
-            
-            if (nearest_mineral) {
-                Actions()->UnitCommand(worker, ABILITY_ID::HARVEST_GATHER, nearest_mineral);
-            }
-        }
-        
-        worker_reassigned:
-        continue;
     }
 }
-
 
 void BasicSc2Bot::BuildRefineries() {
     Units bases = Observation()->GetUnits(Unit::Alliance::Self, IsTownHall());
