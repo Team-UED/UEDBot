@@ -96,9 +96,6 @@ private:
     // Builds a Fusion Core to enable Battlecruiser production.
     void BuildFusionCore();
 
-    // Builds an Armory to upgrade units.
-    void BuildArmory();
-
     // Builds a second base (Command Center).
     void BuildSecondBase();
 
@@ -130,9 +127,6 @@ private:
 
     // Trains Battlecruisers as fast as possible.
     void TrainBattlecruisers();
-
-    // Upgrades Battlecruisers.
-    void UpgradeBattlecruisers();
 
     // Upgrades Marines.
     void UpgradeMarines();
@@ -213,14 +207,26 @@ private:
     // Controls Battlecruisers to retreat
     void Retreat();
 
+    // Scv that is scouting
+    const sc2::Unit* scv_scout;
+
+	// Flag to check if SCV is scouting
     bool is_scouting;
+
+    // Flag to check if scout is finished
+    bool scout_complete;
+
+	// Track visited enemy base locations
+    int current_scout_location_index;
+
+    // Track location of scouting scv
+    sc2::Point2D scout_location;
 
     // =========================
     // Helper Methods
     // =========================
 
     // Scouting methods to gather information about the enemy.
-    void Scout();
 
     // Updates the game state (e.g., under attack, need expansion).
     void UpdateGameState();
@@ -295,6 +301,7 @@ private:
     // Map information.
     sc2::Point2D start_location;
     sc2::Point2D enemy_start_location;
+	std::vector<sc2::Point2D> enemy_start_locations;
     std::vector<sc2::Point3D> expansion_locations;
 
     // Our bases.
@@ -322,9 +329,6 @@ private:
 
     // For managing scouting.
     size_t last_scout_time;
-
-    // For tracking upgrades.
-    bool yamato_cannon_researched;
 
     // For controlling specific units.
     Units battlecruisers;

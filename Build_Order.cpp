@@ -12,7 +12,6 @@ void BasicSc2Bot::ExecuteBuildOrder() {
 	BuildStarport();
 	Swap();
 	BuildFusionCore();
-	BuildArmory();
 }
 
 // Build Barracks if we have a supply depot and enough resources
@@ -199,45 +198,3 @@ void BasicSc2Bot::Swap() {
 	}
 }
 
-// Bot must build a Armory to upgrade units
-// Builds an Armory to enable unit upgrades, ensuring prerequisites are met
-void BasicSc2Bot::BuildArmory() {
-    const ObservationInterface* observation = Observation();
-
-    // Check if Armory already exists or is being built
-    Units armories = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_ARMORY));
-    bool armory_being_built = false;
-    for (const auto& task : build_tasks) {
-        if (task.unit_type == UNIT_TYPEID::TERRAN_ARMORY && !task.is_complete) {
-            armory_being_built = true;
-            break;
-        }
-    }
-
-    if (!armories.empty() || armory_being_built) {
-        return; // Armory already exists or is in progress
-    }
-
-    // Ensure prerequisites: at least one Factory with a Tech Lab
-    Units factories = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FACTORY));
-    bool has_factory_with_techlab = false;
-
-    for (const auto& factory : factories) {
-        if (factory->add_on_tag != 0) {
-			const Unit* add_on = observation->GetUnit(factory->add_on_tag);
-			if (add_on->unit_type == UNIT_TYPEID::TERRAN_TECHLAB) {
-				has_factory_with_techlab = true;
-				break;
-			}
-		}
-    }
-
-    if (!has_factory_with_techlab) {
-        return; // Prerequisite not met
-    }
-
-    // Check resource availability
-    if (observation->GetMinerals() >= 150 && observation->GetVespene() >= 100) {
-        TryBuildStructure(ABILITY_ID::BUILD_ARMORY, UNIT_TYPEID::TERRAN_SCV);
-    }
-}
