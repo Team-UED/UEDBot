@@ -19,7 +19,9 @@ BasicSc2Bot::BasicSc2Bot()
       first_battlecruiser(false),
       is_scouting(false),
 	  scout_complete(false),
-      current_scout_location_index(0){
+      current_scout_location_index(0),
+      scv_scout(nullptr),
+      phase(1){
     
     build_order = {
         ABILITY_ID::BUILD_SUPPLYDEPOT,
@@ -38,13 +40,17 @@ BasicSc2Bot::BasicSc2Bot()
 void BasicSc2Bot::OnGameStart() {
     // Initialize start locations, expansion locations, chokepoints, etc.
     start_location = Observation()->GetStartLocation();
-    enemy_start_location = Observation()->GetGameInfo().enemy_start_locations[0];
     enemy_start_locations = Observation()->GetGameInfo().enemy_start_locations;
+    if (!enemy_start_locations.empty()) {
+        enemy_start_location = enemy_start_locations[0];
+    }
     expansion_locations = search::CalculateExpansionLocations(Observation(), Query());
 
     // Initialize base
 	Units command_centers = Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_COMMANDCENTER));
-    bases.push_back(command_centers.front());
+    if (!command_centers.empty()) {
+        bases.push_back(command_centers.front());
+    }
 
     // Initialize chokepoints (Why push mineral to the base?)
     //for (auto& expansion : expansion_locations) {
@@ -67,6 +73,7 @@ void BasicSc2Bot::OnGameStart() {
     is_attacking = false;
     need_expansion = false;
 
+	
 }
 
 void BasicSc2Bot::OnGameEnd() { 
@@ -132,16 +139,17 @@ void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
     }
 
     if (unit->unit_type == UNIT_TYPEID::TERRAN_STARPORT) {
+        phase++;
         const ObservationInterface* observation = Observation();
         Units factories = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FACTORY));
 		Units starports = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_STARPORT));
-		if (!factories.empty() && !starports.empty()) {
+        if (!factories.empty() && !starports.empty()) {
             const Unit* factory = factories.front();
             const Unit* starport = starports.front();
             Actions()->UnitCommand(factory, ABILITY_ID::LIFT);
             Actions()->UnitCommand(starport, ABILITY_ID::LIFT);
             swappable = true;
-		}
+        }
     }
 }
 
@@ -150,16 +158,13 @@ void BasicSc2Bot::OnUpgradeCompleted(UpgradeID upgrade_id) { }
 void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) {
 
     // Scouting scv died
-    if (is_scouting && unit == scv_scout) {
+    if (is_scouting && scv_scout && unit == scv_scout) {
 
         // find the nearest possible enemy location to its last known position
-        const sc2::ObservationInterface* observation = Observation();
-        std::vector<sc2::Point2D> possible_enemy_locations = observation->GetGameInfo().enemy_start_locations;
-
         float min_distance = std::numeric_limits<float>::max();
         sc2::Point2D nearest_location;
 
-        for (const auto& location : possible_enemy_locations) {
+        for (const auto& location : enemy_start_locations) {
             float distance = sc2::Distance2D(scout_location, location);
             if (distance < min_distance) {
                 min_distance = distance;
@@ -173,6 +178,7 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) {
         // Reset scouting
         scv_scout = nullptr;
 		scout_complete = true;
+		is_scouting = false;
     }
 }
 

@@ -128,7 +128,7 @@ bool BasicSc2Bot::TryBuildSupplyDepot() {
     int32_t supply_cap = observation->GetFoodCap();
 
     // Build a supply depot when supply used reaches a certain threshold
-    if (supply_used >= supply_cap - 6) {
+    if (supply_used >= supply_cap - (phase * 3)) {
         // Check if a supply depot is already under construction
         Units supply_depots_building = observation->GetUnits(Unit::Self, [](const Unit& unit) {
             return unit.unit_type == UNIT_TYPEID::TERRAN_SUPPLYDEPOT && unit.build_progress < 1.0f;

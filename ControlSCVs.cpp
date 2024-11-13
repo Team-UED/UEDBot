@@ -34,7 +34,13 @@ void BasicSc2Bot::SCVScout() {
 
     // Check if we have enough SCVs
     sc2::Units scvs = observation->GetUnits(sc2::Unit::Alliance::Self, sc2::IsUnit(sc2::UNIT_TYPEID::TERRAN_SCV));
-    if (scvs.size() < 5 || scout_complete) {
+    if (scvs.size() < 10 || scout_complete) {
+        return;
+    }
+
+	// Check if enemy start locations are available
+    if (enemy_start_locations.empty()) {
+        scout_complete = true;  
         return;
     }
 
@@ -42,13 +48,14 @@ void BasicSc2Bot::SCVScout() {
         // Get scouting SCV
         scv_scout = observation->GetUnit(scv_scout->tag);
 
+
         if (scv_scout) {
             // Update the scouting SCV's current locationcd.
             scout_location = scv_scout->pos;
 
             // Check if SCV has reached the current target location
             float distance_to_target = sc2::Distance2D(scout_location, enemy_start_locations[current_scout_location_index]);
-            if (distance_to_target < 10.0f) {
+            if (distance_to_target < 2.0f) {
                 // Check for enemy town halls
                 sc2::Units enemy_structures = observation->GetUnits(sc2::Unit::Alliance::Enemy, [](const sc2::Unit& unit) {
                     return unit.unit_type == sc2::UNIT_TYPEID::TERRAN_COMMANDCENTER ||
@@ -63,7 +70,7 @@ void BasicSc2Bot::SCVScout() {
                     });
 
                 for (const auto& structure : enemy_structures) {
-                    if (sc2::Distance2D(scout_location, structure->pos) < 10.0f) {
+                    if (sc2::Distance2D(scout_location, structure->pos) < 2.0f) {
                         // Set the enemy start location and stop scouting
                         enemy_start_location = structure->pos;
                         scv_scout = nullptr;
@@ -75,9 +82,14 @@ void BasicSc2Bot::SCVScout() {
 
                 // Move to the next potential enemy location if no town hall is found here
                 current_scout_location_index++;
+                // All locations have been checked. Mark scouting as complete
+                if (current_scout_location_index >= enemy_start_locations.size()) {
+                    is_scouting = false;
+                    scout_complete = true;
+                    return;
+                }
                 // Scout to the next location
                 Actions()->UnitCommand(scv_scout, sc2::ABILITY_ID::MOVE_MOVE, enemy_start_locations[current_scout_location_index]);
-         
             }
         }
     }
@@ -95,6 +107,18 @@ void BasicSc2Bot::SCVScout() {
                 // Command SCV to move to the initial possible enemy location
                 Actions()->UnitCommand(scv_scout, sc2::ABILITY_ID::MOVE_MOVE, enemy_start_locations[current_scout_location_index]);
                 break;
+            }
+        }
+    }
+}
+
+// SCVs retreat from dangerous situations (e.g., enemy rushes)
+void BasicSc2Bot::RetreatFromDanger() {
+    for (const auto& unit : Observation()->GetUnits(Unit::Alliance::Self)) {
+        if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV && unit != scv_scout) {
+            if (IsDangerousPosition(unit->pos)) {
+                Actions()->UnitCommand(unit, ABILITY_ID::SMART,
+                    GetSafePosition());
             }
         }
     }
