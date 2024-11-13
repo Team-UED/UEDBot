@@ -288,6 +288,16 @@ private:
     // Finds the closest enemy unit to a given position.
     const Unit *FindClosestEnemy(const Point2D &pos);
 
+    bool TryBuildStructureAtLocation(ABILITY_ID ability_type_for_structure, UNIT_TYPEID unit_type, const Point2D& location);
+
+    Point2D GetRallyPoint();
+
+    const Unit *GetLeastSaturatedBase() const;
+
+    bool IsWorkerUnit(const Unit* unit);
+
+    
+
     // =========================
     // Member Variables
     // =========================
@@ -379,7 +389,7 @@ private:
     std::unordered_map<Tag, const Unit*> enemy_unit_map;
 
     // For tracking enemy anti air units.
-    const std::unordered_set<sc2::UNIT_TYPEID> BasicSc2Bot::anti_air_units = {
+    const std::unordered_set<sc2::UNIT_TYPEID> anti_air_units = {
     sc2::UNIT_TYPEID::TERRAN_MARINE,
     sc2::UNIT_TYPEID::TERRAN_CYCLONE,
     sc2::UNIT_TYPEID::TERRAN_VIKINGFIGHTER,
