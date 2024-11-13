@@ -10,52 +10,75 @@ const Unit* BasicSc2Bot::GetMainBase() const {
 }
 
 bool BasicSc2Bot::NeedExpansion() const {
-    // Determine if we need a new base
     const ObservationInterface* observation = Observation();
 
-    // Get all bases
-    Units bases = observation->GetUnits(Unit::Self, IsTownHall());
-    if (bases.empty()) {
-        return false; // No bases to expand from
-    }
-
-    // Consider expansion based on worker saturation and resource availability
-    size_t total_workers = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SCV)).size();
-    size_t total_mineral_patches = 0;
-    size_t total_ideal_workers = 0;
-
-    for (const auto& base : bases) {
-        Units mineral_patches = observation->GetUnits(Unit::Alliance::Neutral, [base](const Unit& unit) {
-            return unit.unit_type == UNIT_TYPEID::NEUTRAL_MINERALFIELD && Distance2D(unit.pos, base->pos) < 10.0f;
-        });
-        total_mineral_patches += mineral_patches.size();
-        total_ideal_workers += (mineral_patches.size() * 2) + 6; // 2 workers per mineral patch + 6 for gas
-    }
-
-    // Expand if we are close to or at worker saturation and have fewer bases
-    return total_workers >= 0.8 * total_ideal_workers; // Expand when close to saturation
-}
-
-Point3D BasicSc2Bot::GetNextExpansion() const {
-    // Get the next available expansion location
-    const ObservationInterface* observation = Observation();
-    Units possible_expansions = observation->GetUnits(Unit::Alliance::Neutral, IsUnit(UNIT_TYPEID::NEUTRAL_MINERALFIELD));
-
-    Point3D main_base_location = GetMainBase()->pos;
-    float distance = std::numeric_limits<float>::max();
-    Point3D next_expansion;
-
-    for (const auto& expansion : possible_expansions) {
-        float current_distance = DistanceSquared3D(expansion->pos, main_base_location);
-        if (current_distance < distance) {
-            distance = current_distance;
-            next_expansion = expansion->pos;
+    Units all_bases = observation->GetUnits(Unit::Self, IsTownHall());
+    Units bases;
+    for (const auto& base : all_bases) {
+        if (base->build_progress == 1.0f) {
+            bases.push_back(base);
         }
     }
 
-    return next_expansion;
+
+    if (bases.empty()) {
+        return true; // Need to rebuild if all bases are lost
+    }
+
+    const size_t max_bases = 2; // Adjust this value as desired
+    if (bases.size() >= max_bases) {
+        return false; // Do not expand if we've reached the maximum number of bases
+    }
+
+    // Calculate total ideal workers
+    size_t total_ideal_workers = 0;
+    for (const auto& base : bases) {
+        total_ideal_workers += base->ideal_harvesters;
+    }
+
+    // Get current number of SCVs
+    size_t num_scvs = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SCV)).size();
+
+    // Expand when we have enough SCVs to saturate our current bases
+    return num_scvs >= 0.95 * total_ideal_workers;
 }
 
+
+Point3D BasicSc2Bot::GetNextExpansion() const {
+    const ObservationInterface* observation = Observation();
+
+    // Check if we have enough resources to expand
+    if (observation->GetMinerals() < 600) {
+        return Point3D(0.0f, 0.0f, 0.0f);
+    }
+
+    const std::vector<Point3D>& expansions = expansion_locations;
+    Units townhalls = observation->GetUnits(Unit::Alliance::Self, IsTownHall());
+
+    // Find the closest unoccupied expansion location
+    Point3D main_base_location = GetMainBase()->pos;
+    float closest_distance = std::numeric_limits<float>::max();
+    Point3D next_expansion = Point3D(0.0f, 0.0f, 0.0f);
+
+    for (const auto& expansion_pos : expansions) {
+        bool occupied = false;
+        for (const auto& townhall : townhalls) {
+            if (Distance2D(expansion_pos, townhall->pos) < 5.0f) {
+                occupied = true;
+                break;
+            }
+        }
+        if (occupied) {
+            continue;
+        }
+        float distance = DistanceSquared3D(expansion_pos, main_base_location);
+        if (distance < closest_distance) {
+            closest_distance = distance;
+            next_expansion = expansion_pos;
+        }
+    }
+    return next_expansion;
+}
 
 // Helper function to detect dangerous positions
 bool BasicSc2Bot::IsDangerousPosition(const Point2D &pos) {
@@ -111,19 +134,31 @@ const Unit *BasicSc2Bot::FindDamagedStructure() {
    return nullptr;
 }
 
-bool BasicSc2Bot::IsMainBaseUnderAttack() {
-    // If any structure in the main base is under attack, return true
-    for (const auto &unit : Observation()->GetUnits(Unit::Alliance::Self)) {
-        if (unit->unit_type == UNIT_TYPEID::TERRAN_COMMANDCENTER ||
-            unit->unit_type == UNIT_TYPEID::TERRAN_ORBITALCOMMAND ||
-            unit->unit_type == UNIT_TYPEID::TERRAN_PLANETARYFORTRESS) {
-            if (unit->health < unit->health_max) {
-                return true;
-            }
-        }
-    }
-    return false;
+bool BasicSc2Bot::IsWorkerUnit(const Unit* unit) {
+    return unit->unit_type == UNIT_TYPEID::TERRAN_SCV ||
+           unit->unit_type == UNIT_TYPEID::PROTOSS_PROBE ||
+           unit->unit_type == UNIT_TYPEID::ZERG_DRONE;
 }
+
+// Modify IsMainBaseUnderAttack() to consider only combat units
+bool BasicSc2Bot::IsMainBaseUnderAttack() {
+    const Unit* main_base = GetMainBase();
+    if (!main_base) {
+        return false;
+    }
+
+    // Check if there are enemy combat units near our main base
+    Units enemy_units_near_base = Observation()->GetUnits(Unit::Alliance::Enemy, [this, main_base](const Unit& unit) {
+        float distance = Distance2D(unit.pos, main_base->pos);
+        if (distance < 15.0f && !IsWorkerUnit(&unit)) {
+            return true;
+        }
+        return false;
+    });
+
+    return !enemy_units_near_base.empty();
+}
+
 
 // Helper function to find the closest enemy unit
 const Unit *BasicSc2Bot::FindClosestEnemy(const Point2D &pos) {
@@ -138,4 +173,67 @@ const Unit *BasicSc2Bot::FindClosestEnemy(const Point2D &pos) {
         }
     }
     return closest_enemy;
+}
+
+const Unit* BasicSc2Bot::FindUnit(sc2::UnitTypeID unit_type) const {
+    const ObservationInterface* observation = Observation();
+    Units units = observation->GetUnits(Unit::Alliance::Self, IsUnit(unit_type));
+    for (const auto& unit : units) {
+        // Exclude SCVs that are currently constructing
+        if (unit->orders.empty() || unit->orders.front().ability_id == ABILITY_ID::HARVEST_GATHER) {
+            return unit;
+        }
+    }
+    return nullptr;
+}
+
+bool BasicSc2Bot::TryBuildStructureAtLocation(ABILITY_ID ability_type_for_structure, UNIT_TYPEID unit_type, const Point2D& location) {
+    const ObservationInterface* observation = Observation();
+
+    // Get a worker unit to build the structure.
+    const Unit* unit_to_build = FindUnit(unit_type);
+    if (!unit_to_build) {
+        return false;
+    }
+
+    // Check if the location is valid for building.
+    if (Query()->Placement(ability_type_for_structure, location, unit_to_build)) {
+        Actions()->UnitCommand(unit_to_build, ability_type_for_structure, location);
+        return true;
+    } else {
+        // If the location is not valid, you might want to try nearby locations or handle it accordingly.
+        return false;
+    }
+}
+
+Point2D BasicSc2Bot::GetRallyPoint() {
+    const Unit* main_base = GetMainBase();
+    if (main_base) {
+        // Adjust the rally point as needed
+        return Point2D(main_base->pos.x + 15.0f, main_base->pos.y);
+    }
+    // Fallback position
+    return Point2D(0.0f, 0.0f);
+}
+
+const Unit* BasicSc2Bot::GetLeastSaturatedBase() const {
+    const ObservationInterface* observation = Observation();
+    Units bases = observation->GetUnits(Unit::Alliance::Self, IsTownHall());
+
+    const Unit* least_saturated_base = nullptr;
+    int max_worker_need = 0;
+
+    for (const auto& base : bases) {
+        if (base->build_progress < 1.0f || base->is_flying) {
+            continue; // Skip bases that are under construction or flying
+        }
+
+        int worker_need = base->ideal_harvesters - base->assigned_harvesters;
+        if (worker_need > max_worker_need) {
+            max_worker_need = worker_need;
+            least_saturated_base = base;
+        }
+    }
+
+    return least_saturated_base;
 }

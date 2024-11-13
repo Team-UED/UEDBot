@@ -151,14 +151,32 @@ void BasicSc2Bot::RepairStructures() {
 // SCVs attack in urgent situations (e.g., enemy attacking the main base)
 void BasicSc2Bot::SCVAttackEmergency() {
     if (IsMainBaseUnderAttack()) {
-        for (const auto &unit : Observation()->GetUnits(Unit::Alliance::Self)) {
-            if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV) {
-                const Unit *target = FindClosestEnemy(unit->pos);
-                if (target) {
-                    Actions()->UnitCommand(unit, ABILITY_ID::ATTACK, target);
+        // Get enemy units near our main base
+        Units enemy_units_near_base = Observation()->GetUnits(Unit::Alliance::Enemy, [this](const Unit& unit) {
+            // Return enemy units that are near our main base and are combat units
+            const Unit* main_base = GetMainBase();
+            if (main_base) {
+                return Distance2D(unit.pos, main_base->pos) < 15.0f && !IsWorkerUnit(&unit);
+            }
+            return false;
+        });
+
+        // If there are significant enemy combat units, send SCVs to attack
+        if (!enemy_units_near_base.empty()) {
+            int scvs_sent = 0;
+            const int max_scvs_to_send = 5; // Limit the number of SCVs
+            for (const auto& unit : Observation()->GetUnits(Unit::Alliance::Self)) {
+                if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV) {
+                    const Unit* target = FindClosestEnemy(unit->pos);
+                    if (target && !IsWorkerUnit(target)) {
+                        Actions()->UnitCommand(unit, ABILITY_ID::ATTACK, target);
+                        scvs_sent++;
+                        if (scvs_sent >= max_scvs_to_send) {
+                            break;
+                        }
+                    }
                 }
             }
         }
     }
 }
-
