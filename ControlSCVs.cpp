@@ -30,21 +30,71 @@ void BasicSc2Bot::ControlSCVs() {
 
 // SCVs scout the map to find enemy bases
 void BasicSc2Bot::SCVScout() {
-    if (is_scouting) {
+    const sc2::ObservationInterface* observation = Observation();
+
+    // Check if we have enough SCVs
+    sc2::Units scvs = observation->GetUnits(sc2::Unit::Alliance::Self, sc2::IsUnit(sc2::UNIT_TYPEID::TERRAN_SCV));
+    if (scvs.size() < 5 || scout_complete) {
         return;
     }
 
+    if (is_scouting) {
+        // Get scouting SCV
+        scv_scout = observation->GetUnit(scv_scout->tag);
 
-    
-}
+        if (scv_scout) {
+            // Update the scouting SCV's current location
+            scout_location = scv_scout->pos;
 
-// SCVs retreat from dangerous situations (e.g., enemy rushes)
-void BasicSc2Bot::RetreatFromDanger() {
-    for (const auto &unit : Observation()->GetUnits(Unit::Alliance::Self)) {
-        if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV) {
-            if (IsDangerousPosition(unit->pos)) {
-                Actions()->UnitCommand(unit, ABILITY_ID::SMART,
-                                       GetSafePosition());
+            // Check if SCV has reached the current target location
+            float distance_to_target = sc2::Distance2D(scout_location, enemy_start_locations[current_scout_location_index]);
+            if (distance_to_target < 10.0f) {
+                // Check for enemy town halls
+                sc2::Units enemy_structures = observation->GetUnits(sc2::Unit::Alliance::Enemy, [](const sc2::Unit& unit) {
+                    return unit.unit_type == sc2::UNIT_TYPEID::TERRAN_COMMANDCENTER ||
+                        unit.unit_type == sc2::UNIT_TYPEID::TERRAN_ORBITALCOMMAND ||
+                        unit.unit_type == sc2::UNIT_TYPEID::TERRAN_COMMANDCENTERFLYING ||
+                        unit.unit_type == sc2::UNIT_TYPEID::TERRAN_ORBITALCOMMANDFLYING ||
+                        unit.unit_type == sc2::UNIT_TYPEID::TERRAN_PLANETARYFORTRESS ||
+                        unit.unit_type == sc2::UNIT_TYPEID::ZERG_HATCHERY ||
+                        unit.unit_type == sc2::UNIT_TYPEID::ZERG_LAIR ||
+                        unit.unit_type == sc2::UNIT_TYPEID::ZERG_HIVE ||
+                        unit.unit_type == sc2::UNIT_TYPEID::PROTOSS_NEXUS;
+                    });
+
+                for (const auto& structure : enemy_structures) {
+                    if (sc2::Distance2D(scout_location, structure->pos) < 10.0f) {
+                        // Set the enemy start location and stop scouting
+                        enemy_start_location = structure->pos;
+                        scv_scout = nullptr;
+                        is_scouting = false;
+                        scout_complete = true;
+                        return;
+                    }
+                }
+
+                // Move to the next potential enemy location if no town hall is found here
+                current_scout_location_index++;
+                // Scout to the next location
+                Actions()->UnitCommand(scv_scout, sc2::ABILITY_ID::MOVE_MOVE, enemy_start_locations[current_scout_location_index]);
+         
+            }
+        }
+    }
+    else {
+        // Assign an SCV to scout when no SCVs are scouting
+        for (const auto& scv : scvs) {
+            if (scv->orders.empty()) {
+                scv_scout = scv;
+                is_scouting = true;
+                current_scout_location_index = 0;  // Start from the first location
+
+                // Set the initial position of the scouting SCV
+                scout_location = scv->pos;
+
+                // Command SCV to move to the initial possible enemy location
+                Actions()->UnitCommand(scv_scout, sc2::ABILITY_ID::MOVE_MOVE, possible_location[current_scout_location_index]);
+                break;
             }
         }
     }

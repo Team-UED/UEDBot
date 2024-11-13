@@ -6,7 +6,6 @@ void BasicSc2Bot::ManageProduction() {
     TrainMarines();
     TrainBattlecruisers();
     UpgradeMarines();
-    UpgradeBattlecruisers();
 }
 
 void BasicSc2Bot::TrainMarines() {
@@ -47,26 +46,6 @@ void BasicSc2Bot::TrainBattlecruisers() {
     }
 }
 
-void BasicSc2Bot::UpgradeBattlecruisers() {
-    const ObservationInterface* observation = Observation();
-
-    // Check if we have a Fusion Core
-    Units fusion_cores = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FUSIONCORE));
-    if (fusion_cores.empty()) {
-        return;
-    }
-
-    // Check if Yamato Cannon is already researched
-    if (!yamato_cannon_researched && observation->GetMinerals() >= 150 && observation->GetVespene() >= 150) {
-        for (const auto& starport : observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_STARPORT))) {
-            if (starport->add_on_tag != 0 && starport->orders.empty()) {
-                Actions()->UnitCommand(starport, ABILITY_ID::RESEARCH_BATTLECRUISERWEAPONREFIT);
-                yamato_cannon_researched = true;
-                break;
-            }
-        }
-    }
-}
 
 void BasicSc2Bot::UpgradeMarines() {
     const ObservationInterface* observation = Observation();

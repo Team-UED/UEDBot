@@ -12,13 +12,14 @@ BasicSc2Bot::BasicSc2Bot()
       last_supply_check(0),
       last_expansion_check(0),
       last_scout_time(0),
-      yamato_cannon_researched(false),
       enemy_strategy(EnemyStrategy::Unknown),
       swappable(false),
       swap_in_progress(false),
       producing_battlecruiser(false),
       first_battlecruiser(false),
-      is_scouting(false){
+      is_scouting(false),
+	  scout_complete(false),
+      current_scout_location_index(0){
     
     build_order = {
         ABILITY_ID::BUILD_SUPPLYDEPOT,
@@ -30,7 +31,6 @@ BasicSc2Bot::BasicSc2Bot()
         ABILITY_ID::BUILD_STARPORT,
         ABILITY_ID::BUILD_TECHLAB,
         ABILITY_ID::BUILD_FUSIONCORE,
-        ABILITY_ID::BUILD_ARMORY,
         ABILITY_ID::BUILD_COMMANDCENTER 
     };
 }
@@ -39,6 +39,7 @@ void BasicSc2Bot::OnGameStart() {
     // Initialize start locations, expansion locations, chokepoints, etc.
     start_location = Observation()->GetStartLocation();
     enemy_start_location = Observation()->GetGameInfo().enemy_start_locations[0];
+    enemy_start_locations = Observation()->GetGameInfo().enemy_start_locations;
     expansion_locations = search::CalculateExpansionLocations(Observation(), Query());
 
     // Initialize base
@@ -65,7 +66,6 @@ void BasicSc2Bot::OnGameStart() {
     is_under_attack = false;
     is_attacking = false;
     need_expansion = false;
-    yamato_cannon_researched = false;
 
 }
 
@@ -147,6 +147,33 @@ void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
 
 void BasicSc2Bot::OnUpgradeCompleted(UpgradeID upgrade_id) { }
 
-void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) { return; }
+void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) {
+
+    // Scouting scv died
+    if (is_scouting && unit == scv_scout) {
+
+        // find the nearest possible enemy location to its last known position
+        const sc2::ObservationInterface* observation = Observation();
+        std::vector<sc2::Point2D> possible_enemy_locations = observation->GetGameInfo().enemy_start_locations;
+
+        float min_distance = std::numeric_limits<float>::max();
+        sc2::Point2D nearest_location;
+
+        for (const auto& location : possible_enemy_locations) {
+            float distance = sc2::Distance2D(scout_location, location);
+            if (distance < min_distance) {
+                min_distance = distance;
+                nearest_location = location;
+            }
+        }
+
+        // Set the nearest location as the confirmed enemy base location
+        enemy_start_location = nearest_location;
+
+        // Reset scouting
+        scv_scout = nullptr;
+		scout_complete = true;
+    }
+}
 
 void BasicSc2Bot::OnUnitEnterVision(const Unit* unit) { return; }

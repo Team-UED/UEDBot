@@ -88,6 +88,11 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
     const Unit* builder = nullptr;
 
     for (const auto& scv : scvs) {
+
+        if (scv == scv_scout) {
+            continue;
+        }
+
         bool is_constructing = false;
         for (const auto& order : scv->orders) {
             if (order.ability_id == ABILITY_ID::BUILD_SUPPLYDEPOT ||
@@ -147,6 +152,10 @@ void BasicSc2Bot::AssignWorkers() {
     // Find all idle scvs
     for (const auto& scv : idle_scvs) {
 
+        if (scv == scv_scout) {
+            continue;
+        }
+
         const Unit* nearest_mineral = nullptr;
         float min_distance = std::numeric_limits<float>::max();
 
@@ -198,7 +207,8 @@ void BasicSc2Bot::ReassignWorkers() {
             int excess_harvesters = refinery->assigned_harvesters - refinery->ideal_harvesters;
             for (int i = 0; i < excess_harvesters; ++i) {
                 Units scvs = observation->GetUnits(Unit::Alliance::Self, [refinery](const Unit& unit) {
-                    return unit.unit_type == UNIT_TYPEID::TERRAN_SCV && unit.orders.size() == 1 && unit.orders.front().target_unit_tag == refinery->tag;
+                    return unit.unit_type == UNIT_TYPEID::TERRAN_SCV && 
+                        unit.orders.size() == 1 && unit.orders.front().target_unit_tag == refinery->tag;
                     });
 
 				// Assign excess scvs to nearest minerals
