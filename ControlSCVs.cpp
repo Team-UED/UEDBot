@@ -43,7 +43,7 @@ void BasicSc2Bot::SCVScout() {
         scv_scout = observation->GetUnit(scv_scout->tag);
 
         if (scv_scout) {
-            // Update the scouting SCV's current location
+            // Update the scouting SCV's current locationcd.
             scout_location = scv_scout->pos;
 
             // Check if SCV has reached the current target location
@@ -93,7 +93,7 @@ void BasicSc2Bot::SCVScout() {
                 scout_location = scv->pos;
 
                 // Command SCV to move to the initial possible enemy location
-                Actions()->UnitCommand(scv_scout, sc2::ABILITY_ID::MOVE_MOVE, possible_location[current_scout_location_index]);
+                Actions()->UnitCommand(scv_scout, sc2::ABILITY_ID::MOVE_MOVE, enemy_start_locations[current_scout_location_index]);
                 break;
             }
         }
