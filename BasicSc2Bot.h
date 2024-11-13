@@ -108,15 +108,19 @@ private:
 	// Builds an Orbital Command
     void BuildOrbitalCommand();
 
+    // Swaps building
     void Swap();
 
+    // Check if swap is possible
     bool swappable;
 
+    // Check if swap is in progress
     bool swap_in_progress;
 
+    // Swpas location of 2 structures
     Point2D swap_factory_position;
-
     Point2D swap_starport_position;
+
 
     // =========================
     // Unit Production and Upgrades
@@ -221,6 +225,16 @@ private:
 
     // Track location of scouting scv
     sc2::Point2D scout_location;
+
+    // Retreat info of battlecruiser
+    struct RetreatInfo {
+        bool is_retreating = false;
+        sc2::Point2D retreat_destination;
+    };
+
+	// Map to store retreat status of battlecruiser
+    std::unordered_map<sc2::Tag, RetreatInfo> retreat_status_map;
+
 
     // =========================
     // Helper Methods

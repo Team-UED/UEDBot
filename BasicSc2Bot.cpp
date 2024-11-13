@@ -2,7 +2,7 @@
 
 BasicSc2Bot::BasicSc2Bot()
     : current_build_order_index(0),
-      num_scvs(0),
+      num_scvs(12),
       num_marines(0),
       num_battlecruisers(0),
       is_under_attack(false),

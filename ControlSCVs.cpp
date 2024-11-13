@@ -34,7 +34,12 @@ void BasicSc2Bot::SCVScout() {
 
     // Check if we have enough SCVs
     sc2::Units scvs = observation->GetUnits(sc2::Unit::Alliance::Self, sc2::IsUnit(sc2::UNIT_TYPEID::TERRAN_SCV));
-    if (scvs.size() < 10 || scout_complete) {
+
+	if (scvs.empty()) {
+		return;
+	}
+
+    if (scvs.size() < 12 || scout_complete) {
         return;
     }
 
@@ -55,7 +60,7 @@ void BasicSc2Bot::SCVScout() {
 
             // Check if SCV has reached the current target location
             float distance_to_target = sc2::Distance2D(scout_location, enemy_start_locations[current_scout_location_index]);
-            if (distance_to_target < 2.0f) {
+            if (distance_to_target < 5.0f) {
                 // Check for enemy town halls
                 sc2::Units enemy_structures = observation->GetUnits(sc2::Unit::Alliance::Enemy, [](const sc2::Unit& unit) {
                     return unit.unit_type == sc2::UNIT_TYPEID::TERRAN_COMMANDCENTER ||
@@ -70,9 +75,31 @@ void BasicSc2Bot::SCVScout() {
                     });
 
                 for (const auto& structure : enemy_structures) {
-                    if (sc2::Distance2D(scout_location, structure->pos) < 2.0f) {
+                    if (sc2::Distance2D(scout_location, structure->pos) < 5.0f) {
                         // Set the enemy start location and stop scouting
                         enemy_start_location = structure->pos;
+
+                        const ObservationInterface* observation = Observation();
+                        sc2::Units mineral_patches = observation->GetUnits(Unit::Alliance::Neutral, IsUnit(UNIT_TYPEID::NEUTRAL_MINERALFIELD));
+
+                        // Find the closest mineral patch to the start location
+                        const sc2::Unit* closest_mineral = nullptr;
+                        float min_distance = std::numeric_limits<float>::max();
+
+                        for (const auto& mineral : mineral_patches) {
+                            float distance = sc2::Distance2D(start_location, mineral->pos);
+                            if (distance < min_distance) {
+                                min_distance = distance;
+                                closest_mineral = mineral;
+                            }
+                        }
+
+                        // Issue the harvest command if a mineral patch is found
+                        if (closest_mineral && scv_scout) {
+                            Actions()->UnitCommand(scv_scout, ABILITY_ID::HARVEST_GATHER, closest_mineral);
+                        }
+
+                        // Mark scouting as complete
                         scv_scout = nullptr;
                         is_scouting = false;
                         scout_complete = true;
