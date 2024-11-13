@@ -183,3 +183,14 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) {
 }
 
 void BasicSc2Bot::OnUnitEnterVision(const Unit* unit) { return; }
+
+// Testing commands
+// ./BasicSc2Bot.exe -c -a zerg -d Hard -m CactusValleyLE.SC2Map
+// ./BasicSc2Bot.exe -c -a terran -d Hard -m CactusValleyLE.SC2Map
+// ./BasicSc2Bot.exe -c -a protoss -d Hard -m CactusValleyLE.SC2Map
+// ./BasicSc2Bot.exe -c -a zerg -d Hard -m BelShirVestigeLE.SC2Map
+// ./BasicSc2Bot.exe -c -a terran -d Hard -m BelShirVestigeLE.SC2Map
+// ./BasicSc2Bot.exe -c -a protoss -d Hard -m BelShirVestigeLE.SC2Map
+// ./BasicSc2Bot.exe -c -a zerg -d Hard -m ProximaStationLE.SC2Map
+// ./BasicSc2Bot.exe -c -a terran -d Hard -m ProximaStationLE.SC2Map    
+// ./BasicSc2Bot.exe -c -a protoss -d Hard -m ProximaStationLE.SC2Map

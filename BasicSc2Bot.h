@@ -164,9 +164,6 @@ private:
     // Manages offensive actions.
     void Offense();
 
-    // Executes the Battlecruiser rush strategy.
-    void BattlecruiserRush();
-
     // Executes an all-out rush with all available units.
     void AllOutRush();
 
