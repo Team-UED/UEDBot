@@ -39,8 +39,8 @@ void BasicSc2Bot::BuildEngineeringBay() {
 
 	// Get barracks
 	Units barracks = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKS));
-	// Get factories
-	Units factories = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FACTORY));
+	// Get startports
+	Units starports = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FACTORY));
 
 	// Can't build engineering bay without barracks
 	if (barracks.empty()) {
@@ -49,7 +49,7 @@ void BasicSc2Bot::BuildEngineeringBay() {
 
 	// Build only 1 engineering bay (After factory)
 	Units engineeringbays = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_ENGINEERINGBAY));
-	if (engineeringbays.empty() && !factories.empty() && observation->GetMinerals() >= 125) {
+	if (engineeringbays.empty() && !starports.empty() && observation->GetMinerals() >= 125) {
 		TryBuildStructure(ABILITY_ID::BUILD_ENGINEERINGBAY, UNIT_TYPEID::TERRAN_SCV);
 	}
 }
