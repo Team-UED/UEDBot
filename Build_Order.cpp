@@ -49,7 +49,7 @@ void BasicSc2Bot::BuildEngineeringBay() {
 
 	// Build only 1 engineering bay (After factory)
 	Units engineeringbays = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_ENGINEERINGBAY));
-	if (engineeringbays.empty() && observation->GetMinerals() >= 125 && !factories.empty()) {
+	if (engineeringbays.empty() && !factories.empty() && observation->GetMinerals() >= 125) {
 		TryBuildStructure(ABILITY_ID::BUILD_ENGINEERINGBAY, UNIT_TYPEID::TERRAN_SCV);
 	}
 }
@@ -84,9 +84,6 @@ void BasicSc2Bot::BuildOrbitalCommand() {
 	}
 }
 
-
-
-
 // Build factory if we have a barracks and enough resources
 void BasicSc2Bot::BuildFactory() {
 	const ObservationInterface* observation = Observation();
@@ -106,7 +103,6 @@ void BasicSc2Bot::BuildFactory() {
 		TryBuildStructure(ABILITY_ID::BUILD_FACTORY, UNIT_TYPEID::TERRAN_SCV);
 	}
 }
-
 
 // Build Starport if we have a factory and enough resources
 void BasicSc2Bot::BuildStarport() {
@@ -142,7 +138,7 @@ void BasicSc2Bot::BuildTechLabAddon() {
 	}
 
 	// Build addon
-	if ((observation->GetMinerals() >= 50 && observation->GetVespene() >= 25)) {
+	if (!factories.empty() && (observation->GetMinerals() >= 50 && observation->GetVespene() >= 25)) {
 		const Unit* factory = factories.front();
 		if (factory->orders.empty() && factory->add_on_tag == 0) {
 			Actions()->UnitCommand(factory, ABILITY_ID::BUILD_TECHLAB_FACTORY);
@@ -150,7 +146,6 @@ void BasicSc2Bot::BuildTechLabAddon() {
 	}
 
 }
-
 
 // Build Fusion Core if we have a starport and enough resources
 void BasicSc2Bot::BuildFusionCore() {

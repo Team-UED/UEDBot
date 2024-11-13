@@ -72,7 +72,10 @@ private:
     // Reassigns workers to the closest mineral patch or gas.
     void ReassignWorkers();
 
+	// Call down MULEs to gather resources
     void UseMULE();
+
+    int phase;
 
     // =========================
     // Build Order Execution
@@ -374,6 +377,28 @@ private:
 
     // For tracking enemy units.
     std::unordered_map<Tag, const Unit*> enemy_unit_map;
+
+    // For tracking enemy anti air units.
+    const std::unordered_set<sc2::UNIT_TYPEID> BasicSc2Bot::anti_air_units = {
+    sc2::UNIT_TYPEID::TERRAN_MARINE,
+    sc2::UNIT_TYPEID::TERRAN_CYCLONE,
+    sc2::UNIT_TYPEID::TERRAN_VIKINGFIGHTER,
+    sc2::UNIT_TYPEID::TERRAN_VIKINGASSAULT,
+    sc2::UNIT_TYPEID::TERRAN_THOR,
+    sc2::UNIT_TYPEID::TERRAN_MISSILETURRET,
+    sc2::UNIT_TYPEID::PROTOSS_STALKER,
+    sc2::UNIT_TYPEID::PROTOSS_ARCHON,
+    sc2::UNIT_TYPEID::PROTOSS_PHOENIX,
+    sc2::UNIT_TYPEID::PROTOSS_VOIDRAY,
+    sc2::UNIT_TYPEID::PROTOSS_CARRIER,
+    sc2::UNIT_TYPEID::PROTOSS_TEMPEST,
+    sc2::UNIT_TYPEID::PROTOSS_PHOTONCANNON,
+    sc2::UNIT_TYPEID::ZERG_QUEEN,
+    sc2::UNIT_TYPEID::ZERG_HYDRALISK,
+    sc2::UNIT_TYPEID::ZERG_MUTALISK,
+    sc2::UNIT_TYPEID::ZERG_CORRUPTOR,
+    sc2::UNIT_TYPEID::ZERG_SPORECRAWLER
+    };
 };
 
 #endif
