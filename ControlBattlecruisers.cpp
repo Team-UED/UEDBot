@@ -10,10 +10,37 @@ void BasicSc2Bot::ControlBattlecruisers() {
 	Retreat();
 }
 
+// Use Tactical Jump into enemy base
 void BasicSc2Bot::Jump() {
+
+    // Distance threshold
+    const float threshold = 100.0f; 
+
     for (const auto& unit : Observation()->GetUnits(Unit::Alliance::Self)) {
+        // Check if the unit is a Battlecruiser with full health
         if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER && unit->health >= unit->health_max) {
-            Actions()->UnitCommand(unit, ABILITY_ID::EFFECT_TACTICALJUMP, enemy_start_location);
+
+            // Calculate the distance from the enemy base,
+            // proceed if the Battlecruiser is far enough from the enemy base
+            float distance = sc2::Distance2D(unit->pos, enemy_start_location);
+            if (distance > threshold) {
+
+                // Check if Tactical Jump ability is available
+                auto abilities = Query()->GetAbilitiesForUnit(unit);
+                bool tactical_jump_available = false;
+
+                for (const auto& ability : abilities.abilities) {
+                    if (ability.ability_id == ABILITY_ID::EFFECT_TACTICALJUMP) {
+                        tactical_jump_available = true;
+                        break;
+                    }
+                }
+
+                // Use Tactical Jump if available
+                if (tactical_jump_available) {
+                    Actions()->UnitCommand(unit, ABILITY_ID::EFFECT_TACTICALJUMP, enemy_start_location);
+                }
+            }
         }
     }
 }
