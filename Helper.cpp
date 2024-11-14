@@ -247,7 +247,8 @@ Point2D BasicSc2Bot::GetNearestSafePosition(const Point2D &pos) {
     // Check if a position is safe
     auto is_safe = [&enemy_units, safe_radius](const Point2D &candidate) {
         for (const auto &enemy : enemy_units) {
-            if (Distance2D(enemy->pos, candidate) < safe_radius) {
+            if (enemy && Distance2D(enemy->pos, candidate) <
+                             safe_radius) { // Ensure enemy is not null
                 return false; // Unsafe if an enemy is within the safe_radius
             }
         }
