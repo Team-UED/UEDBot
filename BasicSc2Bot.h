@@ -296,6 +296,8 @@ private:
 
     bool IsWorkerUnit(const Unit* unit);
 
+    Point2D GetNearestSafePosition(const Point2D &pos);
+
     
 
     // =========================
