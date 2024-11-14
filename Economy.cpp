@@ -54,6 +54,11 @@ void BasicSc2Bot::UseMULE() {
     // Find all Orbital Commands
     Units orbital_commands = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_ORBITALCOMMAND));
 
+    // No Orbital Commands found
+    if (orbital_commands.empty()) {
+        return;
+    }
+
     // Loop Orbital Command to check if it has enough energy
     for (const auto& orbital : orbital_commands) {
         if (orbital->energy >= 50) { 
@@ -86,7 +91,7 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
     }
 
     // Max distance from base center
-    const float base_radius = 30.0f;
+    const float base_radius = 25.0f;
 
     // Minimum distance from mineral
     const float distance_from_minerals = 10.0f;
@@ -186,8 +191,22 @@ bool BasicSc2Bot::TryBuildSupplyDepot() {
     int32_t supply_used = observation->GetFoodUsed();
     int32_t supply_cap = observation->GetFoodCap();
 
-    // Build a supply depot when supply used reaches a certain threshold
-    if (supply_used >= supply_cap - (phase * 3)) {
+    // Default surplus
+    int32_t supply_surplus = 2;
+
+    // Set surplus by phase
+    if (phase == 1) {
+        supply_surplus = 2;
+    }
+    else if (phase == 2) {
+        supply_surplus = 6;
+    }
+    else if (phase == 3) {
+        supply_surplus = 8;
+    }
+
+    // Build a supply depot when supply used reaches the threshold
+    if (supply_used >= supply_cap - supply_surplus) {
         // Check if a supply depot is already under construction
         Units supply_depots_building = observation->GetUnits(Unit::Self, [](const Unit& unit) {
             return unit.unit_type == UNIT_TYPEID::TERRAN_SUPPLYDEPOT && unit.build_progress < 1.0f;

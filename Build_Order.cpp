@@ -40,7 +40,7 @@ void BasicSc2Bot::BuildEngineeringBay() {
 	// Get barracks
 	Units barracks = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKS));
 	// Get startports
-	Units starports = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FACTORY));
+	Units starports = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_STARPORT));
 
 	// Can't build engineering bay without barracks
 	if (barracks.empty()) {
@@ -60,13 +60,22 @@ void BasicSc2Bot::BuildOrbitalCommand() {
 
 	// Get engineering bays
 	Units engineeringbays = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_ENGINEERINGBAY));
+	// Get fusion core
+	Units fusioncore = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FUSIONCORE));
 	// Can't build orbital command without engineering bay
-	if (engineeringbays.empty()) {
+	// Set fusioncore as prerequisite for resource management
+
+	if (engineeringbays.empty() && fusioncore.empty()) {
 		return; 
 	}
 
 	// Find a Command Center that can be upgraded
 	Units command_centers = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_COMMANDCENTER));
+
+	if (command_centers.empty()) {
+		return;
+	}
+
 	for (const auto& command_center : command_centers) {
 		// Check if this Command Center is already being upgraded
 		bool is_upgrading = false;
@@ -131,20 +140,101 @@ void BasicSc2Bot::BuildTechLabAddon() {
 
 	// Get factories
 	Units factories = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FACTORY));
+	Units factories_f = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FACTORYFLYING));
 
-	// Can't build techlab without factories
-	if (factories.empty()) {
+	// Can't build Tech Lab without factories
+	if (factories.empty() && factories_f.empty()) {
 		return;
 	}
 
-	// Build addon
-	if (!factories.empty() && (observation->GetMinerals() >= 50 && observation->GetVespene() >= 25)) {
-		const Unit* factory = factories.front();
-		if (factory->orders.empty() && factory->add_on_tag == 0) {
-			Actions()->UnitCommand(factory, ABILITY_ID::BUILD_TECHLAB_FACTORY);
+	// Get Starports
+	Units starports = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_STARPORT));
+	bool starport_has_addon = false;
+
+	if (!starports.empty()) {
+		for (const auto& starport : starports) {
+			if (starport->add_on_tag != 0) {
+				starport_has_addon = true;
+				break;
+			}
 		}
 	}
 
+	// Get Techlabs
+	Units techlabs = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_TECHLAB));
+
+	// Get Fusion cores
+	Units fusioncores = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FUSIONCORE));
+
+
+	// Build Tech Lab if we have a factory and enough resources
+	if (observation->GetMinerals() >= 50 && observation->GetVespene() >= 25 && !techlab_building_in_progress) {
+		{
+			// Find a suitable Factory to build Tech Lab
+			current_factory = nullptr;
+
+			// Factory without an addon
+			if (!factories.empty()) {
+				for (const auto& fc : factories) {
+					if (fc->unit_type == UNIT_TYPEID::TERRAN_FACTORY &&
+						fc->add_on_tag == 0 &&
+						fc->build_progress == 1.0f &&
+						fc->orders.empty()) {
+						current_factory = fc;
+						break;
+					}
+				}
+			}
+
+			// If no suitable landed Factory found, check for flying Factories
+			if (!current_factory && !factories_f.empty()) {
+				current_factory = factories_f.front();
+			}
+
+
+			// If a suitable Factory is found, build Tech Lab
+			if (current_factory) {
+				// If the Factory is landed, attempt to build Tech Lab
+				// Lift the Factory if it failed (orders.empty())
+				if (current_factory->unit_type == UNIT_TYPEID::TERRAN_FACTORY) {
+					if (!starport_has_addon) {
+						Actions()->UnitCommand(current_factory, ABILITY_ID::BUILD_TECHLAB_FACTORY);
+						if (current_factory->orders.empty()) {
+							Actions()->UnitCommand(current_factory, ABILITY_ID::LIFT);
+						}
+					}
+					else {
+						if (!fusioncores.empty()) {
+							Actions()->UnitCommand(current_factory, ABILITY_ID::BUILD_TECHLAB_FACTORY);
+							if (current_factory->orders.empty()) {
+								Actions()->UnitCommand(current_factory, ABILITY_ID::LIFT);
+							}
+						}
+					}
+				}
+				// If the Factory is flying, find a suitable landing spot
+				else if (current_factory->unit_type == UNIT_TYPEID::TERRAN_FACTORYFLYING) {
+					// Build first Tech Lab right away, Delay the second Tech Lab until We have a Fusion core
+					if (techlabs.empty() || (!techlabs.empty() && starport_has_addon && !fusioncores.empty())) {
+						// Generate a random nearby location
+						float rx = GetRandomScalar();
+						float ry = GetRandomScalar();
+						Point2D build_location(current_factory->pos.x + rx * 15.0f, current_factory->pos.y + ry * 15.0f);
+						Actions()->UnitCommand(current_factory, ABILITY_ID::BUILD_TECHLAB_FACTORY, build_location);
+						techlab_building_in_progress = true;
+					}
+				}
+			}
+		}
+
+	}
+	// Reset pointer and flag 
+	if (techlab_building_in_progress && current_factory) {
+		if (current_factory->orders.empty() || (current_factory->add_on_tag != 0)) {
+			techlab_building_in_progress = false;
+			current_factory = nullptr;
+		}
+	}
 }
 
 // Build Fusion Core if we have a starport and enough resources
