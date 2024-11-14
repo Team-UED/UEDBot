@@ -108,6 +108,12 @@ private:
 	// Builds an Orbital Command
     void BuildOrbitalCommand();
 
+    // Flag to track Tech Lab building progress
+    bool techlab_building_in_progress = false;
+
+    // Pointer to track the current Factory in use
+    const Unit* current_factory = nullptr;     
+
     // Swaps building
     void Swap();
 
@@ -225,15 +231,6 @@ private:
 
     // Track location of scouting scv
     sc2::Point2D scout_location;
-
-    // Retreat info of battlecruiser
-    struct RetreatInfo {
-        bool is_retreating = false;
-        sc2::Point2D retreat_destination;
-    };
-
-	// Map to store retreat status of battlecruiser
-    std::unordered_map<sc2::Tag, RetreatInfo> retreat_status_map;
 
 
     // =========================
@@ -399,26 +396,28 @@ private:
     // For tracking enemy units.
     std::unordered_map<Tag, const Unit*> enemy_unit_map;
 
-    // For tracking enemy anti air units.
-    const std::unordered_set<sc2::UNIT_TYPEID> anti_air_units = {
-    sc2::UNIT_TYPEID::TERRAN_MARINE,
-    sc2::UNIT_TYPEID::TERRAN_CYCLONE,
-    sc2::UNIT_TYPEID::TERRAN_VIKINGFIGHTER,
-    sc2::UNIT_TYPEID::TERRAN_VIKINGASSAULT,
-    sc2::UNIT_TYPEID::TERRAN_THOR,
-    sc2::UNIT_TYPEID::TERRAN_MISSILETURRET,
-    sc2::UNIT_TYPEID::PROTOSS_STALKER,
-    sc2::UNIT_TYPEID::PROTOSS_ARCHON,
-    sc2::UNIT_TYPEID::PROTOSS_PHOENIX,
-    sc2::UNIT_TYPEID::PROTOSS_VOIDRAY,
-    sc2::UNIT_TYPEID::PROTOSS_CARRIER,
-    sc2::UNIT_TYPEID::PROTOSS_TEMPEST,
-    sc2::UNIT_TYPEID::PROTOSS_PHOTONCANNON,
-    sc2::UNIT_TYPEID::ZERG_QUEEN,
-    sc2::UNIT_TYPEID::ZERG_HYDRALISK,
-    sc2::UNIT_TYPEID::ZERG_MUTALISK,
-    sc2::UNIT_TYPEID::ZERG_CORRUPTOR,
-    sc2::UNIT_TYPEID::ZERG_SPORECRAWLER
+    // Map of threat levels for specific anti-air units
+    const std::unordered_map<sc2::UNIT_TYPEID, int> threat_levels = {
+        {sc2::UNIT_TYPEID::TERRAN_MARINE, 1},
+        {sc2::UNIT_TYPEID::TERRAN_GHOST, 1},
+        {sc2::UNIT_TYPEID::TERRAN_CYCLONE, 2},
+        {sc2::UNIT_TYPEID::TERRAN_VIKINGFIGHTER, 2},
+        {sc2::UNIT_TYPEID::TERRAN_VIKINGASSAULT, 2},
+        {sc2::UNIT_TYPEID::TERRAN_THOR, 4},
+        {sc2::UNIT_TYPEID::TERRAN_MISSILETURRET, 3},
+        {sc2::UNIT_TYPEID::PROTOSS_STALKER, 3},
+        {sc2::UNIT_TYPEID::PROTOSS_SENTRY, 1},
+        {sc2::UNIT_TYPEID::PROTOSS_ARCHON, 3},
+        {sc2::UNIT_TYPEID::PROTOSS_PHOENIX, 2},
+        {sc2::UNIT_TYPEID::PROTOSS_VOIDRAY, 3},
+        {sc2::UNIT_TYPEID::PROTOSS_CARRIER, 3},
+        {sc2::UNIT_TYPEID::PROTOSS_TEMPEST, 2},
+        {sc2::UNIT_TYPEID::PROTOSS_PHOTONCANNON, 3},
+        {sc2::UNIT_TYPEID::ZERG_QUEEN, 2},
+        {sc2::UNIT_TYPEID::ZERG_HYDRALISK, 2},
+        {sc2::UNIT_TYPEID::ZERG_MUTALISK, 2},
+        {sc2::UNIT_TYPEID::ZERG_CORRUPTOR, 4},
+        {sc2::UNIT_TYPEID::ZERG_SPORECRAWLER, 3}
     };
 };
 

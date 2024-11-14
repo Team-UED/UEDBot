@@ -22,10 +22,10 @@ using namespace sc2;
 // Main function to control SCVs
 void BasicSc2Bot::ControlSCVs() {
 	SCVScout();
-    RetreatFromDanger();
-    RepairUnits();
-    RepairStructures();
-    SCVAttackEmergency();
+    //RetreatFromDanger();
+    //RepairUnits();
+    //RepairStructures();
+    //SCVAttackEmergency();
 }
 
 // SCVs scout the map to find enemy bases
@@ -94,7 +94,7 @@ void BasicSc2Bot::SCVScout() {
                             }
                         }
 
-                        // Issue the harvest command if a mineral patch is found
+                        // harvest mineral if a mineral patch is found
                         if (closest_mineral && scv_scout) {
                             Actions()->UnitCommand(scv_scout, ABILITY_ID::HARVEST_GATHER, closest_mineral);
                         }

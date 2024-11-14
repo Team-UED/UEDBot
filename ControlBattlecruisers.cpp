@@ -12,19 +12,31 @@ void BasicSc2Bot::ControlBattlecruisers() {
 
 // Use Tactical Jump into enemy base
 void BasicSc2Bot::Jump() {
-
     // Distance threshold
-    const float threshold = 100.0f; 
+    const float threshold = 100.0f;
+    // Radius around ally base for defense
+    const float ally_base_defense_radius = 30.0f;
+
+    // Check if any enemy is near the ally base
+    bool enemy_near_ally_base = false;
+    for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
+        float distance_to_base = Distance2D(start_location, enemy_unit->pos);
+        if (distance_to_base < ally_base_defense_radius) {
+            enemy_near_ally_base = true;
+            break;
+        }
+    }
+
+    // Disable Jump if enemy is near ally base
+    if (enemy_near_ally_base) {
+        return;
+    }
 
     for (const auto& unit : Observation()->GetUnits(Unit::Alliance::Self)) {
         // Check if the unit is a Battlecruiser with full health
         if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER && unit->health >= unit->health_max) {
-
-            // Calculate the distance from the enemy base,
-            // proceed if the Battlecruiser is far enough from the enemy base
             float distance = sc2::Distance2D(unit->pos, enemy_start_location);
             if (distance > threshold) {
-
                 // Check if Tactical Jump ability is available
                 auto abilities = Query()->GetAbilitiesForUnit(unit);
                 bool tactical_jump_available = false;
@@ -45,140 +57,215 @@ void BasicSc2Bot::Jump() {
     }
 }
 
-// Target units attacking Battlecruisers first if air defense is weak,
-// otherwise prioritize workers.
-void BasicSc2Bot::Target() {
-    const float air_defense_threshold = 5;  
-    const float defense_check_radius = 10.0f;
 
-    for (const auto& battlecruiser : Observation()->GetUnits(sc2::Unit::Alliance::Self, IsUnit(sc2::UNIT_TYPEID::TERRAN_BATTLECRUISER))) {
-        int air_defense_count = 0;
-        const sc2::Unit* target = nullptr;
+
+// Target enemy units based on threat levels
+void BasicSc2Bot::Target() {
+    
+	// Detect radius for Battlecruisers
+    const float defense_check_radius = 12.0f;
+
+    // Distance threshold
+    const float ally_base_defense_radius = 30.0f;
+    
+	// Dynamically set threat levels for enemy units
+    const Units battlecruisers = Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BATTLECRUISER));
+
+	// Exit when there are no battlecruisers
+	if (battlecruisers.empty()) {
+		return;
+	}
+
+    bool enemy_near_ally_base = false;
+
+    for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
+        float distance_to_base = Distance2D(start_location, enemy_unit->pos);
+        if (distance_to_base < ally_base_defense_radius) {
+            enemy_near_ally_base = true;
+            break;
+        }
+    }
+
+    if (!enemy_near_ally_base) {
+        return;
+    }
+
+
+	// Threshold for "kiting" behavior
+    int num = static_cast<int>(battlecruisers.size());
+    const int threat_threshold = 10 * num ;  
+
+    // Get map dimensions for corner coordinates
+    const GameInfo& game_info = Observation()->GetGameInfo();
+    const Point2D playable_min = game_info.playable_min;
+    const Point2D playable_max = game_info.playable_max;
+
+    // Define the four corners of the map
+    std::vector<Point2D> map_corners = {
+        Point2D(playable_min.x, playable_min.y),  // Bottom-left
+        Point2D(playable_max.x, playable_min.y),  // Bottom-right
+        Point2D(playable_min.x, playable_max.y),  // Top-left
+        Point2D(playable_max.x, playable_max.y)   // Top-right
+    };
+
+
+    for (const auto& battlecruiser : Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BATTLECRUISER))) {
+        int total_threat = 0;
+        const Unit* target = nullptr;
         constexpr float max_distance = std::numeric_limits<float>::max();
         float min_distance = max_distance;
+        float min_hp = std::numeric_limits<float>::max();
 
-        // Count nearby enemy anti-air units to assess air defense strength
-        for (const auto& enemy_unit : Observation()->GetUnits(sc2::Unit::Alliance::Enemy)) {
-            if (anti_air_units.count(enemy_unit->unit_type) > 0) {  // Check if the unit type is in the anti-air set
-                if (sc2::Distance2D(battlecruiser->pos, enemy_unit->pos) < defense_check_radius) {
-                    air_defense_count++;
-                }
-            }
-        }
+        const Unit* closest_enemy = nullptr;
+        float closest_enemy_distance = max_distance;
 
-        // If air defense is weak, prioritize attacking units
-        if (air_defense_count < air_defense_threshold) {
-            for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
-                // Check if the enemy unit has an attack order
-                for (const auto& order : enemy_unit->orders) {
-                    if (order.ability_id == ABILITY_ID::ATTACK_ATTACK || order.ability_id == ABILITY_ID::ATTACK) {
-                        if (order.target_unit_tag == battlecruiser->tag) {
-                            float distance = sc2::Distance2D(battlecruiser->pos, enemy_unit->pos);
-                            if (distance < min_distance) {
-                                min_distance = distance;
-                                target = enemy_unit;
-                            }
-                        }
+        // Calculate total threat level and find the closest enemy
+        for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
+            auto threat_it = threat_levels.find(enemy_unit->unit_type);
+            if (threat_it != threat_levels.end()) {
+                float distance = Distance2D(battlecruiser->pos, enemy_unit->pos);
+                if (distance < defense_check_radius) {
+                    total_threat += threat_it->second;
+
+                    if (distance < closest_enemy_distance) {
+                        closest_enemy_distance = distance;
+                        closest_enemy = enemy_unit;
                     }
                 }
             }
         }
 
-        if (!target) {
-            // If no attacking units were found or if air defense is strong, target workers
-            for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
-                if (enemy_unit->unit_type == UNIT_TYPEID::ZERG_QUEEN ||
-                    enemy_unit->unit_type == UNIT_TYPEID::TERRAN_SCV ||
-                    enemy_unit->unit_type == UNIT_TYPEID::PROTOSS_PROBE ||
-                    enemy_unit->unit_type == UNIT_TYPEID::ZERG_DRONE
-                    ) {
+        // Determine whether to kite based on the threat level
+        bool should_kite = total_threat >= threat_threshold;
 
-                    float distance = sc2::Distance2D(battlecruiser->pos, enemy_unit->pos);
-                    if (distance < min_distance) {
+        if (should_kite) {
+            // Existing kiting logic
+            // Find the nearest corner (vertex)
+            Point2D nearest_corner;
+            float min_corner_distance = max_distance;
+
+            for (const auto& corner : map_corners) {
+                float corner_distance = DistanceSquared2D(battlecruiser->pos, corner);
+                if (corner_distance < min_corner_distance) {
+                    min_corner_distance = corner_distance;
+                    nearest_corner = corner;
+                }
+            }
+
+            // Issue SMART command to the nearest corner
+            Actions()->UnitCommand(battlecruiser, ABILITY_ID::SMART, nearest_corner);
+        }
+        else {
+            // Existing targeting logic
+            // Prioritize high-threat enemy units
+            for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
+                auto threat_it = threat_levels.find(enemy_unit->unit_type);
+                if (threat_it != threat_levels.end()) {
+                    float distance = Distance2D(battlecruiser->pos, enemy_unit->pos);
+                    if (distance < min_distance || (distance == min_distance && enemy_unit->health < min_hp)) {
                         min_distance = distance;
+                        min_hp = enemy_unit->health;
                         target = enemy_unit;
                     }
                 }
             }
-        }
 
-        // Attack the target
-        if (target) {
-            Actions()->UnitCommand(battlecruiser, ABILITY_ID::ATTACK_ATTACK, target);
+            // If no high-threat targets are found, prioritize workers
+            if (!target) {
+                std::vector<UNIT_TYPEID> worker_types = {
+                    UNIT_TYPEID::TERRAN_SCV,
+                    UNIT_TYPEID::PROTOSS_PROBE,
+                    UNIT_TYPEID::ZERG_DRONE,
+                    UNIT_TYPEID::ZERG_QUEEN
+                };
+
+                for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
+                    if (std::find(worker_types.begin(), worker_types.end(), enemy_unit->unit_type) != worker_types.end()) {
+                        float distance = Distance2D(battlecruiser->pos, enemy_unit->pos);
+                        if (distance < min_distance || (distance == min_distance && enemy_unit->health < min_hp)) {
+                            min_distance = distance;
+                            min_hp = enemy_unit->health;
+                            target = enemy_unit;
+                        }
+                    }
+                }
+            }
+
+            // Then target any units
+            if (!target) {
+                for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
+                    const UnitTypeData& unit_type_data = Observation()->GetUnitTypeData().at(enemy_unit->unit_type);
+                    bool is_structure = false;
+                    for (const auto& attribute : unit_type_data.attributes) {
+                        if (attribute == Attribute::Structure) {
+                            is_structure = true;
+                            break;
+                        }
+                    }
+                    if (!is_structure) {
+                        float distance = Distance2D(battlecruiser->pos, enemy_unit->pos);
+                        if (distance < min_distance || (distance == min_distance && enemy_unit->health < min_hp)) {
+                            min_distance = distance;
+                            min_hp = enemy_unit->health;
+                            target = enemy_unit;
+                        }
+                    }
+                }
+            }
+
+            // Then target any supply units
+            if (!target) {
+                std::vector<UNIT_TYPEID> resource_units = {
+                    UNIT_TYPEID::ZERG_OVERLORD,
+                    UNIT_TYPEID::TERRAN_SUPPLYDEPOT,
+                    UNIT_TYPEID::TERRAN_SUPPLYDEPOTLOWERED,
+                    UNIT_TYPEID::PROTOSS_PYLON
+                };
+
+                for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
+                    if (std::find(resource_units.begin(), resource_units.end(), enemy_unit->unit_type) != resource_units.end()) {
+                        float distance = Distance2D(battlecruiser->pos, enemy_unit->pos);
+                        if (distance < min_distance || (distance == min_distance && enemy_unit->health < min_hp)) {
+                            min_distance = distance;
+                            min_hp = enemy_unit->health;
+                            target = enemy_unit;
+                        }
+                    }
+                }
+            }
+
+            // Then target any structures
+            if (!target) {
+                for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
+                    const UnitTypeData& unit_type_data = Observation()->GetUnitTypeData().at(enemy_unit->unit_type);
+                    bool is_structure = false;
+                    for (const auto& attribute : unit_type_data.attributes) {
+                        if (attribute == Attribute::Structure) {
+                            is_structure = true;
+                            break;
+                        }
+                    }
+                    if (is_structure) {
+                        float distance = Distance2D(battlecruiser->pos, enemy_unit->pos);
+                        if (distance < min_distance || (distance == min_distance && enemy_unit->health < min_hp)) {
+                            min_distance = distance;
+                            min_hp = enemy_unit->health;
+                            target = enemy_unit;
+                        }
+                    }
+                }
+            }
+
+            // Attack the selected target
+            if (target) {
+                Actions()->UnitCommand(battlecruiser, ABILITY_ID::ATTACK_ATTACK, target);
+            }
         }
     }
 }
 
 
 void BasicSc2Bot::Retreat() {
-    const float air_defense_threshold = 5;
-    const float defense_check_radius = 10.0f;
-    const float retreat_health_threshold = 200.0f;
-    const float base_radius = 20.0f;           // Maximum offset distance around the Command Center for safe retreat
-    const float min_distance_from_obstacles = 3.0f;  // Minimum distance from other units/buildings to ensure an empty space
-    const float arrival_threshold = 2.0f;      // Distance threshold to consider as "arrived" at retreat position
-
-    for (const auto& battlecruiser : Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BATTLECRUISER))) {
-        auto& retreat_info = retreat_status_map[battlecruiser->tag];
-
-        // If the Battlecruiser is already retreating, check if it has reached its retreat destination
-        if (retreat_info.is_retreating) {
-            float distance_to_retreat = sc2::Distance2D(battlecruiser->pos, retreat_info.retreat_destination);
-            if (distance_to_retreat < arrival_threshold) {
-                // The Battlecruiser has arrived at its retreat location
-                retreat_info.is_retreating = false;
-            }
-            continue; // Skip further logic for this Battlecruiser since it¡¯s already retreating
-        }
-
-        // Assess if the Battlecruiser needs to retreat
-        int air_defense_count = 0;
-        const sc2::Unit* closest_enemy = nullptr;
-        constexpr float max_distance = std::numeric_limits<float>::max();
-        float min_distance = max_distance;
-
-        // Count nearby anti-air units to assess air defense strength
-        for (const auto& enemy_unit : Observation()->GetUnits(sc2::Unit::Alliance::Enemy)) {
-            if (anti_air_units.count(enemy_unit->unit_type) > 0) {
-                if (sc2::Distance2D(battlecruiser->pos, enemy_unit->pos) < defense_check_radius) {
-                    air_defense_count++;
-                }
-            }
-        }
-
-        // Check if Battlecruiser's HP is below the retreat threshold
-        if (battlecruiser->health < retreat_health_threshold) {
-            // Generate a random position within the base radius around the Command Center
-            float offset_x = (GetRandomScalar() * 2 - 1) * base_radius;
-            float offset_y = (GetRandomScalar() * 2 - 1) * base_radius;
-            sc2::Point2D retreat_position = sc2::Point2D(
-                start_location.x + offset_x,
-                start_location.y + offset_y
-            );
-
-            // Check if the retreat position is far enough from other units and buildings
-            bool position_valid = true;
-            for (const auto& unit : Observation()->GetUnits(Unit::Alliance::Self)) {
-                if (sc2::Distance2D(retreat_position, unit->pos) < min_distance_from_obstacles) {
-                    position_valid = false;
-                    break;
-                }
-            }
-
-            // Only initiate retreat if the position is valid
-            if (position_valid) {
-                Actions()->UnitCommand(battlecruiser, ABILITY_ID::MOVE_MOVE, retreat_position);
-                retreat_info.is_retreating = true;             // Mark as retreating
-                retreat_info.retreat_destination = retreat_position; // Set the retreat destination
-            }
-        }
-        else if (air_defense_count >= air_defense_threshold && closest_enemy) {
-            sc2::Point2D escape_direction = battlecruiser->pos + (battlecruiser->pos - closest_enemy->pos);
-            Actions()->UnitCommand(battlecruiser, ABILITY_ID::MOVE_MOVE, escape_direction);
-            retreat_info.is_retreating = true;
-            retreat_info.retreat_destination = escape_direction;
-        }
-    }
+    
 }
-
 
