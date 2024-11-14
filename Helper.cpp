@@ -55,7 +55,7 @@ Point3D BasicSc2Bot::GetNextExpansion() const {
     const std::vector<Point3D>& expansions = expansion_locations;
     Units townhalls = observation->GetUnits(Unit::Alliance::Self, IsTownHall());
 
-	if (townhalls.empty() || GetMainBase == nullptr) {
+	if (townhalls.empty() || GetMainBase() == nullptr) {
 		return Point3D(0.0f, 0.0f, 0.0f);
 	}
 
@@ -154,7 +154,7 @@ bool BasicSc2Bot::IsMainBaseUnderAttack() {
     // Check if there are enemy combat units near our main base
     Units enemy_units_near_base = Observation()->GetUnits(Unit::Alliance::Enemy, [this, main_base](const Unit& unit) {
         float distance = Distance2D(unit.pos, main_base->pos);
-        if (distance < 15.0f && !IsWorkerUnit(&unit)) {
+        if (distance < 25.0f && !IsWorkerUnit(&unit)) {
             return true;
         }
         return false;

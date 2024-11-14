@@ -21,7 +21,8 @@ BasicSc2Bot::BasicSc2Bot()
 	  scout_complete(false),
       current_scout_location_index(0),
       scv_scout(nullptr),
-      phase(1){
+      phase(1),
+      enemy_location(0){
     
     build_order = {
         ABILITY_ID::BUILD_SUPPLYDEPOT,
@@ -73,7 +74,20 @@ void BasicSc2Bot::OnGameStart() {
     is_attacking = false;
     need_expansion = false;
 
-	
+    // Get map dimensions for corner coordinates
+    const GameInfo& game_info = Observation()->GetGameInfo();
+    playable_min = game_info.playable_min;
+    playable_max = game_info.playable_max;
+
+
+
+    // Initialize the four corners of the map
+    std::vector<Point2D> map_corners = {
+        Point2D(playable_min.x, playable_min.y),  // Bottom-left
+        Point2D(playable_max.x, playable_min.y),  // Bottom-right
+        Point2D(playable_min.x, playable_max.y),  // Top-left
+        Point2D(playable_max.x, playable_max.y)   // Top-right
+    };
 }
 
 void BasicSc2Bot::OnGameEnd() { 
@@ -114,7 +128,16 @@ void BasicSc2Bot::OnStep() {
  }
 
 void BasicSc2Bot::OnUnitCreated(const Unit* unit) {
-
+    if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV) {
+        num_scvs++;
+    }
+    if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER) {
+		Jump();
+		num_battlecruisers++;
+    }
+    if (unit->unit_type == UNIT_TYPEID::TERRAN_MARINE) {
+		num_marines++;
+    }
 }
 
 void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
@@ -179,6 +202,16 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) {
         scv_scout = nullptr;
 		scout_complete = true;
 		is_scouting = false;
+    }
+
+    if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV) {
+		num_scvs--;
+    }
+    if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER) {
+		num_battlecruisers--;
+    }
+    if (unit->unit_type == UNIT_TYPEID::TERRAN_MARINE) {
+		num_marines--;
     }
 }
 
