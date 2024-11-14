@@ -151,6 +151,19 @@ private:
 
     bool producing_battlecruiser;
 
+	// Retreating flag
+    std::unordered_map<const Unit*, bool> battlecruiser_retreating;
+
+    // Retreating flag for diagonal opposite
+    std::unordered_map<const Unit*, bool> battlecruiser_reached_adj_corner;
+
+	// Retreating location
+    std::unordered_map<const Unit*, Point2D> battlecruiser_retreat_location;
+
+    // Retreating location fod diagonal dopposute
+    std::unordered_map<const Unit*, Point2D> battlecruiser_adj_corner;
+
+
     // =========================
     // Defense Management
     // =========================
@@ -215,7 +228,10 @@ private:
     void Target();
 
     // Controls Battlecruisers to retreat
-    void Retreat();
+    void Retreat(const Unit* unit);
+
+	// Check if retreating is complete
+    void Retreat_check();
 
     // Scv that is scouting
     const sc2::Unit* scv_scout;
@@ -231,6 +247,17 @@ private:
 
     // Track location of scouting scv
     sc2::Point2D scout_location;
+
+	// Location of enemy base based on ally base location
+	// (0 = same vertical, 1 = same horizontal, 2 = opposite diagonal)
+    int enemy_location;
+
+    // Playable width and height of the map
+    Point2D playable_min;
+    Point2D playable_max;
+
+    // Four corners of the map
+    std::vector<Point2D> map_corners;
 
 
     // =========================
@@ -409,7 +436,7 @@ private:
         {sc2::UNIT_TYPEID::PROTOSS_SENTRY, 1},
         {sc2::UNIT_TYPEID::PROTOSS_ARCHON, 3},
         {sc2::UNIT_TYPEID::PROTOSS_PHOENIX, 2},
-        {sc2::UNIT_TYPEID::PROTOSS_VOIDRAY, 3},
+        {sc2::UNIT_TYPEID::PROTOSS_VOIDRAY, 4},
         {sc2::UNIT_TYPEID::PROTOSS_CARRIER, 3},
         {sc2::UNIT_TYPEID::PROTOSS_TEMPEST, 2},
         {sc2::UNIT_TYPEID::PROTOSS_PHOTONCANNON, 3},
