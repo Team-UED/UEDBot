@@ -108,15 +108,25 @@ private:
     // Builds an Orbital Command
     void BuildOrbitalCommand();
 
+    // Flag to track Tech Lab building progress
+    bool techlab_building_in_progress = false;
+
+    // Pointer to track the current Factory in use
+    const Unit* current_factory = nullptr;     
+
+    // Swaps building
     void Swap();
 
+    // Check if swap is possible
     bool swappable;
 
+    // Check if swap is in progress
     bool swap_in_progress;
 
+    // Swpas location of 2 structures
     Point2D swap_factory_position;
-
     Point2D swap_starport_position;
+
 
     // =========================
     // Unit Production and Upgrades
@@ -131,6 +141,9 @@ private:
     // Trains Battlecruisers as fast as possible.
     void TrainBattlecruisers();
 
+    // Trains Siege Tanks for later defense.
+    void TrainSiegeTanks();
+
     // Upgrades Marines.
     void UpgradeMarines();
 
@@ -140,6 +153,19 @@ private:
     bool first_battlecruiser;
 
     bool producing_battlecruiser;
+
+	// Retreating flag
+    std::unordered_map<const Unit*, bool> battlecruiser_retreating;
+
+    // Retreating flag for diagonal opposite
+    std::unordered_map<const Unit*, bool> battlecruiser_reached_adj_corner;
+
+	// Retreating location
+    std::unordered_map<const Unit*, Point2D> battlecruiser_retreat_location;
+
+    // Retreating location fod diagonal dopposute
+    std::unordered_map<const Unit*, Point2D> battlecruiser_adj_corner;
+
 
     // =========================
     // Defense Management
@@ -163,9 +189,6 @@ private:
 
     // Manages offensive actions.
     void Offense();
-
-    // Executes the Battlecruiser rush strategy.
-    void BattlecruiserRush();
 
     // Executes an all-out rush with all available units.
     void AllOutRush();
@@ -208,7 +231,13 @@ private:
     void Target();
 
     // Controls Battlecruisers to retreat
-    void Retreat();
+    void Retreat(const Unit* unit);
+
+	// Check if retreating is complete
+    void RetreatCheck();
+
+	// Controls Siege Tanks (temp)
+	void SiegeMode();
 
     // SCV that is scouting
     const sc2::Unit* scv_scout;
@@ -224,6 +253,18 @@ private:
 
     // Track location of scouting SCV
     sc2::Point2D scout_location;
+
+	// Location of enemy base based on ally base location
+	// (0 = same vertical, 1 = same horizontal, 2 = opposite diagonal)
+    int enemy_location;
+
+    // Playable width and height of the map
+    Point2D playable_min;
+    Point2D playable_max;
+
+    // Four corners of the map
+    std::vector<Point2D> map_corners;
+
 
     // =========================
     // Helper Methods
@@ -312,6 +353,7 @@ private:
     size_t num_scvs;
     size_t num_marines;
     size_t num_battlecruisers;
+	size_t num_siege_tanks;
 
     // Map information.
     sc2::Point2D start_location;
@@ -390,31 +432,28 @@ private:
     // For tracking enemy units.
     std::unordered_map<Tag, const Unit*> enemy_unit_map;
 
-    // For chokepoint blocking
-    bool chokepoint_blocked;
-    bool supply_depots_built[2];
-    bool barracks_built;
-
-    // For tracking enemy anti-air units.
-    const std::unordered_set<sc2::UNIT_TYPEID> anti_air_units = {
-        sc2::UNIT_TYPEID::TERRAN_MARINE,
-        sc2::UNIT_TYPEID::TERRAN_CYCLONE,
-        sc2::UNIT_TYPEID::TERRAN_VIKINGFIGHTER,
-        sc2::UNIT_TYPEID::TERRAN_VIKINGASSAULT,
-        sc2::UNIT_TYPEID::TERRAN_THOR,
-        sc2::UNIT_TYPEID::TERRAN_MISSILETURRET,
-        sc2::UNIT_TYPEID::PROTOSS_STALKER,
-        sc2::UNIT_TYPEID::PROTOSS_ARCHON,
-        sc2::UNIT_TYPEID::PROTOSS_PHOENIX,
-        sc2::UNIT_TYPEID::PROTOSS_VOIDRAY,
-        sc2::UNIT_TYPEID::PROTOSS_CARRIER,
-        sc2::UNIT_TYPEID::PROTOSS_TEMPEST,
-        sc2::UNIT_TYPEID::PROTOSS_PHOTONCANNON,
-        sc2::UNIT_TYPEID::ZERG_QUEEN,
-        sc2::UNIT_TYPEID::ZERG_HYDRALISK,
-        sc2::UNIT_TYPEID::ZERG_MUTALISK,
-        sc2::UNIT_TYPEID::ZERG_CORRUPTOR,
-        sc2::UNIT_TYPEID::ZERG_SPORECRAWLER
+    // Map of threat levels for specific anti-air units
+    const std::unordered_map<sc2::UNIT_TYPEID, int> threat_levels = {
+        {sc2::UNIT_TYPEID::TERRAN_MARINE, 1},
+        {sc2::UNIT_TYPEID::TERRAN_GHOST, 1},
+        {sc2::UNIT_TYPEID::TERRAN_CYCLONE, 2},
+        {sc2::UNIT_TYPEID::TERRAN_VIKINGFIGHTER, 2},
+        {sc2::UNIT_TYPEID::TERRAN_VIKINGASSAULT, 2},
+        {sc2::UNIT_TYPEID::TERRAN_THOR, 4},
+        {sc2::UNIT_TYPEID::TERRAN_MISSILETURRET, 3},
+        {sc2::UNIT_TYPEID::PROTOSS_STALKER, 3},
+        {sc2::UNIT_TYPEID::PROTOSS_SENTRY, 1},
+        {sc2::UNIT_TYPEID::PROTOSS_ARCHON, 3},
+        {sc2::UNIT_TYPEID::PROTOSS_PHOENIX, 2},
+        {sc2::UNIT_TYPEID::PROTOSS_VOIDRAY, 4},
+        {sc2::UNIT_TYPEID::PROTOSS_CARRIER, 3},
+        {sc2::UNIT_TYPEID::PROTOSS_TEMPEST, 2},
+        {sc2::UNIT_TYPEID::PROTOSS_PHOTONCANNON, 3},
+        {sc2::UNIT_TYPEID::ZERG_QUEEN, 2},
+        {sc2::UNIT_TYPEID::ZERG_HYDRALISK, 2},
+        {sc2::UNIT_TYPEID::ZERG_MUTALISK, 2},
+        {sc2::UNIT_TYPEID::ZERG_CORRUPTOR, 4},
+        {sc2::UNIT_TYPEID::ZERG_SPORECRAWLER, 3}
     };
 };
 

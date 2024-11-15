@@ -2,7 +2,7 @@
 
 BasicSc2Bot::BasicSc2Bot()
     : current_build_order_index(0),
-      num_scvs(0),
+      num_scvs(12),
       num_marines(0),
       num_battlecruisers(0),
       is_under_attack(false),
@@ -21,7 +21,8 @@ BasicSc2Bot::BasicSc2Bot()
 	  scout_complete(false),
       current_scout_location_index(0),
       scv_scout(nullptr),
-      phase(1){
+      phase(1),
+      enemy_location(0){
     
     build_order = {
         ABILITY_ID::BUILD_SUPPLYDEPOT,
@@ -71,7 +72,22 @@ void BasicSc2Bot::OnGameStart() {
     // Initialize other game state variables
     is_under_attack = false;
     is_attacking = false;
-    need_expansion = false;	
+    need_expansion = false;
+
+    // Get map dimensions for corner coordinates
+    const GameInfo& game_info = Observation()->GetGameInfo();
+    playable_min = game_info.playable_min;
+    playable_max = game_info.playable_max;
+
+
+
+    // Initialize the four corners of the map
+    std::vector<Point2D> map_corners = {
+        Point2D(playable_min.x, playable_min.y),  // Bottom-left
+        Point2D(playable_max.x, playable_min.y),  // Bottom-right
+        Point2D(playable_min.x, playable_max.y),  // Top-left
+        Point2D(playable_max.x, playable_max.y)   // Top-right
+    };
 }
 
 void BasicSc2Bot::OnGameEnd() { 
@@ -113,7 +129,19 @@ void BasicSc2Bot::OnStep() {
  }
 
 void BasicSc2Bot::OnUnitCreated(const Unit* unit) {
-    
+    if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV) {
+        num_scvs++;
+    }
+    if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER) {
+		Jump();
+		num_battlecruisers++;
+    }
+    if (unit->unit_type == UNIT_TYPEID::TERRAN_MARINE) {
+		num_marines++;
+    }
+    if (unit->unit_type == UNIT_TYPEID::TERRAN_SIEGETANK) {
+		num_siege_tanks++;
+    }
 }
 
 void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
@@ -138,7 +166,7 @@ void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
     }
 
     if (unit->unit_type == UNIT_TYPEID::TERRAN_STARPORT) {
-        phase++;
+        ++phase;
         const ObservationInterface* observation = Observation();
         Units factories = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FACTORY));
 		Units starports = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_STARPORT));
@@ -182,10 +210,29 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) {
 		is_scouting = false;
     }
 
-    if (unit->unit_type.ToType() == UNIT_TYPEID::TERRAN_SCV) {
-        // Call a function to reassign idle workers
-        BasicSc2Bot::ReassignWorkers();
+    if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV) {
+		num_scvs--;
+    }
+    if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER) {
+		num_battlecruisers--;
+    }
+    if (unit->unit_type == UNIT_TYPEID::TERRAN_MARINE) {
+		num_marines--;
+    }
+    if (unit->unit_type == UNIT_TYPEID::TERRAN_SIEGETANK) {
+        num_siege_tanks--;
     }
 }
 
 void BasicSc2Bot::OnUnitEnterVision(const Unit* unit) { return; }
+
+// Testing commands
+// ./BasicSc2Bot.exe -c -a zerg -d Hard -m CactusValleyLE.SC2Map
+// ./BasicSc2Bot.exe -c -a terran -d Hard -m CactusValleyLE.SC2Map
+// ./BasicSc2Bot.exe -c -a protoss -d Hard -m CactusValleyLE.SC2Map
+// ./BasicSc2Bot.exe -c -a zerg -d Hard -m BelShirVestigeLE.SC2Map
+// ./BasicSc2Bot.exe -c -a terran -d Hard -m BelShirVestigeLE.SC2Map
+// ./BasicSc2Bot.exe -c -a protoss -d Hard -m BelShirVestigeLE.SC2Map
+// ./BasicSc2Bot.exe -c -a zerg -d Hard -m ProximaStationLE.SC2Map
+// ./BasicSc2Bot.exe -c -a terran -d Hard -m ProximaStationLE.SC2Map    
+// ./BasicSc2Bot.exe -c -a protoss -d Hard -m ProximaStationLE.SC2Map
