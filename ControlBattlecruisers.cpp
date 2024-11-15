@@ -90,7 +90,6 @@ void BasicSc2Bot::Jump() {
 
                 // Use Tactical Jump if available
                 if (tactical_jump_available) {
-					std::cout << "Tactical Jump!" << std::endl;
                     Actions()->UnitCommand(unit, ABILITY_ID::EFFECT_TACTICALJUMP, enemy_start_location);
                 }
             }
@@ -309,8 +308,6 @@ void BasicSc2Bot::Target() {
 }
 
 void BasicSc2Bot::Retreat(const Unit* unit) {
-
-    std::cout << "Retreat!!" << std::endl;
 
 	if (unit == nullptr) {
 		return;

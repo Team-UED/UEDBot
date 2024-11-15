@@ -432,6 +432,10 @@ private:
     // For tracking enemy units.
     std::unordered_map<Tag, const Unit*> enemy_unit_map;
 
+    bool chokepoint_blocked = false;
+    bool supply_depots_built[2] = {false, false};
+    bool barracks_built = false;
+
     // Map of threat levels for specific anti-air units
     const std::unordered_map<sc2::UNIT_TYPEID, int> threat_levels = {
         {sc2::UNIT_TYPEID::TERRAN_MARINE, 1},
