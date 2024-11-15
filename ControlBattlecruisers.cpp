@@ -262,8 +262,6 @@ void BasicSc2Bot::Target() {
 
 void BasicSc2Bot::Retreat(const Unit* unit) {
 
-    std::cout << "Retreat!!" << std::endl;
-
 	if (unit == nullptr) {
 		return;
 	}
@@ -271,6 +269,7 @@ void BasicSc2Bot::Retreat(const Unit* unit) {
     Point2D nearest_corner_ally;
     float min_corner_distance = std::numeric_limits<float>::max();;
 
+	// Find nearest corner to the enemy start location
     for (const auto& corner : map_corners) {
         float corner_distance = DistanceSquared2D(unit->pos, corner);
         if (corner_distance < min_corner_distance) {
