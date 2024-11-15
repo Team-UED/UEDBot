@@ -15,7 +15,7 @@ void BasicSc2Bot::ManageEconomy() {
 void BasicSc2Bot::TrainSCVs() {
     const ObservationInterface* observation = Observation();
 
-    // Get all Command Centers, Orbital Commands, and Planetary Fortresses
+    // Get all bases
     Units command_centers = observation->GetUnits(Unit::Alliance::Self, IsTownHall());
     if (command_centers.empty()) return;
 
@@ -48,10 +48,7 @@ void BasicSc2Bot::TrainSCVs() {
                 break;
             }
         }
-        if (is_training_scv) {
-            continue;
-        }
-        if (observation->GetMinerals() >= 50) {
+        if (!is_training_scv && observation->GetMinerals() >= 50) {
             Actions()->UnitCommand(cc, ABILITY_ID::TRAIN_SCV);
         }
     }

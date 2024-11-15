@@ -42,7 +42,6 @@ void BasicSc2Bot::Jump() {
 
                 // Use Tactical Jump if available
                 if (tactical_jump_available) {
-					std::cout << "Tactical Jump!" << std::endl;
                     Actions()->UnitCommand(unit, ABILITY_ID::EFFECT_TACTICALJUMP, enemy_start_location);
                 }
             }
