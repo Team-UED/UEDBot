@@ -5,6 +5,7 @@ using namespace sc2;
 void BasicSc2Bot::ManageProduction() {
     TrainMarines();
     TrainBattlecruisers();
+    TrainSiegeTanks();
     UpgradeMarines();
 }
 
@@ -63,8 +64,8 @@ void BasicSc2Bot::TrainMarines() {
 
 void BasicSc2Bot::TrainBattlecruisers() {
 
+    // Find Starports to build a Battlecruiser
     const ObservationInterface* observation = Observation();
-    // Find Starports with Tech Labs that ready to build a Battlecruiser
     Units starports = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_STARPORT));
 
     if (starports.empty()) {
@@ -72,24 +73,58 @@ void BasicSc2Bot::TrainBattlecruisers() {
     }
 
     // Check if we have the resources
-    if (observation->GetMinerals() >= 400 && observation->GetVespene() >= 300) {
-        // Find Starports with Tech Labs that ready to build a Battlecruiser
-        if (!starports.empty()) {
-            const Unit* starport = starports.front();
-            if (starport->add_on_tag != 0) {
-                if (starport->orders.empty()) {
-                    // Build a Battlecruiser (One at a time)
-                    Actions()->UnitCommand(starport, ABILITY_ID::TRAIN_BATTLECRUISER);
-					if (!first_battlecruiser) {
-						phase++;
-						first_battlecruiser = true;
-					}
+    if (observation->GetMinerals() >= 400 &&
+        observation->GetVespene() >= 300 &&
+        (observation->GetFoodCap() - observation->GetFoodUsed() >= 6)) {
+
+        const Unit* starport = starports.front();
+
+		// Build a Battlecruiser if queue is empty, otherwise check if the train is in progress
+        if (starport->add_on_tag != 0) {
+            if (starport->orders.empty()) {
+                Actions()->UnitCommand(starport, ABILITY_ID::TRAIN_BATTLECRUISER);
+            }
+            else {
+                if (starport->orders.front().ability_id == ABILITY_ID::TRAIN_BATTLECRUISER) {
+                    if (first_battlecruiser == false) {
+                        first_battlecruiser = true;
+                        ++phase;
+                    }
                 }
             }
         }
     }
 }
 
+
+void BasicSc2Bot::TrainSiegeTanks() {
+    std::cout << phase << std::endl;
+
+    const ObservationInterface* observation = Observation();
+	Units factories = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FACTORY));
+
+	if (factories.empty()) {
+		return;
+	}
+
+	if (first_battlecruiser) {
+        if (observation->GetMinerals() >= 150 && 
+            observation->GetVespene() >= 125 &&
+            (observation->GetFoodCap() - observation->GetFoodUsed() >= 3)
+            ) {
+            // Find Factories with Tech Labs that ready to build a Siege Tank
+            if (!factories.empty()) {
+                const Unit* factory = factories.front();
+                if (factory->add_on_tag != 0) {
+                    if (factory->orders.empty()) {
+                        // Build a Siege Tank (One at a time)
+                        Actions()->UnitCommand(factory, ABILITY_ID::TRAIN_SIEGETANK);
+                    }
+                }
+            }
+        }
+	}
+}
 
 void BasicSc2Bot::UpgradeMarines() {
     const ObservationInterface* observation = Observation();
