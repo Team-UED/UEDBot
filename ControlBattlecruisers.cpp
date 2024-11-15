@@ -17,7 +17,7 @@ void BasicSc2Bot::Jump() {
 		return;
 	}
 
-    const float enemy_base_radius = 50.0f;
+    const float enemy_base_radius = 40.0f;
 
     for (const auto& unit : Observation()->GetUnits(Unit::Alliance::Self)) {
         // Check if the unit is a Battlecruiser with full health and not retreating
@@ -64,7 +64,10 @@ void BasicSc2Bot::Target() {
     // Distance from enemy
     const float max_distance_from_enemy = 15.0f;
 
-    // Dynamically set threat levels for enemy units
+	// Maximum distance to consider for targetting
+	const float max_distace_for_target = 30.0f;
+
+    // Get Battlecruisers
     const Units battlecruisers = Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BATTLECRUISER));
 
     // Exit when there are no battlecruisers
@@ -116,7 +119,7 @@ void BasicSc2Bot::Target() {
         float min_distance = max_distance;
         float min_hp = std::numeric_limits<float>::max();
 
-        // Calculate total threat level
+        // Dynamically set threat levels for enemy units
         for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
             auto threat = threat_levels.find(enemy_unit->unit_type);
 
@@ -149,7 +152,8 @@ void BasicSc2Bot::Target() {
                 health_threshold = 200.0f;
             }
 
-            if (battlecruiser->health <= health_threshold || (battlecruiser->health <= 100.0f && total_threat > 2)) {
+
+            if (battlecruiser->health <= health_threshold) {
                 Retreat(battlecruiser);
             }
             else {
@@ -170,6 +174,7 @@ void BasicSc2Bot::Target() {
                     }
                 }
 
+				// Kite enemy units
                 if (target) {
 
                     // Maximum distance to consider for kiting
@@ -182,7 +187,6 @@ void BasicSc2Bot::Target() {
                     if (distance_to_target > max_kite_distance) {
                         continue;
                     }
-
 
                     Point2D nearest_corner;
                     float min_corner_distance = std::numeric_limits<float>::max();;
@@ -219,9 +223,9 @@ void BasicSc2Bot::Target() {
 
                     // Define weights for combining directions
                     // Weight for kiting direction
-                    float kite_weight = 0.1f;
+                    float kite_weight = 0.3f;
                     // Weight for avoiding enemy vertex
-                    float avoidance_weight = 0.9f;
+                    float avoidance_weight = 0.7f;
 
                     // Combine directions to get the final direction
                     Point2D final_direction = (kite_direction * kite_weight) + (avoidance_direction * avoidance_weight);
@@ -244,6 +248,13 @@ void BasicSc2Bot::Target() {
         // Do not kite if the total threat level is below the threshold
         else {
 
+			// Retreat if the Battlecruiser is below 100 health and the total threat level is above 2
+
+            if ((battlecruiser->health <= 100.0f && total_threat >= 2)) {
+				Retreat(battlecruiser);
+				return; 
+            }
+
             // 1st Priority -> Attacking enemy units
             for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
                 auto threat = threat_levels.find(enemy_unit->unit_type);
@@ -251,26 +262,29 @@ void BasicSc2Bot::Target() {
                     if (enemy_unit->unit_type != UNIT_TYPEID::ZERG_SPORECRAWLER &&
                         enemy_unit->unit_type != UNIT_TYPEID::TERRAN_MISSILETURRET &&
                         enemy_unit->unit_type != UNIT_TYPEID::PROTOSS_PHOTONCANNON) {
-                    }
-                    float distance = Distance2D(battlecruiser->pos, enemy_unit->pos);
-                    if (distance < min_distance || (distance == min_distance && enemy_unit->health < min_hp)) {
-                        if (!enemy_unit->is_alive) {
-                            continue;
+                    
+                        float distance = Distance2D(battlecruiser->pos, enemy_unit->pos);
+                        if (distance < min_distance || (distance == min_distance && enemy_unit->health < min_hp)) {
+                            if (!enemy_unit->is_alive || distance > max_distace_for_target) {
+                                continue;
+                            }
+                            min_distance = distance;
+                            min_hp = enemy_unit->health;
+                            target = enemy_unit;
+
                         }
-                        min_distance = distance;
-                        min_hp = enemy_unit->health;
-                        target = enemy_unit;
 
                     }
                 }
             }
+
             // 2nd Priority -> Workers
             if (!target) {
                 for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
                     if (std::find(worker_types.begin(), worker_types.end(), enemy_unit->unit_type) != worker_types.end()) {
                         float distance = Distance2D(battlecruiser->pos, enemy_unit->pos);
                         if (distance < min_distance || (distance == min_distance && enemy_unit->health < min_hp)) {
-                            if (!enemy_unit->is_alive) {
+                            if (!enemy_unit->is_alive || distance > max_distace_for_target) {
                                 continue;
                             }
                             min_distance = distance;
@@ -281,7 +295,24 @@ void BasicSc2Bot::Target() {
                 }
             }
 
-            // 3rd Priority -> Any units that are not structures
+            // 3rd Priority -> Turrets
+            if (!target) {
+                for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
+                    if (std::find(turret_types.begin(), turret_types.end(), enemy_unit->unit_type) != turret_types.end()) {
+                        float distance = Distance2D(battlecruiser->pos, enemy_unit->pos);
+                        if (distance < min_distance || (distance == min_distance && enemy_unit->health < min_hp)) {
+                            if (!enemy_unit->is_alive || distance > max_distace_for_target) {
+                                continue;
+                            }
+                            min_distance = distance;
+                            min_hp = enemy_unit->health;
+                            target = enemy_unit;
+                        }
+                    }
+                }
+            }
+
+            // 4th Priority -> Any units that are not structures
             if (!target) {
                 for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
                     const UnitTypeData& unit_type_data = Observation()->GetUnitTypeData().at(enemy_unit->unit_type);
@@ -297,7 +328,7 @@ void BasicSc2Bot::Target() {
                         enemy_unit->unit_type != UNIT_TYPEID::ZERG_EGG) {
                         float distance = Distance2D(battlecruiser->pos, enemy_unit->pos);
                         if (distance < min_distance || (distance == min_distance && enemy_unit->health < min_hp)) {
-                            if (!enemy_unit->is_alive) {
+                            if (!enemy_unit->is_alive || distance > max_distace_for_target) {
                                 continue;
                             }
                             min_distance = distance;
@@ -308,13 +339,13 @@ void BasicSc2Bot::Target() {
                 }
             }
 
-            // 4th Priority -> Supply structures
+            // 5th Priority -> Supply structures
             if (!target) {
                 for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
                     if (std::find(resource_units.begin(), resource_units.end(), enemy_unit->unit_type) != resource_units.end()) {
                         float distance = Distance2D(battlecruiser->pos, enemy_unit->pos);
                         if (distance < min_distance || (distance == min_distance && enemy_unit->health < min_hp)) {
-                            if (!enemy_unit->is_alive) {
+                            if (!enemy_unit->is_alive || distance > max_distace_for_target) {
                                 continue;
                             }
                             min_distance = distance;
@@ -325,7 +356,7 @@ void BasicSc2Bot::Target() {
                 }
             }
 
-            // 5th Priority -> Any structures
+            // 6th Priority -> Any structures
             if (!target) {
                 for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
                     const UnitTypeData& unit_type_data = Observation()->GetUnitTypeData().at(enemy_unit->unit_type);
@@ -334,7 +365,7 @@ void BasicSc2Bot::Target() {
                     if (is_structure) {
                         float distance = Distance2D(battlecruiser->pos, enemy_unit->pos);
                         if (distance < min_distance || (distance == min_distance && enemy_unit->health < min_hp)) {
-                            if (!enemy_unit->is_alive) {
+                            if (!enemy_unit->is_alive || distance > max_distace_for_target) {
                                 continue;
                             }
                             min_distance = distance;
@@ -352,78 +383,19 @@ void BasicSc2Bot::Target() {
     }
 }
 
+
 void BasicSc2Bot::Retreat(const Unit* unit) {
 
     if (unit == nullptr) {
         return;
     }
 
-    Point2D nearest_corner;
-    Point2D nearest_corner_ally;
-    float min_corner_distance = std::numeric_limits<float>::max();;
-
-    // Find nearest corner to the enemy start location
-    for (const auto& corner : map_corners) {
-        float corner_distance = DistanceSquared2D(unit->pos, corner);
-        if (corner_distance < min_corner_distance) {
-            min_corner_distance = corner_distance;
-            nearest_corner = corner;
-        }
-    }
-
-    // Reset min_corner_distance to find the nearest corner to the ally start location
-    min_corner_distance = std::numeric_limits<float>::max();;
-    for (const auto& corner : map_corners) {
-        float corner_distance = DistanceSquared2D(start_location, corner);
-        if (corner_distance < min_corner_distance) {
-            min_corner_distance = corner_distance;
-            nearest_corner_ally = corner;
-        }
-    }
-
     float rx = GetRandomScalar();
-    float ry = GetRandomScalar();
-    Point2D retreat_location(start_location.x + rx * 5.0f, start_location.y + ry * 5.0f);
+    float ry = GetRandomScalar(); 
+    Point2D retreat_location(start_location.x + 5.0f, start_location.y);
     battlecruiser_retreat_location[unit] = retreat_location;
-
-
-    // When the player and the enemy are in the same horizontal vertex
-    if (nearest_corner_ally.x == nearest_corner.x) {
-        Actions()->UnitCommand(unit, ABILITY_ID::MOVE_MOVE, retreat_location);
-        battlecruiser_retreating[unit] = true;
-        enemy_location = 0;
-    }
-
-    // When the player and the enemy are in the same vertical vertex
-    else if (nearest_corner_ally.y == nearest_corner.y) {
-        Actions()->UnitCommand(unit, ABILITY_ID::MOVE_MOVE, retreat_location);
-        battlecruiser_retreating[unit] = true;
-        enemy_location = 1;
-    }
-
-    // When the player and the enemy are in diagonal opposite
-    else {
-        Point2D adj_corner;
-        enemy_location = 2;
-
-        // Determine adjacent corner
-        if (nearest_corner == map_corners[0]) {  // Bottom-left
-            adj_corner = map_corners[1];         // Bottom-right
-        }
-        else if (nearest_corner == map_corners[1]) {  // Bottom-right
-            adj_corner = map_corners[0];               // Bottom-left
-        }
-        else if (nearest_corner == map_corners[2]) {  // Top-left
-            adj_corner = map_corners[3];               // Top-right
-        }
-        else if (nearest_corner == map_corners[3]) {  // Top-right
-            adj_corner = map_corners[2];               // Top-left
-        }
-
-
-        Actions()->UnitCommand(unit, ABILITY_ID::MOVE_MOVE, retreat_location);
-        battlecruiser_retreating[unit] = true;
-    }
+    battlecruiser_retreating[unit] = true;
+    Actions()->UnitCommand(unit, ABILITY_ID::MOVE_MOVE, retreat_location);
 }
 
 void BasicSc2Bot::RetreatCheck() {

@@ -160,14 +160,9 @@ private:
 	// Retreating flag
     std::unordered_map<const Unit*, bool> battlecruiser_retreating;
 
-    // Retreating flag for diagonal opposite
-    std::unordered_map<const Unit*, bool> battlecruiser_reached_adj_corner;
-
 	// Retreating location
     std::unordered_map<const Unit*, Point2D> battlecruiser_retreat_location;
 
-    // Retreating location for diagonal opposite (go to adjacent vertex first)
-    std::unordered_map<const Unit*, Point2D> battlecruiser_adj_corner;
 
 
     // =========================
@@ -260,10 +255,6 @@ private:
     // Track location of scouting SCV
     sc2::Point2D scout_location;
 
-	// Location of enemy base based on ally base location
-	// (0 = same vertical, 1 = same horizontal, 2 = opposite diagonal)
-    int enemy_location;
-
     // Playable width and height of the map
     Point2D playable_min;
     Point2D playable_max;
@@ -271,6 +262,14 @@ private:
     // Four corners of the map
     std::vector<Point2D> map_corners;
 
+    // Corner closest to ally base
+    Point2D nearest_corner_ally;
+
+    // Corner closest to enemy base
+    Point2D nearest_corner_enemy;
+
+	// Corners adjacent to enemy base corner
+    std::vector<Point2D> enemy_adjacent_corners;
 
     // =========================
     // Helper Methods
@@ -457,12 +456,13 @@ private:
         {sc2::UNIT_TYPEID::PROTOSS_SENTRY, 1},
         {sc2::UNIT_TYPEID::PROTOSS_ARCHON, 3},
         {sc2::UNIT_TYPEID::PROTOSS_PHOENIX, 2},
-        {sc2::UNIT_TYPEID::PROTOSS_VOIDRAY, 4},
+        {sc2::UNIT_TYPEID::PROTOSS_VOIDRAY, 5},
         {sc2::UNIT_TYPEID::PROTOSS_CARRIER, 3},
         {sc2::UNIT_TYPEID::PROTOSS_TEMPEST, 2},
         {sc2::UNIT_TYPEID::PROTOSS_PHOTONCANNON, 3},
         {sc2::UNIT_TYPEID::ZERG_QUEEN, 2},
         {sc2::UNIT_TYPEID::ZERG_HYDRALISK, 2},
+		{sc2::UNIT_TYPEID::ZERG_RAVAGER, 3},
         {sc2::UNIT_TYPEID::ZERG_MUTALISK, 2},
         {sc2::UNIT_TYPEID::ZERG_CORRUPTOR, 4},
         {sc2::UNIT_TYPEID::ZERG_SPORECRAWLER, 3}

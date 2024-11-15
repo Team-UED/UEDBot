@@ -147,6 +147,8 @@ bool BasicSc2Bot::IsWorkerUnit(const Unit* unit) {
 
 bool BasicSc2Bot::IsTrivialUnit(const Unit* unit) {
     return unit->unit_type == UNIT_TYPEID::ZERG_OVERLORD ||
+        unit->unit_type == UNIT_TYPEID::ZERG_OVERSEER ||
+        unit->unit_type == UNIT_TYPEID::ZERG_OVERSEERSIEGEMODE ||
         unit->unit_type == UNIT_TYPEID::ZERG_CHANGELING ||
         unit->unit_type == UNIT_TYPEID::ZERG_CHANGELINGMARINE ||
         unit->unit_type == UNIT_TYPEID::ZERG_CHANGELINGMARINESHIELD ||
