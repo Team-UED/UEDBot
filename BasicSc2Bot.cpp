@@ -118,7 +118,7 @@ void BasicSc2Bot::OnStep() {
     BasicSc2Bot::ExecuteBuildOrder();
     BasicSc2Bot::ManageProduction();
     BasicSc2Bot::ControlUnits();
-    BasicSc2Bot::Defense();
+    //BasicSc2Bot::Defense();
  }
 
 void BasicSc2Bot::OnUnitCreated(const Unit* unit) {

@@ -452,6 +452,11 @@ void BasicSc2Bot::BuildRefineries() {
 void BasicSc2Bot::BuildExpansion() {
     const ObservationInterface* observation = Observation();
 
+    // Check if the first battlecruiser is in production 
+	if (!first_battlecruiser) {
+		return;
+	}
+
     // Check if we have enough resources to expand
     if (observation->GetMinerals() < 400) {
         return;
