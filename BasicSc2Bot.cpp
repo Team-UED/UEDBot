@@ -138,6 +138,9 @@ void BasicSc2Bot::OnUnitCreated(const Unit* unit) {
     if (unit->unit_type == UNIT_TYPEID::TERRAN_MARINE) {
 		num_marines++;
     }
+    if (unit->unit_type == UNIT_TYPEID::TERRAN_SIEGETANK) {
+		num_siege_tanks++;
+    }
 }
 
 void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
@@ -162,7 +165,7 @@ void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
     }
 
     if (unit->unit_type == UNIT_TYPEID::TERRAN_STARPORT) {
-        phase++;
+        ++phase;
         const ObservationInterface* observation = Observation();
         Units factories = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FACTORY));
 		Units starports = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_STARPORT));
@@ -212,6 +215,9 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) {
     }
     if (unit->unit_type == UNIT_TYPEID::TERRAN_MARINE) {
 		num_marines--;
+    }
+    if (unit->unit_type == UNIT_TYPEID::TERRAN_SIEGETANK) {
+        num_siege_tanks--;
     }
 }
 

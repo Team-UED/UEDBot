@@ -141,6 +141,9 @@ private:
     // Trains Battlecruisers as fast as possible.
     void TrainBattlecruisers();
 
+    // Trains Siege Tanks for later defense.
+    void TrainSiegeTanks();
+
     // Upgrades Marines.
     void UpgradeMarines();
 
@@ -231,7 +234,10 @@ private:
     void Retreat(const Unit* unit);
 
 	// Check if retreating is complete
-    void Retreat_check();
+    void RetreatCheck();
+
+	// Controls Siege Tanks (temp)
+	void SiegeMode();
 
     // Scv that is scouting
     const sc2::Unit* scv_scout;
@@ -345,6 +351,7 @@ private:
     size_t num_scvs;
     size_t num_marines;
     size_t num_battlecruisers;
+	size_t num_siege_tanks;
 
     // Map information.
     sc2::Point2D start_location;

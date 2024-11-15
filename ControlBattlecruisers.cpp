@@ -5,9 +5,57 @@ using namespace sc2;
 
 // Main function to control Battlecruisers
 void BasicSc2Bot::ControlBattlecruisers() {
+	SiegeMode();
 	Jump();
 	Target();
-    Retreat_check();
+    RetreatCheck();
+}
+
+void BasicSc2Bot::SiegeMode() {
+    const float enemy_detection_radius = 15.0f;
+
+    // Get all Siege Tanks that belong to the bot
+    const Units siege_tanks = Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SIEGETANK));
+	const Units siege_tanks_sieged = Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SIEGETANKSIEGED));
+
+	if (siege_tanks.empty() && siege_tanks_sieged.empty()) {
+		return;
+	}
+
+
+    for (const auto& tank : siege_tanks) {
+        bool enemy_nearby = false;
+        // Check for nearby enemies within the detection radius
+        for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
+            float distance_to_enemy = Distance2D(tank->pos, enemy_unit->pos);
+
+            if (distance_to_enemy <= enemy_detection_radius) {
+                enemy_nearby = true;
+                break; 
+            }
+        }
+        // Determine if the tank should be in Siege Mode
+        if (enemy_nearby) {
+            Actions()->UnitCommand(tank, ABILITY_ID::MORPH_SIEGEMODE);
+        }
+    }
+
+    for (const auto& tank : siege_tanks_sieged) {
+        bool enemy_nearby = false;
+        // Check for nearby enemies within the detection radius
+        for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
+            float distance_to_enemy = Distance2D(tank->pos, enemy_unit->pos);
+
+            if (distance_to_enemy <= enemy_detection_radius) {
+                enemy_nearby = true;
+                break;
+            }
+        }
+        // Determine if the tank should be in Siege Mode
+        if (!enemy_nearby) {
+            Actions()->UnitCommand(tank, ABILITY_ID::MORPH_UNSIEGE);
+        }
+    }
 }
 
 // Use Tactical Jump into enemy base
@@ -26,8 +74,9 @@ void BasicSc2Bot::Jump() {
             }
 
             float distance = sc2::Distance2D(unit->pos, enemy_start_location);
+
 			// Check if the Battlecruiser is within the enemy base
-            if (distance < base_radius) {
+            if (distance > base_radius) {
                 // Check if Tactical Jump ability is available
                 auto abilities = Query()->GetAbilitiesForUnit(unit);
                 bool tactical_jump_available = false;
@@ -106,7 +155,6 @@ void BasicSc2Bot::Target() {
         }
         // Disables targetting while Retreating
         if (battlecruiser_retreating[battlecruiser]) {
-            std::cout << "disable targeting since retreating" << std::endl;
             continue;
         }
 
@@ -172,7 +220,6 @@ void BasicSc2Bot::Target() {
                     }
                 }
             }
-            std::cout << "targeting enemy unit" << std::endl;
             // 2nd Priority -> Workers
             if (!target) {
                 std::vector<UNIT_TYPEID> worker_types = {
@@ -191,7 +238,6 @@ void BasicSc2Bot::Target() {
                         }
                     }
                 }
-                std::cout << "targeting workers" << std::endl;
             }
 
             // 3rd Priority -> Any units that are not structures
@@ -216,7 +262,6 @@ void BasicSc2Bot::Target() {
                         }
                     }
                 }
-                std::cout << "targeting any units" << std::endl;
             }
 
             // 4th Priority -> Supply structures
@@ -237,7 +282,6 @@ void BasicSc2Bot::Target() {
                         }
                     }
                 }
-                std::cout << "targeting supply structures" << std::endl;
             }
 
             // 5th Priority -> Any structures
@@ -255,7 +299,6 @@ void BasicSc2Bot::Target() {
                         }
                     }
                 }
-                std::cout << "targeting structures" << std::endl;
             }
             // Attack the selected target
             if (target) {
@@ -316,7 +359,6 @@ void BasicSc2Bot::Retreat(const Unit* unit) {
 
     // When the player and the enemy are in diagonal opposite
     else {
-        std::cout << "diagonal opposite" << std::endl;
         Point2D adj_corner;
         enemy_location = 2;
 
@@ -340,7 +382,7 @@ void BasicSc2Bot::Retreat(const Unit* unit) {
     }
 }
 
-void BasicSc2Bot::Retreat_check() {
+void BasicSc2Bot::RetreatCheck() {
     // Distance threshold for arrival
     const float arrival_threshold = 5.0f;
 
