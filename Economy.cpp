@@ -19,23 +19,27 @@ void BasicSc2Bot::TrainSCVs() {
     Units command_centers = observation->GetUnits(Unit::Alliance::Self, IsTownHall());
     if (command_centers.empty()) return;
 
-    // Calculate total ideal SCV count
+    // Calculate desired SCV count based on ideal harvesters
     size_t desired_scv_count = 0;
     for (const auto& base : command_centers) {
         if (base->build_progress == 1.0f && !base->is_flying) {
             desired_scv_count += base->ideal_harvesters;
         }
     }
-    desired_scv_count += 5; // Allow a few extra SCVs
+    desired_scv_count += 5; // Additional SCVs for building and contingency
 
-    // Current SCV count
     Units scvs = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SCV));
     if (scvs.size() >= desired_scv_count) return;
 
-    // Train SCVs at all idle Command Centers
+    // Ensure we have enough supply
+    if (observation->GetFoodUsed() >= observation->GetFoodCap() - 1) {
+        return; // Avoid training if we're near supply cap
+    }
+
+    // Train SCVs at available Command Centers
     for (const auto& cc : command_centers) {
         if (cc->build_progress < 1.0f || cc->is_flying) {
-            continue; // Skip unfinished or flying bases
+            continue; // Skip unfinished or flying Command Centers
         }
         bool is_training_scv = false;
         for (const auto& order : cc->orders) {
@@ -55,6 +59,11 @@ void BasicSc2Bot::UseMULE() {
 
     // Find all Orbital Commands
     Units orbital_commands = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_ORBITALCOMMAND));
+
+    // No Orbital Commands found
+    if (orbital_commands.empty()) {
+        return;
+    }
 
     // Loop Orbital Command to check if it has enough energy
     for (const auto& orbital : orbital_commands) {
@@ -87,6 +96,20 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
         return false; // Not enough minerals to build
     }
 
+    // Max distance from base center
+    const float base_radius = 25.0f;
+
+    // Minimum distance from mineral
+    const float distance_from_minerals = 10.0f;
+
+    // Find Command Centers
+    Units command_centers = observation->GetUnits(Unit::Alliance::Self, [](const Unit& unit) {
+        return unit.unit_type == UNIT_TYPEID::TERRAN_COMMANDCENTER ||
+            unit.unit_type == UNIT_TYPEID::TERRAN_ORBITALCOMMAND ||
+            unit.unit_type == UNIT_TYPEID::TERRAN_PLANETARYFORTRESS;
+    });
+
+
     // Find an SCV to build with
     Units scvs = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SCV));
     const Unit* builder = nullptr;
@@ -96,12 +119,33 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
             continue;
         }
 
+        float min_distance_to_base = std::numeric_limits<float>::max();
+        for (const auto& command_center : command_centers) {
+            float distance_to_cc = sc2::Distance2D(scv->pos, command_center->pos);
+            if (distance_to_cc < min_distance_to_base) {
+                min_distance_to_base = distance_to_cc;
+            }
+        }
+
+        // Check if the SCV is within the base radius
+        if (min_distance_to_base > base_radius) {
+            continue; 
+        }
+
         bool is_constructing = false;
         for (const auto& order : scv->orders) {
             if (order.ability_id == ABILITY_ID::BUILD_SUPPLYDEPOT ||
                 order.ability_id == ABILITY_ID::BUILD_REFINERY ||
                 order.ability_id == ABILITY_ID::BUILD_BARRACKS ||
-                order.ability_id == ABILITY_ID::BUILD_COMMANDCENTER) {
+                order.ability_id == ABILITY_ID::BUILD_COMMANDCENTER ||
+                order.ability_id == ABILITY_ID::BUILD_FACTORY ||
+                order.ability_id == ABILITY_ID::BUILD_STARPORT ||
+                order.ability_id == ABILITY_ID::BUILD_ENGINEERINGBAY ||
+                order.ability_id == ABILITY_ID::BUILD_ARMORY ||
+                order.ability_id == ABILITY_ID::BUILD_FUSIONCORE ||
+                order.ability_id == ABILITY_ID::BUILD_MISSILETURRET ||
+                order.ability_id == ABILITY_ID::BUILD_BUNKER
+                ) {
                 is_constructing = true;
                 break;
             }
@@ -111,6 +155,7 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
             break;
         }
     }
+
 
     if (builder) {
         // Get main base location
@@ -122,16 +167,43 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
         // Define a build location offset from the main base
         Point2D build_location = main_base->pos + Point2D(10.0f, 0.0f); // Adjust offset as needed
 
-        // Check for a valid build location
-        if (Query()->Placement(ability_type_for_structure, build_location)) {
+        // Ensure build location is not too close to minerals and not too far from base
+        Units mineral_patches = observation->GetUnits(Unit::Alliance::Neutral, IsUnit(UNIT_TYPEID::NEUTRAL_MINERALFIELD));
+
+        auto is_valid_build_location = [&](const Point2D& location) {
+
+            if (!main_base) {
+                return false;
+            }
+
+            // Too far from the base
+            float distance_to_base = sc2::Distance2D(location, main_base->pos);
+            if (distance_to_base > base_radius) {
+                return false; // Too far from the base
+            }
+
+            // Too close to minerals
+            for (const auto& mineral_patch : mineral_patches) {
+                float distance_to_mineral = sc2::Distance2D(location, mineral_patch->pos);
+                if (distance_to_mineral < distance_from_minerals) {
+                    return false; 
+                }
+            }
+            // Location is valid
+            return true; 
+            };
+
+        // Check the initial build location
+        if (is_valid_build_location(build_location) && Query()->Placement(ability_type_for_structure, build_location)) {
             Actions()->UnitCommand(builder, ability_type_for_structure, build_location);
             return true;
-        } else {
+        }
+        else {
             // Try to find a nearby valid location
             for (float x = -15.0f; x <= 15.0f; x += 2.0f) {
                 for (float y = -15.0f; y <= 15.0f; y += 2.0f) {
                     Point2D test_location = main_base->pos + Point2D(x, y);
-                    if (Query()->Placement(ability_type_for_structure, test_location)) {
+                    if (is_valid_build_location(test_location) && Query()->Placement(ability_type_for_structure, test_location)) {
                         Actions()->UnitCommand(builder, ability_type_for_structure, test_location);
                         return true;
                     }
@@ -147,8 +219,22 @@ bool BasicSc2Bot::TryBuildSupplyDepot() {
     int32_t supply_used = observation->GetFoodUsed();
     int32_t supply_cap = observation->GetFoodCap();
 
-    // Build a supply depot when supply used reaches a certain threshold
-    if (supply_used >= supply_cap - (phase * 3)) {
+    // Default surplus
+    int32_t supply_surplus = 2;
+
+    // Set surplus by phase
+    if (phase == 1) {
+        supply_surplus = 2;
+    }
+    else if (phase == 2) {
+        supply_surplus = 6;
+    }
+    else if (phase == 3) {
+        supply_surplus = 8;
+    }
+
+    // Build a supply depot when supply used reaches the threshold
+    if (supply_used >= supply_cap - supply_surplus) {
         // Check if a supply depot is already under construction
         Units supply_depots_building = observation->GetUnits(Unit::Self, [](const Unit& unit) {
             return unit.unit_type == UNIT_TYPEID::TERRAN_SUPPLYDEPOT && unit.build_progress < 1.0f;
@@ -223,44 +309,98 @@ void BasicSc2Bot::AssignWorkers() {
     }
 }
 
-
-
 void BasicSc2Bot::ReassignWorkers() {
     const ObservationInterface* observation = Observation();
 
     Units bases = observation->GetUnits(Unit::Alliance::Self, IsTownHall());
     Units refineries = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_REFINERY));
 
+    // Collect under-saturated and over-saturated bases
     std::vector<const Unit*> under_saturated_bases;
     std::vector<const Unit*> over_saturated_bases;
 
     for (const auto& base : bases) {
-        if (base->build_progress == 1.0f && !base->is_flying) {
-            int worker_diff = base->ideal_harvesters - base->assigned_harvesters;
-            if (worker_diff > 0) {
-                under_saturated_bases.push_back(base);
-            } else if (worker_diff < 0) {
-                over_saturated_bases.push_back(base);
-            }
+        if (base->build_progress < 1.0f || base->is_flying) {
+            continue; // Skip unfinished or flying bases
+        }
+
+        int worker_diff = base->ideal_harvesters - base->assigned_harvesters;
+        if (worker_diff > 0) {
+            under_saturated_bases.push_back(base);
+        } else if (worker_diff < 0) {
+            over_saturated_bases.push_back(base);
         }
     }
 
+    // Reassign workers from over-saturated to under-saturated bases
     for (const auto& over_base : over_saturated_bases) {
         int excess_workers = over_base->assigned_harvesters - over_base->ideal_harvesters;
 
         Units workers_at_base = observation->GetUnits(Unit::Alliance::Self, [over_base](const Unit& unit) {
-            return unit.unit_type == UNIT_TYPEID::TERRAN_SCV && Distance2D(unit.pos, over_base->pos) < 10.0f;
+            return unit.unit_type == UNIT_TYPEID::TERRAN_SCV &&
+                   !unit.orders.empty() &&
+                   Distance2D(unit.pos, over_base->pos) < 10.0f;
         });
 
         for (int i = 0; i < excess_workers && i < workers_at_base.size(); ++i) {
             const Unit* worker = workers_at_base[i];
-            const Unit* target_base = GetLeastSaturatedBase();
-            if (target_base) {
-                Units minerals = observation->GetUnits(Unit::Alliance::Neutral, [target_base](const Unit& unit) {
-                    return IsMineralPatch()(unit) && Distance2D(unit.pos, target_base->pos) < 10.0f;
+
+            // Assign to the closest under-saturated base
+            const Unit* closest_base = nullptr;
+            float min_distance = std::numeric_limits<float>::max();
+
+            for (const auto& under_base : under_saturated_bases) {
+                float distance = Distance2D(worker->pos, under_base->pos);
+                if (distance < min_distance) {
+                    min_distance = distance;
+                    closest_base = under_base;
+                }
+            }
+
+            if (closest_base) {
+                // Assign worker to a mineral patch near the under-saturated base
+                Units minerals = observation->GetUnits(Unit::Alliance::Neutral, [closest_base](const Unit& unit) {
+                    return IsMineralPatch()(unit) && Distance2D(unit.pos, closest_base->pos) < 10.0f;
                 });
+
                 if (!minerals.empty()) {
-                    Actions()->UnitCommand(worker, ABILITY_ID::HARVEST_GATHER, minerals.front());
+                    const Unit* closest_mineral = *std::min_element(minerals.begin(), minerals.end(),
+                        [worker](const Unit* a, const Unit* b) {
+                            return Distance2D(worker->pos, a->pos) < Distance2D(worker->pos, b->pos);
+                        });
+
+                    Actions()->UnitCommand(worker, ABILITY_ID::HARVEST_GATHER, closest_mineral);
+                }
+            }
+        }
+    }
+
+    // Handle over-saturated refineries
+    for (const auto& refinery : refineries) {
+        int excess_workers = refinery->assigned_harvesters - refinery->ideal_harvesters;
+
+        if (excess_workers > 0) {
+            Units gas_workers = observation->GetUnits(Unit::Alliance::Self, [refinery](const Unit& unit) {
+                return unit.unit_type == UNIT_TYPEID::TERRAN_SCV &&
+                       !unit.orders.empty() &&
+                       unit.orders.front().target_unit_tag == refinery->tag;
+            });
+
+            for (int i = 0; i < excess_workers && i < gas_workers.size(); ++i) {
+                const Unit* worker = gas_workers[i];
+
+                // Assign worker to the closest mineral patch
+                Units minerals = observation->GetUnits(Unit::Alliance::Neutral, [worker](const Unit& unit) {
+                    return IsMineralPatch()(unit);
+                });
+
+                if (!minerals.empty()) {
+                    const Unit* closest_mineral = *std::min_element(minerals.begin(), minerals.end(),
+                        [worker](const Unit* a, const Unit* b) {
+                            return Distance2D(worker->pos, a->pos) < Distance2D(worker->pos, b->pos);
+                        });
+
+                    Actions()->UnitCommand(worker, ABILITY_ID::HARVEST_GATHER, closest_mineral);
                 }
             }
         }
