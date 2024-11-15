@@ -71,9 +71,7 @@ void BasicSc2Bot::OnGameStart() {
     // Initialize other game state variables
     is_under_attack = false;
     is_attacking = false;
-    need_expansion = false;
-
-	
+    need_expansion = false;	
 }
 
 void BasicSc2Bot::OnGameEnd() { 
@@ -111,10 +109,11 @@ void BasicSc2Bot::OnStep() {
     BasicSc2Bot::ExecuteBuildOrder();
     BasicSc2Bot::ManageProduction();
     BasicSc2Bot::ControlUnits();
+    BasicSc2Bot::Defense();
  }
 
 void BasicSc2Bot::OnUnitCreated(const Unit* unit) {
-
+    
 }
 
 void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
@@ -153,7 +152,9 @@ void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
     }
 }
 
-void BasicSc2Bot::OnUpgradeCompleted(UpgradeID upgrade_id) { }
+void BasicSc2Bot::OnUpgradeCompleted(UpgradeID upgrade_id) {
+    
+}
 
 void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) {
 
@@ -179,6 +180,11 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) {
         scv_scout = nullptr;
 		scout_complete = true;
 		is_scouting = false;
+    }
+
+    if (unit->unit_type.ToType() == UNIT_TYPEID::TERRAN_SCV) {
+        // Call a function to reassign idle workers
+        BasicSc2Bot::ReassignWorkers();
     }
 }
 
