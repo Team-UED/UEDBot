@@ -25,7 +25,7 @@ bool BasicSc2Bot::NeedExpansion() const {
         return true; // Need to rebuild if all bases are lost
     }
 
-    const size_t max_bases = 2; // Adjust this value as desired
+    const size_t max_bases = 3; // Adjust this value as desired
     if (bases.size() >= max_bases) {
         return false; // Do not expand if we've reached the maximum number of bases
     }
@@ -48,7 +48,7 @@ Point3D BasicSc2Bot::GetNextExpansion() const {
     const ObservationInterface* observation = Observation();
 
     // Check if we have enough resources to expand
-    if (observation->GetMinerals() < 600) {
+    if (observation->GetMinerals() < 400) {
         return Point3D(0.0f, 0.0f, 0.0f);
     }
 

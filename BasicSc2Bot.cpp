@@ -179,7 +179,9 @@ void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
     }
 }
 
-void BasicSc2Bot::OnUpgradeCompleted(UpgradeID upgrade_id) { }
+void BasicSc2Bot::OnUpgradeCompleted(UpgradeID upgrade_id) {
+    
+}
 
 void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) {
 
