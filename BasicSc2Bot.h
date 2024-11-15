@@ -343,6 +343,8 @@ private:
 
     bool IsWorkerUnit(const Unit* unit);
 
+	bool IsTrivialUnit(const Unit* unit);
+
     Point2D GetChokepointPosition();
 
     bool IsAnyBaseUnderAttack();
@@ -465,6 +467,30 @@ private:
         {sc2::UNIT_TYPEID::ZERG_CORRUPTOR, 4},
         {sc2::UNIT_TYPEID::ZERG_SPORECRAWLER, 3}
     };
+
+    // Turret types
+    std::vector<UNIT_TYPEID> turret_types = {
+            UNIT_TYPEID::TERRAN_MISSILETURRET,
+            UNIT_TYPEID::ZERG_SPORECRAWLER,
+            UNIT_TYPEID::PROTOSS_PHOTONCANNON
+    };
+
+	// Worker types
+    std::vector<UNIT_TYPEID> worker_types = {
+                        UNIT_TYPEID::TERRAN_SCV,
+                        UNIT_TYPEID::TERRAN_MULE,
+                        UNIT_TYPEID::PROTOSS_PROBE,
+                        UNIT_TYPEID::ZERG_DRONE
+    };
+
+	// Resource units
+    std::vector<UNIT_TYPEID> resource_units = {
+                        UNIT_TYPEID::ZERG_OVERLORD,
+                        UNIT_TYPEID::TERRAN_SUPPLYDEPOT,
+                        UNIT_TYPEID::TERRAN_SUPPLYDEPOTLOWERED,
+                        UNIT_TYPEID::PROTOSS_PYLON
+    };
+
 };
 
 #endif
