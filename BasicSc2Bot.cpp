@@ -21,7 +21,8 @@ BasicSc2Bot::BasicSc2Bot()
       current_scout_location_index(0),
       scv_scout(nullptr),
       phase(1),
-      enemy_location(0){
+      nearest_corner_ally(0.0f, 0.0f),
+      nearest_corner_enemy(0.0f, 0.0f){
     
     build_order = {
         ABILITY_ID::BUILD_SUPPLYDEPOT,
@@ -78,15 +79,24 @@ void BasicSc2Bot::OnGameStart() {
     playable_min = game_info.playable_min;
     playable_max = game_info.playable_max;
 
-
-
     // Initialize the four corners of the map
-    std::vector<Point2D> map_corners = {
+    map_corners = {
         Point2D(playable_min.x, playable_min.y),  // Bottom-left
         Point2D(playable_max.x, playable_min.y),  // Bottom-right
         Point2D(playable_min.x, playable_max.y),  // Top-left
         Point2D(playable_max.x, playable_max.y)   // Top-right
     };
+
+	// Find the nearest corner to the starting location
+    float min_corner_distance = std::numeric_limits<float>::max();;
+
+    for (const auto& corner : map_corners) {
+        float corner_distance = DistanceSquared2D(start_location, corner);
+        if (corner_distance < min_corner_distance) {
+            min_corner_distance = corner_distance;
+            nearest_corner_ally = corner;
+        }
+    }
 }
 
 void BasicSc2Bot::OnGameEnd() { 
@@ -195,6 +205,24 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) {
 
         // Set the nearest location as the confirmed enemy base location
         enemy_start_location = nearest_location;
+
+        float min_corner_distance = std::numeric_limits<float>::max();
+        
+		// Find the nearest corner to the enemy base
+        for (const auto& corner : map_corners) {
+            float corner_distance = DistanceSquared2D(enemy_start_location, corner);
+            if (corner_distance < min_corner_distance) {
+                min_corner_distance = corner_distance;
+                nearest_corner_enemy = corner;
+            }
+        }
+
+		// Find the corners adjacent to the enemy base
+        for (const auto& corner : map_corners) {
+            if (corner.x == nearest_corner_enemy.x || corner.y == nearest_corner_enemy.y) {
+                enemy_adjacent_corners.push_back(corner);
+            }
+        }
 
         // Reset scouting
         scv_scout = nullptr;

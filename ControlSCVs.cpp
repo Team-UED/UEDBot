@@ -99,6 +99,24 @@ void BasicSc2Bot::SCVScout() {
                             Actions()->UnitCommand(scv_scout, ABILITY_ID::HARVEST_GATHER, closest_mineral);
                         }
 
+                        float min_corner_distance = std::numeric_limits<float>::max();
+
+                        // Find the nearest corner to the enemy base
+                        for (const auto& corner : map_corners) {
+                            float corner_distance = DistanceSquared2D(enemy_start_location, corner);
+                            if (corner_distance < min_corner_distance) {
+                                min_corner_distance = corner_distance;
+                                nearest_corner_enemy = corner;
+                            }
+                        }
+
+                        // Find the corners adjacent to the enemy base
+                        for (const auto& corner : map_corners) {
+                            if (corner.x == nearest_corner_enemy.x || corner.y == nearest_corner_enemy.y) {
+                                enemy_adjacent_corners.push_back(corner);
+                            }
+                        }
+
                         // Mark scouting as complete
                         scv_scout = nullptr;
                         is_scouting = false;
@@ -111,6 +129,7 @@ void BasicSc2Bot::SCVScout() {
                 current_scout_location_index++;
                 // All locations have been checked. Mark scouting as complete
                 if (current_scout_location_index >= enemy_start_locations.size()) {
+                    scv_scout = nullptr;
                     is_scouting = false;
                     scout_complete = true;
                     return;
