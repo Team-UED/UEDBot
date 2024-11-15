@@ -75,6 +75,10 @@ private:
     // Call down MULEs to gather resources
     void UseMULE();
 
+	// Phase of the strategy
+	// Phase 1 -> Start of the game ~ until the first star port is built
+	// Phase 2 -> First star port is built ~ until the first battlecruiser is built
+	// Phase 3 -> First battlecruiser is built ~ rest of the game
     int phase;
 
     // =========================
@@ -150,21 +154,15 @@ private:
     // Manages research of upgrades.
     void ManageUpgrades();
 
+	// Tracks if train of the first battlecruiser is in progress
     bool first_battlecruiser;
-
-    bool producing_battlecruiser;
 
 	// Retreating flag
     std::unordered_map<const Unit*, bool> battlecruiser_retreating;
 
-    // Retreating flag for diagonal opposite
-    std::unordered_map<const Unit*, bool> battlecruiser_reached_adj_corner;
-
 	// Retreating location
     std::unordered_map<const Unit*, Point2D> battlecruiser_retreat_location;
 
-    // Retreating location fod diagonal dopposute
-    std::unordered_map<const Unit*, Point2D> battlecruiser_adj_corner;
 
 
     // =========================
@@ -236,6 +234,9 @@ private:
 	// Check if retreating is complete
     void RetreatCheck();
 
+    // Controls Siege Tanks (abilities, targeting, positioning).
+    void ControlSiegeTanks();
+
 	// Controls Siege Tanks (temp)
 	void SiegeMode();
 
@@ -254,10 +255,6 @@ private:
     // Track location of scouting SCV
     sc2::Point2D scout_location;
 
-	// Location of enemy base based on ally base location
-	// (0 = same vertical, 1 = same horizontal, 2 = opposite diagonal)
-    int enemy_location;
-
     // Playable width and height of the map
     Point2D playable_min;
     Point2D playable_max;
@@ -265,6 +262,14 @@ private:
     // Four corners of the map
     std::vector<Point2D> map_corners;
 
+    // Corner closest to ally base
+    Point2D nearest_corner_ally;
+
+    // Corner closest to enemy base
+    Point2D nearest_corner_enemy;
+
+	// Corners adjacent to enemy base corner
+    std::vector<Point2D> enemy_adjacent_corners;
 
     // =========================
     // Helper Methods
@@ -336,6 +341,8 @@ private:
     const Unit* GetLeastSaturatedBase() const;
 
     bool IsWorkerUnit(const Unit* unit);
+
+	bool IsTrivialUnit(const Unit* unit);
 
     Point2D GetChokepointPosition();
 
@@ -449,16 +456,41 @@ private:
         {sc2::UNIT_TYPEID::PROTOSS_SENTRY, 1},
         {sc2::UNIT_TYPEID::PROTOSS_ARCHON, 3},
         {sc2::UNIT_TYPEID::PROTOSS_PHOENIX, 2},
-        {sc2::UNIT_TYPEID::PROTOSS_VOIDRAY, 4},
+        {sc2::UNIT_TYPEID::PROTOSS_VOIDRAY, 5},
         {sc2::UNIT_TYPEID::PROTOSS_CARRIER, 3},
         {sc2::UNIT_TYPEID::PROTOSS_TEMPEST, 2},
         {sc2::UNIT_TYPEID::PROTOSS_PHOTONCANNON, 3},
         {sc2::UNIT_TYPEID::ZERG_QUEEN, 2},
         {sc2::UNIT_TYPEID::ZERG_HYDRALISK, 2},
+		{sc2::UNIT_TYPEID::ZERG_RAVAGER, 3},
         {sc2::UNIT_TYPEID::ZERG_MUTALISK, 2},
         {sc2::UNIT_TYPEID::ZERG_CORRUPTOR, 4},
         {sc2::UNIT_TYPEID::ZERG_SPORECRAWLER, 3}
     };
+
+    // Turret types
+    std::vector<UNIT_TYPEID> turret_types = {
+            UNIT_TYPEID::TERRAN_MISSILETURRET,
+            UNIT_TYPEID::ZERG_SPORECRAWLER,
+            UNIT_TYPEID::PROTOSS_PHOTONCANNON
+    };
+
+	// Worker types
+    std::vector<UNIT_TYPEID> worker_types = {
+                        UNIT_TYPEID::TERRAN_SCV,
+                        UNIT_TYPEID::TERRAN_MULE,
+                        UNIT_TYPEID::PROTOSS_PROBE,
+                        UNIT_TYPEID::ZERG_DRONE
+    };
+
+	// Resource units
+    std::vector<UNIT_TYPEID> resource_units = {
+                        UNIT_TYPEID::ZERG_OVERLORD,
+                        UNIT_TYPEID::TERRAN_SUPPLYDEPOT,
+                        UNIT_TYPEID::TERRAN_SUPPLYDEPOTLOWERED,
+                        UNIT_TYPEID::PROTOSS_PYLON
+    };
+
 };
 
 #endif

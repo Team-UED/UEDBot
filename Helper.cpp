@@ -141,8 +141,21 @@ const Unit *BasicSc2Bot::FindDamagedStructure() {
 bool BasicSc2Bot::IsWorkerUnit(const Unit* unit) {
     return unit->unit_type == UNIT_TYPEID::TERRAN_SCV ||
            unit->unit_type == UNIT_TYPEID::PROTOSS_PROBE ||
-           unit->unit_type == UNIT_TYPEID::ZERG_DRONE;
+           unit->unit_type == UNIT_TYPEID::ZERG_DRONE ||
+           unit->unit_type == UNIT_TYPEID::TERRAN_MULE;
 }
+
+bool BasicSc2Bot::IsTrivialUnit(const Unit* unit) {
+    return unit->unit_type == UNIT_TYPEID::ZERG_OVERLORD ||
+        unit->unit_type == UNIT_TYPEID::ZERG_OVERSEER ||
+        unit->unit_type == UNIT_TYPEID::ZERG_OVERSEERSIEGEMODE ||
+        unit->unit_type == UNIT_TYPEID::ZERG_CHANGELING ||
+        unit->unit_type == UNIT_TYPEID::ZERG_CHANGELINGMARINE ||
+        unit->unit_type == UNIT_TYPEID::ZERG_CHANGELINGMARINESHIELD ||
+        unit->unit_type == UNIT_TYPEID::PROTOSS_OBSERVER ||
+        unit->unit_type == UNIT_TYPEID::PROTOSS_OBSERVERSIEGEMODE;
+}
+
 
 // Modify IsMainBaseUnderAttack() to consider only combat units
 bool BasicSc2Bot::IsMainBaseUnderAttack() { 
@@ -154,7 +167,7 @@ bool BasicSc2Bot::IsMainBaseUnderAttack() {
     // Check if there are enemy combat units near our main base
     Units enemy_units_near_base = Observation()->GetUnits(Unit::Alliance::Enemy, [this, main_base](const Unit& unit) {
         float distance = Distance2D(unit.pos, main_base->pos);
-        if (distance < 25.0f && !IsWorkerUnit(&unit)) {
+        if (distance < 25.0f && !IsWorkerUnit(&unit) && !IsTrivialUnit(&unit)) {
             return true;
         }
         return false;
