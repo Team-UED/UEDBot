@@ -15,7 +15,6 @@ BasicSc2Bot::BasicSc2Bot()
       enemy_strategy(EnemyStrategy::Unknown),
       swappable(false),
       swap_in_progress(false),
-      producing_battlecruiser(false),
       first_battlecruiser(false),
       is_scouting(false),
 	  scout_complete(false),
@@ -132,7 +131,6 @@ void BasicSc2Bot::OnUnitCreated(const Unit* unit) {
         num_scvs++;
     }
     if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER) {
-		Jump();
 		num_battlecruisers++;
     }
     if (unit->unit_type == UNIT_TYPEID::TERRAN_MARINE) {
