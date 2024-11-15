@@ -75,6 +75,10 @@ private:
 	// Call down MULEs to gather resources
     void UseMULE();
 
+	// Phase of the strategy
+	// Phase 1 -> Start of the game ~ until the first star port is built
+	// Phase 2 -> First star port is built ~ until the first battlecruiser is built
+	// Phase 3 -> First battlecruiser is built ~ rest of the game
     int phase;
 
     // =========================
@@ -150,9 +154,8 @@ private:
     // Manages research of upgrades.
     void ManageUpgrades();
 
+	// Tracks if train of the first battlecruiser is in progress
     bool first_battlecruiser;
-
-    bool producing_battlecruiser;
 
 	// Retreating flag
     std::unordered_map<const Unit*, bool> battlecruiser_retreating;
@@ -163,7 +166,7 @@ private:
 	// Retreating location
     std::unordered_map<const Unit*, Point2D> battlecruiser_retreat_location;
 
-    // Retreating location fod diagonal dopposute
+    // Retreating location for diagonal opposite (go to adjacent vertex first)
     std::unordered_map<const Unit*, Point2D> battlecruiser_adj_corner;
 
 
@@ -235,6 +238,9 @@ private:
 
 	// Check if retreating is complete
     void RetreatCheck();
+
+    // Controls Siege Tanks (abilities, targeting, positioning).
+    void ControlSiegeTanks();
 
 	// Controls Siege Tanks (temp)
 	void SiegeMode();
