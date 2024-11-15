@@ -98,8 +98,6 @@ void BasicSc2Bot::TrainBattlecruisers() {
 
 
 void BasicSc2Bot::TrainSiegeTanks() {
-    std::cout << phase << std::endl;
-
     const ObservationInterface* observation = Observation();
 	Units factories = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FACTORY));
 
