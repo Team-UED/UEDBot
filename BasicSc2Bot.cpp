@@ -112,12 +112,6 @@ void BasicSc2Bot::OnGameEnd() {
     gameResults[Tie] = " Tied";
     gameResults[Undecided] = " Undecided";
 
-    // Print the results of the game
-    for (auto& playerResult : observation->GetResults()) {
-    std::cout << playerTypes[((*(players[playerResult.player_id])).player_type)]
-                << gameResults[playerResult.result]
-                << std::endl;
-    }
 }
 
 void BasicSc2Bot::OnStep() { 
@@ -125,6 +119,7 @@ void BasicSc2Bot::OnStep() {
     BasicSc2Bot::ExecuteBuildOrder();
     BasicSc2Bot::ManageProduction();
     BasicSc2Bot::ControlUnits();
+    BasicSc2Bot::Defense();
  }
 
 void BasicSc2Bot::OnUnitCreated(const Unit* unit) {

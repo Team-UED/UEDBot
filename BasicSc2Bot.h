@@ -72,7 +72,7 @@ private:
     // Reassigns workers to the closest mineral patch or gas.
     void ReassignWorkers();
 
-	// Call down MULEs to gather resources
+    // Call down MULEs to gather resources
     void UseMULE();
 
     int phase;
@@ -105,7 +105,7 @@ private:
     // Builds an Engineering bay
     void BuildEngineeringBay();
 
-	// Builds an Orbital Command
+    // Builds an Orbital Command
     void BuildOrbitalCommand();
 
     // Flag to track Tech Lab building progress
@@ -227,7 +227,7 @@ private:
     // Controls Battlecruisers to jump into enemy base
     void Jump();
 
-	// Controls Battlecruisers to target enemy units
+    // Controls Battlecruisers to target enemy units
     void Target();
 
     // Controls Battlecruisers to retreat
@@ -239,19 +239,19 @@ private:
 	// Controls Siege Tanks (temp)
 	void SiegeMode();
 
-    // Scv that is scouting
+    // SCV that is scouting
     const sc2::Unit* scv_scout;
 
-	// Flag to check if SCV is scouting
+    // Flag to check if SCV is scouting
     bool is_scouting;
 
     // Flag to check if scout is finished
     bool scout_complete;
 
-	// Track visited enemy base locations
+    // Track visited enemy base locations
     int current_scout_location_index;
 
-    // Track location of scouting scv
+    // Track location of scouting SCV
     sc2::Point2D scout_location;
 
 	// Location of enemy base based on ally base location
@@ -312,32 +312,34 @@ private:
     bool IsAbilityInProgress(AbilityID ability_id) const;
 
     // Returns true if the position is dangerous. (e.g., enemy units nearby)
-    bool IsDangerousPosition(const Point2D &pos);
+    bool IsDangerousPosition(const Point2D& pos);
 
     // Gets the closest safe position for SCVs. (e.g., towards the main base)
     Point2D GetSafePosition();
 
     // Finds the closest damaged unit for repair.
-    const Unit *FindDamagedUnit();
+    const Unit* FindDamagedUnit();
 
     // Finds the closest damaged structure for repair.
-    const Unit *FindDamagedStructure();
+    const Unit* FindDamagedStructure();
 
     // Returns true if the main base is under attack.
     bool IsMainBaseUnderAttack();
 
     // Finds the closest enemy unit to a given position.
-    const Unit *FindClosestEnemy(const Point2D &pos);
+    const Unit* FindClosestEnemy(const Point2D& pos);
 
     bool TryBuildStructureAtLocation(ABILITY_ID ability_type_for_structure, UNIT_TYPEID unit_type, const Point2D& location);
 
     Point2D GetRallyPoint();
 
-    const Unit *GetLeastSaturatedBase() const;
+    const Unit* GetLeastSaturatedBase() const;
 
     bool IsWorkerUnit(const Unit* unit);
 
-    
+    Point2D GetChokepointPosition();
+
+    bool IsAnyBaseUnderAttack();
 
     // =========================
     // Member Variables
@@ -356,7 +358,7 @@ private:
     // Map information.
     sc2::Point2D start_location;
     sc2::Point2D enemy_start_location;
-	std::vector<sc2::Point2D> enemy_start_locations;
+    std::vector<sc2::Point2D> enemy_start_locations;
     std::vector<sc2::Point3D> expansion_locations;
 
     // Our bases.
@@ -429,6 +431,10 @@ private:
 
     // For tracking enemy units.
     std::unordered_map<Tag, const Unit*> enemy_unit_map;
+
+    bool chokepoint_blocked = false;
+    bool supply_depots_built[2] = {false, false};
+    bool barracks_built = false;
 
     // Map of threat levels for specific anti-air units
     const std::unordered_map<sc2::UNIT_TYPEID, int> threat_levels = {
