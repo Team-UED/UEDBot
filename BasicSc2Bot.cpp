@@ -15,14 +15,14 @@ BasicSc2Bot::BasicSc2Bot()
       enemy_strategy(EnemyStrategy::Unknown),
       swappable(false),
       swap_in_progress(false),
-      producing_battlecruiser(false),
       first_battlecruiser(false),
       is_scouting(false),
 	  scout_complete(false),
       current_scout_location_index(0),
       scv_scout(nullptr),
       phase(1),
-      enemy_location(0){
+      nearest_corner_ally(0.0f, 0.0f),
+      nearest_corner_enemy(0.0f, 0.0f){
     
     build_order = {
         ABILITY_ID::BUILD_SUPPLYDEPOT,
@@ -79,15 +79,24 @@ void BasicSc2Bot::OnGameStart() {
     playable_min = game_info.playable_min;
     playable_max = game_info.playable_max;
 
-
-
     // Initialize the four corners of the map
-    std::vector<Point2D> map_corners = {
+    map_corners = {
         Point2D(playable_min.x, playable_min.y),  // Bottom-left
         Point2D(playable_max.x, playable_min.y),  // Bottom-right
         Point2D(playable_min.x, playable_max.y),  // Top-left
         Point2D(playable_max.x, playable_max.y)   // Top-right
     };
+
+	// Find the nearest corner to the starting location
+    float min_corner_distance = std::numeric_limits<float>::max();;
+
+    for (const auto& corner : map_corners) {
+        float corner_distance = DistanceSquared2D(start_location, corner);
+        if (corner_distance < min_corner_distance) {
+            min_corner_distance = corner_distance;
+            nearest_corner_ally = corner;
+        }
+    }
 }
 
 void BasicSc2Bot::OnGameEnd() { 
@@ -119,7 +128,7 @@ void BasicSc2Bot::OnStep() {
     BasicSc2Bot::ExecuteBuildOrder();
     BasicSc2Bot::ManageProduction();
     BasicSc2Bot::ControlUnits();
-    BasicSc2Bot::Defense();
+    //BasicSc2Bot::Defense();
  }
 
 void BasicSc2Bot::OnUnitCreated(const Unit* unit) {
@@ -127,7 +136,6 @@ void BasicSc2Bot::OnUnitCreated(const Unit* unit) {
         num_scvs++;
     }
     if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER) {
-		Jump();
 		num_battlecruisers++;
     }
     if (unit->unit_type == UNIT_TYPEID::TERRAN_MARINE) {
@@ -197,6 +205,24 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) {
 
         // Set the nearest location as the confirmed enemy base location
         enemy_start_location = nearest_location;
+
+        float min_corner_distance = std::numeric_limits<float>::max();
+        
+		// Find the nearest corner to the enemy base
+        for (const auto& corner : map_corners) {
+            float corner_distance = DistanceSquared2D(enemy_start_location, corner);
+            if (corner_distance < min_corner_distance) {
+                min_corner_distance = corner_distance;
+                nearest_corner_enemy = corner;
+            }
+        }
+
+		// Find the corners adjacent to the enemy base
+        for (const auto& corner : map_corners) {
+            if (corner.x == nearest_corner_enemy.x || corner.y == nearest_corner_enemy.y) {
+                enemy_adjacent_corners.push_back(corner);
+            }
+        }
 
         // Reset scouting
         scv_scout = nullptr;

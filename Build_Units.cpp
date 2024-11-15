@@ -22,12 +22,12 @@ void BasicSc2Bot::TrainMarines() {
 
     int current_minerals = observation->GetMinerals();
 
-    // resource costs
+    // Resource costs
     const int marine_mineral_cost = 50;
     const int factory_mineral_cost = 150;
     const int battlecruiser_mineral_cost = 400;
 
-    // Determine if we should train marines
+    // Determine if we should train Marines
     bool train = false;
 
     // Train with base cost in phase 3
@@ -37,12 +37,12 @@ void BasicSc2Bot::TrainMarines() {
         }
     }
     else {
-        // Save minerals for factory if none exists
+        // Save minerals for Factory if none exists
         if (factories.empty()) {
             int required_minerals = marine_mineral_cost + factory_mineral_cost;
             train = (current_minerals >= required_minerals);
         }
-        // Save minerals for battlecruiser if fusion core exists
+        // Save minerals for Battlecruiser if fusion core exists
         else if (!fusioncores.empty()) {
             int required_minerals = marine_mineral_cost + battlecruiser_mineral_cost;
             train = (current_minerals >= required_minerals);
