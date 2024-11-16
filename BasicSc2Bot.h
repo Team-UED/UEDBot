@@ -348,6 +348,9 @@ private:
 
     bool IsAnyBaseUnderAttack();
 
+	int CalculateThreatLevel(const Unit* unit);
+
+
     // =========================
     // Member Variables
     // =========================
