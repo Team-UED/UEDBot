@@ -347,7 +347,6 @@ private:
 
     Point2D GetNearestSafePosition(const Point2D &pos);
 
-    
 	bool IsTrivialUnit(const Unit* unit);
 
     Point2D GetChokepointPosition();
@@ -444,6 +443,9 @@ private:
 
     // For tracking enemy units.
     std::unordered_map<Tag, const Unit*> enemy_unit_map;
+
+    // Track if we need to scout the entire map
+    bool scout_entire_map = false;
 
     bool chokepoint_blocked = false;
     bool supply_depots_built[2] = {false, false};

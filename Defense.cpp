@@ -131,34 +131,6 @@ void BasicSc2Bot::EarlyDefense() {
         }
     }
 
-    // Command siege tanks
-    for (const auto &tank : siege_tanks) {
-        if (tank->orders.empty()) {
-            // Move siege tanks to the target area or chokepoint
-            if (primary_target) {
-                Actions()->UnitCommand(tank, ABILITY_ID::MOVE_MOVE,
-                                       primary_target->pos);
-            } else {
-                // If no primary target exists, move to a defensive position or
-                // chokepoint
-                Point2D chokepoint = GetChokepointPosition();
-                Actions()->UnitCommand(tank, ABILITY_ID::MOVE_MOVE, chokepoint);
-            }
-        }
-
-        // Siege the tank if it's near the chokepoint or target position
-        if (primary_target &&
-            Distance2D(tank->pos, primary_target->pos) < 10.0f) {
-            Actions()->UnitCommand(tank, ABILITY_ID::MORPH_SIEGEMODE);
-        } else if (!primary_target) {
-            Point2D chokepoint = GetChokepointPosition();
-            if (Distance2D(tank->pos, chokepoint) < 5.0f) {
-                Actions()->UnitCommand(tank,
-                                       ABILITY_ID::MORPH_SIEGEMODE);
-            }
-        }
-    }
-
 
     // Determine if SCV response is needed
     float enemy_strength = static_cast<float>(enemy_units.size());
