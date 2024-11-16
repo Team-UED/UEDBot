@@ -119,21 +119,39 @@ const Unit *BasicSc2Bot::FindDamagedUnit() {
 
 // Helper function to find damaged structures for repair
 const Unit *BasicSc2Bot::FindDamagedStructure() {
-   for (const auto &unit : Observation()->GetUnits(Unit::Alliance::Self)) {
-       if (unit->unit_type == UNIT_TYPEID::TERRAN_COMMANDCENTER ||
-           unit->unit_type == UNIT_TYPEID::TERRAN_ORBITALCOMMAND ||
-           unit->unit_type == UNIT_TYPEID::TERRAN_PLANETARYFORTRESS ||
-           unit->unit_type == UNIT_TYPEID::TERRAN_SUPPLYDEPOT ||
-           unit->unit_type == UNIT_TYPEID::TERRAN_BARRACKS ||
-           unit->unit_type == UNIT_TYPEID::TERRAN_FACTORY ||
-           unit->unit_type == UNIT_TYPEID::TERRAN_STARPORT) {
-           if (unit->health < unit->health_max) {
-               return unit;
-           }
-       }
-   }
-   return nullptr;
+    const auto &units = Observation()->GetUnits(Unit::Alliance::Self);
+
+    const Unit *highest_priority_target = nullptr;
+    int highest_priority = std::numeric_limits<int>::max();
+
+    for (const auto &unit : units) {
+        if (unit->health < unit->health_max) {
+            int priority = std::numeric_limits<int>::max();
+
+            // Assign priorities (lower number = higher priority)
+            if (unit->unit_type == UNIT_TYPEID::TERRAN_COMMANDCENTER ||
+                unit->unit_type == UNIT_TYPEID::TERRAN_ORBITALCOMMAND ||
+                unit->unit_type == UNIT_TYPEID::TERRAN_PLANETARYFORTRESS) {
+                priority = 1;
+            } else if (unit->unit_type == UNIT_TYPEID::TERRAN_BARRACKS ||
+                       unit->unit_type == UNIT_TYPEID::TERRAN_FACTORY ||
+                       unit->unit_type == UNIT_TYPEID::TERRAN_STARPORT) {
+                priority = 2;
+            } else if (unit->unit_type == UNIT_TYPEID::TERRAN_SUPPLYDEPOT) {
+                priority = 3;
+            }
+
+            // Update the target if the current unit has a higher priority
+            if (priority < highest_priority) {
+                highest_priority_target = unit;
+                highest_priority = priority;
+            }
+        }
+    }
+
+    return highest_priority_target;
 }
+
 
 bool BasicSc2Bot::IsWorkerUnit(const Unit* unit) {
     return unit->unit_type == UNIT_TYPEID::TERRAN_SCV ||
