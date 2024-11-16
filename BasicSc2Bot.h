@@ -72,9 +72,13 @@ private:
     // Reassigns workers to the closest mineral patch or gas.
     void ReassignWorkers();
 
-	// Call down MULEs to gather resources
+    // Call down MULEs to gather resources
     void UseMULE();
 
+	// Phase of the strategy
+	// Phase 1 -> Start of the game ~ until the first star port is built
+	// Phase 2 -> First star port is built ~ until the first battlecruiser is built
+	// Phase 3 -> First battlecruiser is built ~ rest of the game
     int phase;
 
     // =========================
@@ -105,18 +109,28 @@ private:
     // Builds an Engineering bay
     void BuildEngineeringBay();
 
-	// Builds an Orbital Command
+    // Builds an Orbital Command
     void BuildOrbitalCommand();
 
+    // Flag to track Tech Lab building progress
+    bool techlab_building_in_progress = false;
+
+    // Pointer to track the current Factory in use
+    const Unit* current_factory = nullptr;     
+
+    // Swaps building
     void Swap();
 
+    // Check if swap is possible
     bool swappable;
 
+    // Check if swap is in progress
     bool swap_in_progress;
 
+    // Swpas location of 2 structures
     Point2D swap_factory_position;
-
     Point2D swap_starport_position;
+
 
     // =========================
     // Unit Production and Upgrades
@@ -131,15 +145,25 @@ private:
     // Trains Battlecruisers as fast as possible.
     void TrainBattlecruisers();
 
+    // Trains Siege Tanks for later defense.
+    void TrainSiegeTanks();
+
     // Upgrades Marines.
     void UpgradeMarines();
 
     // Manages research of upgrades.
     void ManageUpgrades();
 
+	// Tracks if train of the first battlecruiser is in progress
     bool first_battlecruiser;
 
-    bool producing_battlecruiser;
+	// Retreating flag
+    std::unordered_map<const Unit*, bool> battlecruiser_retreating;
+
+	// Retreating location
+    std::unordered_map<const Unit*, Point2D> battlecruiser_retreat_location;
+
+
 
     // =========================
     // Defense Management
@@ -163,9 +187,6 @@ private:
 
     // Manages offensive actions.
     void Offense();
-
-    // Executes the Battlecruiser rush strategy.
-    void BattlecruiserRush();
 
     // Executes an all-out rush with all available units.
     void AllOutRush();
@@ -204,26 +225,51 @@ private:
     // Controls Battlecruisers to jump into enemy base
     void Jump();
 
-	// Controls Battlecruisers to target enemy units
+    // Controls Battlecruisers to target enemy units
     void Target();
 
     // Controls Battlecruisers to retreat
-    void Retreat();
+    void Retreat(const Unit* unit);
 
-    // Scv that is scouting
+	// Check if retreating is complete
+    void RetreatCheck();
+
+    // Controls Siege Tanks (abilities, targeting, positioning).
+    void ControlSiegeTanks();
+
+	// Controls Siege Tanks (temp)
+	void SiegeMode();
+
+    // SCV that is scouting
     const sc2::Unit* scv_scout;
 
-	// Flag to check if SCV is scouting
+    // Flag to check if SCV is scouting
     bool is_scouting;
 
     // Flag to check if scout is finished
     bool scout_complete;
 
-	// Track visited enemy base locations
+    // Track visited enemy base locations
     int current_scout_location_index;
 
-    // Track location of scouting scv
+    // Track location of scouting SCV
     sc2::Point2D scout_location;
+
+    // Playable width and height of the map
+    Point2D playable_min;
+    Point2D playable_max;
+
+    // Four corners of the map
+    std::vector<Point2D> map_corners;
+
+    // Corner closest to ally base
+    Point2D nearest_corner_ally;
+
+    // Corner closest to enemy base
+    Point2D nearest_corner_enemy;
+
+	// Corners adjacent to enemy base corner
+    std::vector<Point2D> enemy_adjacent_corners;
 
     // =========================
     // Helper Methods
@@ -271,34 +317,39 @@ private:
     bool IsAbilityInProgress(AbilityID ability_id) const;
 
     // Returns true if the position is dangerous. (e.g., enemy units nearby)
-    bool IsDangerousPosition(const Point2D &pos);
+    bool IsDangerousPosition(const Point2D& pos);
 
     // Gets the closest safe position for SCVs. (e.g., towards the main base)
     Point2D GetSafePosition();
 
     // Finds the closest damaged unit for repair.
-    const Unit *FindDamagedUnit();
+    const Unit* FindDamagedUnit();
 
     // Finds the closest damaged structure for repair.
-    const Unit *FindDamagedStructure();
+    const Unit* FindDamagedStructure();
 
     // Returns true if the main base is under attack.
     bool IsMainBaseUnderAttack();
 
     // Finds the closest enemy unit to a given position.
-    const Unit *FindClosestEnemy(const Point2D &pos);
+    const Unit* FindClosestEnemy(const Point2D& pos);
 
     bool TryBuildStructureAtLocation(ABILITY_ID ability_type_for_structure, UNIT_TYPEID unit_type, const Point2D& location);
 
     Point2D GetRallyPoint();
 
-    const Unit *GetLeastSaturatedBase() const;
+    const Unit* GetLeastSaturatedBase() const;
 
     bool IsWorkerUnit(const Unit* unit);
 
     Point2D GetNearestSafePosition(const Point2D &pos);
 
     
+	bool IsTrivialUnit(const Unit* unit);
+
+    Point2D GetChokepointPosition();
+
+    bool IsAnyBaseUnderAttack();
 
     // =========================
     // Member Variables
@@ -312,11 +363,12 @@ private:
     size_t num_scvs;
     size_t num_marines;
     size_t num_battlecruisers;
+	size_t num_siege_tanks;
 
     // Map information.
     sc2::Point2D start_location;
     sc2::Point2D enemy_start_location;
-	std::vector<sc2::Point2D> enemy_start_locations;
+    std::vector<sc2::Point2D> enemy_start_locations;
     std::vector<sc2::Point3D> expansion_locations;
 
     // Our bases.
@@ -390,27 +442,58 @@ private:
     // For tracking enemy units.
     std::unordered_map<Tag, const Unit*> enemy_unit_map;
 
-    // For tracking enemy anti air units.
-    const std::unordered_set<sc2::UNIT_TYPEID> anti_air_units = {
-    sc2::UNIT_TYPEID::TERRAN_MARINE,
-    sc2::UNIT_TYPEID::TERRAN_CYCLONE,
-    sc2::UNIT_TYPEID::TERRAN_VIKINGFIGHTER,
-    sc2::UNIT_TYPEID::TERRAN_VIKINGASSAULT,
-    sc2::UNIT_TYPEID::TERRAN_THOR,
-    sc2::UNIT_TYPEID::TERRAN_MISSILETURRET,
-    sc2::UNIT_TYPEID::PROTOSS_STALKER,
-    sc2::UNIT_TYPEID::PROTOSS_ARCHON,
-    sc2::UNIT_TYPEID::PROTOSS_PHOENIX,
-    sc2::UNIT_TYPEID::PROTOSS_VOIDRAY,
-    sc2::UNIT_TYPEID::PROTOSS_CARRIER,
-    sc2::UNIT_TYPEID::PROTOSS_TEMPEST,
-    sc2::UNIT_TYPEID::PROTOSS_PHOTONCANNON,
-    sc2::UNIT_TYPEID::ZERG_QUEEN,
-    sc2::UNIT_TYPEID::ZERG_HYDRALISK,
-    sc2::UNIT_TYPEID::ZERG_MUTALISK,
-    sc2::UNIT_TYPEID::ZERG_CORRUPTOR,
-    sc2::UNIT_TYPEID::ZERG_SPORECRAWLER
+    bool chokepoint_blocked = false;
+    bool supply_depots_built[2] = {false, false};
+    bool barracks_built = false;
+
+    // Map of threat levels for specific anti-air units
+    const std::unordered_map<sc2::UNIT_TYPEID, int> threat_levels = {
+        {sc2::UNIT_TYPEID::TERRAN_MARINE, 1},
+        {sc2::UNIT_TYPEID::TERRAN_GHOST, 1},
+        {sc2::UNIT_TYPEID::TERRAN_CYCLONE, 2},
+        {sc2::UNIT_TYPEID::TERRAN_VIKINGFIGHTER, 2},
+        {sc2::UNIT_TYPEID::TERRAN_VIKINGASSAULT, 2},
+        {sc2::UNIT_TYPEID::TERRAN_THOR, 4},
+        {sc2::UNIT_TYPEID::TERRAN_MISSILETURRET, 3},
+        {sc2::UNIT_TYPEID::PROTOSS_STALKER, 3},
+        {sc2::UNIT_TYPEID::PROTOSS_SENTRY, 1},
+        {sc2::UNIT_TYPEID::PROTOSS_ARCHON, 3},
+        {sc2::UNIT_TYPEID::PROTOSS_PHOENIX, 2},
+        {sc2::UNIT_TYPEID::PROTOSS_VOIDRAY, 5},
+        {sc2::UNIT_TYPEID::PROTOSS_CARRIER, 3},
+        {sc2::UNIT_TYPEID::PROTOSS_TEMPEST, 2},
+        {sc2::UNIT_TYPEID::PROTOSS_PHOTONCANNON, 3},
+        {sc2::UNIT_TYPEID::ZERG_QUEEN, 2},
+        {sc2::UNIT_TYPEID::ZERG_HYDRALISK, 2},
+		{sc2::UNIT_TYPEID::ZERG_RAVAGER, 3},
+        {sc2::UNIT_TYPEID::ZERG_MUTALISK, 2},
+        {sc2::UNIT_TYPEID::ZERG_CORRUPTOR, 4},
+        {sc2::UNIT_TYPEID::ZERG_SPORECRAWLER, 3}
     };
+
+    // Turret types
+    std::vector<UNIT_TYPEID> turret_types = {
+            UNIT_TYPEID::TERRAN_MISSILETURRET,
+            UNIT_TYPEID::ZERG_SPORECRAWLER,
+            UNIT_TYPEID::PROTOSS_PHOTONCANNON
+    };
+
+	// Worker types
+    std::vector<UNIT_TYPEID> worker_types = {
+                        UNIT_TYPEID::TERRAN_SCV,
+                        UNIT_TYPEID::TERRAN_MULE,
+                        UNIT_TYPEID::PROTOSS_PROBE,
+                        UNIT_TYPEID::ZERG_DRONE
+    };
+
+	// Resource units
+    std::vector<UNIT_TYPEID> resource_units = {
+                        UNIT_TYPEID::ZERG_OVERLORD,
+                        UNIT_TYPEID::TERRAN_SUPPLYDEPOT,
+                        UNIT_TYPEID::TERRAN_SUPPLYDEPOTLOWERED,
+                        UNIT_TYPEID::PROTOSS_PYLON
+    };
+
 };
 
 #endif

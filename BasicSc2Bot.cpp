@@ -2,7 +2,7 @@
 
 BasicSc2Bot::BasicSc2Bot()
     : current_build_order_index(0),
-      num_scvs(0),
+      num_scvs(12),
       num_marines(0),
       num_battlecruisers(0),
       is_under_attack(false),
@@ -15,13 +15,14 @@ BasicSc2Bot::BasicSc2Bot()
       enemy_strategy(EnemyStrategy::Unknown),
       swappable(false),
       swap_in_progress(false),
-      producing_battlecruiser(false),
       first_battlecruiser(false),
       is_scouting(false),
 	  scout_complete(false),
       current_scout_location_index(0),
       scv_scout(nullptr),
-      phase(1){
+      phase(1),
+      nearest_corner_ally(0.0f, 0.0f),
+      nearest_corner_enemy(0.0f, 0.0f){
     
     build_order = {
         ABILITY_ID::BUILD_SUPPLYDEPOT,
@@ -73,7 +74,29 @@ void BasicSc2Bot::OnGameStart() {
     is_attacking = false;
     need_expansion = false;
 
-	
+    // Get map dimensions for corner coordinates
+    const GameInfo& game_info = Observation()->GetGameInfo();
+    playable_min = game_info.playable_min;
+    playable_max = game_info.playable_max;
+
+    // Initialize the four corners of the map
+    map_corners = {
+        Point2D(playable_min.x, playable_min.y),  // Bottom-left
+        Point2D(playable_max.x, playable_min.y),  // Bottom-right
+        Point2D(playable_min.x, playable_max.y),  // Top-left
+        Point2D(playable_max.x, playable_max.y)   // Top-right
+    };
+
+	// Find the nearest corner to the starting location
+    float min_corner_distance = std::numeric_limits<float>::max();;
+
+    for (const auto& corner : map_corners) {
+        float corner_distance = DistanceSquared2D(start_location, corner);
+        if (corner_distance < min_corner_distance) {
+            min_corner_distance = corner_distance;
+            nearest_corner_ally = corner;
+        }
+    }
 }
 
 void BasicSc2Bot::OnGameEnd() { 
@@ -98,12 +121,6 @@ void BasicSc2Bot::OnGameEnd() {
     gameResults[Tie] = " Tied";
     gameResults[Undecided] = " Undecided";
 
-    // Print the results of the game
-    for (auto& playerResult : observation->GetResults()) {
-    std::cout << playerTypes[((*(players[playerResult.player_id])).player_type)]
-                << gameResults[playerResult.result]
-                << std::endl;
-    }
 }
 
 void BasicSc2Bot::OnStep() { 
@@ -111,10 +128,22 @@ void BasicSc2Bot::OnStep() {
     BasicSc2Bot::ExecuteBuildOrder();
     BasicSc2Bot::ManageProduction();
     BasicSc2Bot::ControlUnits();
+    BasicSc2Bot::Defense();
  }
 
 void BasicSc2Bot::OnUnitCreated(const Unit* unit) {
-    
+    if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV) {
+        num_scvs++;
+    }
+    if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER) {
+		num_battlecruisers++;
+    }
+    if (unit->unit_type == UNIT_TYPEID::TERRAN_MARINE) {
+		num_marines++;
+    }
+    if (unit->unit_type == UNIT_TYPEID::TERRAN_SIEGETANK) {
+		num_siege_tanks++;
+    }
 }
 
 void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
@@ -139,7 +168,7 @@ void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
     }
 
     if (unit->unit_type == UNIT_TYPEID::TERRAN_STARPORT) {
-        phase++;
+        ++phase;
         const ObservationInterface* observation = Observation();
         Units factories = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FACTORY));
 		Units starports = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_STARPORT));
@@ -177,11 +206,53 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) {
         // Set the nearest location as the confirmed enemy base location
         enemy_start_location = nearest_location;
 
+        float min_corner_distance = std::numeric_limits<float>::max();
+        
+		// Find the nearest corner to the enemy base
+        for (const auto& corner : map_corners) {
+            float corner_distance = DistanceSquared2D(enemy_start_location, corner);
+            if (corner_distance < min_corner_distance) {
+                min_corner_distance = corner_distance;
+                nearest_corner_enemy = corner;
+            }
+        }
+
+		// Find the corners adjacent to the enemy base
+        for (const auto& corner : map_corners) {
+            if (corner.x == nearest_corner_enemy.x || corner.y == nearest_corner_enemy.y) {
+                enemy_adjacent_corners.push_back(corner);
+            }
+        }
+
         // Reset scouting
         scv_scout = nullptr;
 		scout_complete = true;
 		is_scouting = false;
     }
+
+    if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV) {
+		num_scvs--;
+    }
+    if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER) {
+		num_battlecruisers--;
+    }
+    if (unit->unit_type == UNIT_TYPEID::TERRAN_MARINE) {
+		num_marines--;
+    }
+    if (unit->unit_type == UNIT_TYPEID::TERRAN_SIEGETANK) {
+        num_siege_tanks--;
+    }
 }
 
 void BasicSc2Bot::OnUnitEnterVision(const Unit* unit) { return; }
+
+// Testing commands
+// ./BasicSc2Bot.exe -c -a zerg -d Hard -m CactusValleyLE.SC2Map
+// ./BasicSc2Bot.exe -c -a terran -d Hard -m CactusValleyLE.SC2Map
+// ./BasicSc2Bot.exe -c -a protoss -d Hard -m CactusValleyLE.SC2Map
+// ./BasicSc2Bot.exe -c -a zerg -d Hard -m BelShirVestigeLE.SC2Map
+// ./BasicSc2Bot.exe -c -a terran -d Hard -m BelShirVestigeLE.SC2Map
+// ./BasicSc2Bot.exe -c -a protoss -d Hard -m BelShirVestigeLE.SC2Map
+// ./BasicSc2Bot.exe -c -a zerg -d Hard -m ProximaStationLE.SC2Map
+// ./BasicSc2Bot.exe -c -a terran -d Hard -m ProximaStationLE.SC2Map    
+// ./BasicSc2Bot.exe -c -a protoss -d Hard -m ProximaStationLE.SC2Map
