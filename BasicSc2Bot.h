@@ -163,8 +163,6 @@ private:
 	// Retreating location
     std::unordered_map<const Unit*, Point2D> battlecruiser_retreat_location;
 
-
-
     // =========================
     // Defense Management
     // =========================
@@ -217,7 +215,13 @@ private:
     void SCVAttackEmergency();
 
     // SCVs scouting enemy base.
-    void SCVScout();
+    void SCVScoutEnemySpawn();
+
+    // SCV scout entire map
+    void SCVScoutMapInit();
+
+    // Updates SCV scouting status
+    void UpdateSCVScouting();
 
     // Controls Marines with micro (kiting, focus fire).
     void ControlMarines();
@@ -249,11 +253,17 @@ private:
     // Flag to check if SCV is scouting
     bool is_scouting;
 
+    // Grid points to scout
+    std::vector<Point2D> scout_points;
+
     // Flag to check if scout is finished
     bool scout_complete;
 
     // Track visited enemy base locations
     int current_scout_location_index;
+
+    // Track visted map locations
+    int current_scout_index = 0; // Current index of scout points
 
     // Track location of scouting SCV
     sc2::Point2D scout_location;
@@ -352,6 +362,8 @@ private:
     Point2D GetChokepointPosition();
 
     bool IsAnyBaseUnderAttack();
+
+    void MoveToEnemy(const Units &marines, const Units &siege_tanks);
 
     // =========================
     // Member Variables
