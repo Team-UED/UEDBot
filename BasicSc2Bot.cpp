@@ -129,6 +129,7 @@ void BasicSc2Bot::OnStep() {
     BasicSc2Bot::ManageProduction();
     BasicSc2Bot::ControlUnits();
     BasicSc2Bot::Defense();
+    BasicSc2Bot::Offense();
  }
 
 void BasicSc2Bot::OnUnitCreated(const Unit* unit) {

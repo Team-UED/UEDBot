@@ -1,7 +1,5 @@
 #include "BasicSc2Bot.h"
 
-using namespace sc2;
-
 // Main function to control SCVs
 void BasicSc2Bot::ControlSCVs() {
 	SCVScout();
@@ -144,15 +142,32 @@ void BasicSc2Bot::SCVScout() {
 
 // SCVs retreat from dangerous situations (e.g., enemy rushes)
 void BasicSc2Bot::RetreatFromDanger() {
-    for (const auto& unit : Observation()->GetUnits(Unit::Alliance::Self)) {
+    // Iterate through all our units
+    for (const auto &unit : Observation()->GetUnits(Unit::Alliance::Self)) {
+        // Only consider SCVs that are not the scouting SCV
         if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV && unit != scv_scout) {
+
+            // Skip SCVs that are actively attacking
+            bool scv_is_attacking = false; // Renamed to avoid conflict
+            for (const auto &order : unit->orders) {
+                if (order.ability_id == ABILITY_ID::ATTACK) {
+                    scv_is_attacking = true;
+                    break;
+                }
+            }
+            if (scv_is_attacking) {
+                continue; // Skip SCVs that are currently attacking
+            }
+
+            // If the SCV is in a dangerous position, make it retreat
             if (IsDangerousPosition(unit->pos)) {
-                Actions()->UnitCommand(unit, ABILITY_ID::SMART,
-                    GetNearestSafePosition(unit->pos));
+                Point2D safe_position = GetNearestSafePosition(unit->pos);
+                Actions()->UnitCommand(unit, ABILITY_ID::SMART, safe_position);
             }
         }
     }
 }
+
 
 // SCVs repair damaged Battlecruisers during or after engagements
 void BasicSc2Bot::RepairUnits() {

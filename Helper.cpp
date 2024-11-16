@@ -353,3 +353,4 @@ bool BasicSc2Bot::IsAnyBaseUnderAttack() {
     }
     return false;
 }
+
