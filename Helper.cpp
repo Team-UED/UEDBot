@@ -265,6 +265,9 @@ Point2D BasicSc2Bot::GetNearestSafePosition(const Point2D &pos) {
 
     // Get all enemy units
     Units enemy_units = Observation()->GetUnits(Unit::Alliance::Enemy);
+    if (enemy_units.empty()) {
+        return pos; // Return the original position if there are no enemies
+    }
 
     // Check if a position is safe
     auto is_safe = [&enemy_units, safe_radius](const Point2D &candidate) {
@@ -298,7 +301,6 @@ Point2D BasicSc2Bot::GetNearestSafePosition(const Point2D &pos) {
     // Return the nearest safe position (defaults to the original position if no
     // safe position is found)
     return nearest_safe_position;
-}
 }
 
 Point2D BasicSc2Bot::GetChokepointPosition() {
