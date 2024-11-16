@@ -141,17 +141,16 @@ void BasicSc2Bot::Target() {
 
             // Extremly Strong anti air units -> Retreat when hp = 400
             if (total_threat >= 2.0 * threat_threshold) {
-                health_threshold = 400.0f;
+                health_threshold = 450.0f;
             }
             // Strong anti air units -> Retreat when hp = 400
             else if (total_threat >= 1.5 * threat_threshold && total_threat <= 2.0 * threat_threshold) {
-                health_threshold = 300.0f;
+                health_threshold = 350.0f;
             }
             // Moderate anti air units -> Retreat when hp = 200
             else if (total_threat > threat_threshold && total_threat <= 1.5 * threat_threshold) {
-                health_threshold = 200.0f;
+                health_threshold = 250.0f;
             }
-
 
             if (battlecruiser->health <= health_threshold) {
                 Retreat(battlecruiser);
@@ -248,11 +247,15 @@ void BasicSc2Bot::Target() {
         // Do not kite if the total threat level is below the threshold
         else {
 
-			// Retreat if the Battlecruiser is below 100 health and the total threat level is above 2
-
-            if ((battlecruiser->health <= 100.0f && total_threat >= 2)) {
-				Retreat(battlecruiser);
-				return; 
+            // Retreat if the Battlecruiser is below 100 health and the total threat level is above 2
+            if ((battlecruiser->health <= 150.0f && total_threat >= 2)) {
+                Retreat(battlecruiser);
+                return;
+            }
+			// Retreat Immediately if the Battlecruiser is below 80 health
+            else if ((battlecruiser->health <= 80.0f)) {
+                Retreat(battlecruiser);
+                return;
             }
 
             // 1st Priority -> Attacking enemy units
@@ -377,7 +380,94 @@ void BasicSc2Bot::Target() {
             }
             // Attack the selected target
             if (target) {
-                Actions()->UnitCommand(battlecruiser, ABILITY_ID::ATTACK_ATTACK, target);
+
+				// Check if the turret is nearby
+                const Unit* turret_nearest = nullptr;
+                float min_distance = max_distance;
+
+				int num_turrets = 0;
+
+                for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
+                    if (std::find(turret_types.begin(), turret_types.end(), enemy_unit->unit_type) != turret_types.end()) {
+						num_turrets++;
+                        float distance = Distance2D(battlecruiser->pos, enemy_unit->pos);
+                        if (distance < min_distance) {
+                            if (!enemy_unit->is_alive) {
+                                continue;
+                            }
+                            turret_nearest = enemy_unit;
+                        }
+                    }
+                }
+                
+				// No turret nearby or turret is the target or there are only turrets in threat radius -> Attack
+                if (turret_nearest == nullptr || 
+                    std::find(turret_types.begin(), turret_types.end(), target->unit_type) != turret_types.end() ||
+                    (total_threat - (3 * num_turrets) == 0)) {
+                    Actions()->UnitCommand(battlecruiser, ABILITY_ID::ATTACK_ATTACK, target);
+				}
+                else {
+					// Turret exists but far away from the Battlecruiser -> Attack the target
+                    if (Distance2D(battlecruiser->pos, turret_nearest->pos) >= 10.0f) {
+                        Actions()->UnitCommand(battlecruiser, ABILITY_ID::ATTACK_ATTACK, target);
+                    }
+					// Turret exists and near Battlecruiser -> Kite to safe position
+                    else {
+                        float distance_to_target = Distance2D(battlecruiser->pos, turret_nearest->pos);
+
+                        Point2D nearest_corner;
+                        float min_corner_distance = std::numeric_limits<float>::max();;
+
+                        // Find nearest corner to the enemy start location
+                        for (const auto& corner : map_corners) {
+                            float corner_distance = DistanceSquared2D(battlecruiser->pos, corner);
+                            if (corner_distance < min_corner_distance) {
+                                min_corner_distance = corner_distance;
+                                nearest_corner = corner;
+                            }
+                        }
+
+                        // Calculate the direction away from the target 
+                        Point2D kite_direction = battlecruiser->pos - turret_nearest->pos;
+
+                        // Normalize the kite direction vector
+                        float kite_length = std::sqrt(kite_direction.x * kite_direction.x + kite_direction.y * kite_direction.y);
+                        if (kite_length > 0) {
+                            kite_direction /= kite_length;
+                        }
+
+                        // Define the kiting distance 
+                        float kiting_distance = 9.0f;
+
+                        // Calculate the avoidance direction from the enemy vertex
+                        Point2D avoidance_direction = battlecruiser->pos - nearest_corner;
+                        float avoidance_length = std::sqrt(avoidance_direction.x * avoidance_direction.x + avoidance_direction.y * avoidance_direction.y);
+                        if (avoidance_length > 0) {
+                            avoidance_direction /= avoidance_length;
+                        }
+
+                        // Define weights for combining directions
+                        // Weight for kiting direction
+                        float kite_weight = 0.3f;
+                        // Weight for avoiding enemy vertex
+                        float avoidance_weight = 0.7f;
+
+                        // Combine directions to get the final direction
+                        Point2D final_direction = (kite_direction * kite_weight) + (avoidance_direction * avoidance_weight);
+
+                        // Normalize the final direction
+                        float final_length = std::sqrt(final_direction.x * final_direction.x + final_direction.y * final_direction.y);
+                        if (final_length > 0) {
+                            final_direction /= final_length;
+                        }
+
+                        // Calculate the final kite position
+                        Point2D kite_position = battlecruiser->pos + final_direction * kiting_distance;
+
+                        // Move the Battlecruiser to the calculated kite position
+                        Actions()->UnitCommand(battlecruiser, ABILITY_ID::MOVE_MOVE, kite_position);
+                    }
+                }
             }
         }
     }
