@@ -119,6 +119,11 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
             continue;
         }
 
+        // Check if the SCV is already repairing
+        if (scvs_repairing.find(scv->tag) != scvs_repairing.end()) {
+            continue;
+        }
+
         float min_distance_to_base = std::numeric_limits<float>::max();
         for (const auto& command_center : command_centers) {
             float distance_to_cc = sc2::Distance2D(scv->pos, command_center->pos);
@@ -267,6 +272,11 @@ void BasicSc2Bot::AssignWorkers() {
     // Assign each idle SCV to the nearest mineral patch associated with our bases
     for (const auto& scv : idle_scvs) {
         if (scv == scv_scout) {
+            continue;
+        }
+
+        // if the scv is repairing, skip
+        if (scvs_repairing.find(scv->tag) != scvs_repairing.end()) {
             continue;
         }
 
