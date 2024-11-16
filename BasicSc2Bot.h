@@ -210,6 +210,9 @@ private:
     // Repairs damaged structures during enemy attacks.
     void RepairStructures();
 
+    // Updates the amoount of SCVs repairing a unit.
+    void UpdateRepairingSCVs();
+
     // SCVs attack in urgent situations (e.g., enemy attacking the main base).
     void SCVAttackEmergency();
 
