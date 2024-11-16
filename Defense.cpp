@@ -140,37 +140,6 @@ void BasicSc2Bot::EarlyDefense() {
                                                   : enemy_units.front()->pos);
         }
     }
-
-    // Determine if SCV response is needed
-    float enemy_strength = static_cast<float>(enemy_units.size());
-    float our_strength = static_cast<float>(marines.size());
-
-    if (enemy_strength > our_strength) {
-        int scvs_sent = 0;
-        const int max_scvs_to_send = 5;
-        Units scvs = Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SCV));
-
-        for (const auto& scv : scvs) {
-            // Only use SCVs that are idle or not gathering resources
-            bool is_gathering = false;
-            for (const auto& order : scv->orders) {
-                if (order.ability_id == ABILITY_ID::HARVEST_GATHER || order.ability_id == ABILITY_ID::HARVEST_RETURN) {
-                    is_gathering = true;
-                    break;
-                }
-            }
-            if (is_gathering) {
-                continue; // Skip SCVs that are gathering resources
-            }
-
-            // Command SCV to attack
-            Actions()->UnitCommand(scv, ABILITY_ID::ATTACK, primary_target ? primary_target->pos : enemy_units.front()->pos);
-            scvs_sent++;
-            if (scvs_sent >= max_scvs_to_send) {
-                break;
-            }
-        }
-    }
 }
 
 // Builds additional defense structures like Missile Turrets.

@@ -346,24 +346,47 @@ void BasicSc2Bot::UpdateRepairingSCVs() {
 void BasicSc2Bot::SCVAttackEmergency() {
     if (IsMainBaseUnderAttack()) {
         // Get enemy units near our main base
-        Units enemy_units_near_base = Observation()->GetUnits(Unit::Alliance::Enemy, [this](const Unit& unit) {
-            // Return enemy units that are near our main base and are combat units
-            const Unit* main_base = GetMainBase();
-            if (main_base) {
-                return Distance2D(unit.pos, main_base->pos) < 15.0f && !IsWorkerUnit(&unit);
-            }
-            return false;
-        });
+        Units enemy_units_near_base = Observation()->GetUnits(
+            Unit::Alliance::Enemy, [this](const Unit &unit) {
+                // Return enemy units that are near our main base and are combat
+                // units
+                const Unit *main_base = GetMainBase();
+                if (main_base) {
+                    return Distance2D(unit.pos, main_base->pos) < 15.0f &&
+                           !IsWorkerUnit(&unit);
+                }
+                return false;
+            });
 
         // If there are significant enemy combat units, send SCVs to attack
         if (!enemy_units_near_base.empty()) {
             int scvs_sent = 0;
             const int max_scvs_to_send = 5; // Limit the number of SCVs
-            for (const auto& unit : Observation()->GetUnits(Unit::Alliance::Self)) {
+            const float max_distance_from_base =
+                20.0f; // Maximum distance SCVs should go from the base
+
+            const Unit *main_base = GetMainBase();
+            if (!main_base) {
+                return; // If we don't have a main base, exit
+            }
+
+            for (const auto &unit :
+                 Observation()->GetUnits(Unit::Alliance::Self)) {
                 if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV) {
-                    const Unit* target = FindClosestEnemy(unit->pos);
-                    if (target && !IsWorkerUnit(target)) {
-                        Actions()->UnitCommand(unit, ABILITY_ID::ATTACK, target);
+                    // Ensure SCV does not move too far from the main base
+                    if (Distance2D(unit->pos, main_base->pos) >
+                        max_distance_from_base) {
+                        continue; // Skip this SCV if it is too far from the
+                                  // base
+                    }
+
+                    // Find the closest enemy unit to attack
+                    const Unit *target = FindClosestEnemy(unit->pos);
+                    if (target && !IsWorkerUnit(target) &&
+                        Distance2D(target->pos, main_base->pos) <
+                            max_distance_from_base) {
+                        Actions()->UnitCommand(unit, ABILITY_ID::ATTACK,
+                                               target);
                         scvs_sent++;
                         if (scvs_sent >= max_scvs_to_send) {
                             break;
