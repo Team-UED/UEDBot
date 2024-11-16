@@ -13,25 +13,30 @@ void BasicSc2Bot::ControlBattlecruisers() {
 // Use Tactical Jump into enemy base
 void BasicSc2Bot::Jump() {
 
-	if (IsMainBaseUnderAttack()) {
-		return;
-	}
+    // Check if the main base is under attack; don't use Tactical Jump in that case
+    if (IsMainBaseUnderAttack()) {
+        return;
+    }
 
     const float enemy_base_radius = 40.0f;
 
+    // Check if any Battlecruiser is still retreating
+    for (const auto& unit : Observation()->GetUnits(Unit::Alliance::Self)) {
+        if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER && battlecruiser_retreating[unit]) {
+            // Wait until all retreating Battlecruisers finish their retreat
+            return;
+        }
+    }
+
+    // No retreating Battlecruisers, proceed with Tactical Jump logic
     for (const auto& unit : Observation()->GetUnits(Unit::Alliance::Self)) {
         // Check if the unit is a Battlecruiser with full health and not retreating
         if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER &&
             unit->health >= unit->health_max) {
 
-            // Skip if the Battlecruiser is currently retreating
-            if (battlecruiser_retreating[unit]) {
-                continue;
-            }
-
             float distance = sc2::Distance2D(unit->pos, enemy_start_location);
 
-			// Check if the Battlecruiser is within the enemy base
+            // Check if the Battlecruiser is outside the enemy base
             if (distance > enemy_base_radius) {
                 // Check if Tactical Jump ability is available
                 auto abilities = Query()->GetAbilitiesForUnit(unit);
@@ -173,7 +178,7 @@ void BasicSc2Bot::Target() {
                     }
                 }
 
-				// Kite enemy units
+                // Kite enemy units
                 if (target) {
 
                     // Maximum distance to consider for kiting
@@ -210,7 +215,7 @@ void BasicSc2Bot::Target() {
                     }
 
                     // Define the kiting distance (range of Battlecruiser)
-                    float kiting_distance = 6.0f;
+                    float kiting_distance = 8.0f;
 
 
                     // Calculate the avoidance direction from the enemy vertex
@@ -240,6 +245,35 @@ void BasicSc2Bot::Target() {
 
                     // Move the Battlecruiser to the calculated kite position
                     Actions()->UnitCommand(battlecruiser, ABILITY_ID::MOVE_MOVE, kite_position);
+                }
+                // No target
+                else {
+                    if (total_threat == 0) {
+                        auto abilities = Query()->GetAbilitiesForUnit(battlecruiser);
+                        bool tactical_jump_available = false;
+
+                        for (const auto& ability : abilities.abilities) {
+                            if (ability.ability_id == ABILITY_ID::EFFECT_TACTICALJUMP) {
+                                tactical_jump_available = true;
+                                break;
+                            }
+                        }
+
+                        if (battlecruiser->health >= 500.0f) {
+                            if (Distance2D(battlecruiser->pos, enemy_start_location) < 40.0f) {
+                                Retreat(battlecruiser);
+                                return;
+                            }
+                            else {
+                                Actions()->UnitCommand(battlecruiser, ABILITY_ID::EFFECT_TACTICALJUMP, enemy_start_location);
+                            }
+                        }
+
+                        else {
+                            Retreat(battlecruiser);
+                            return;
+                        }
+                    }
                 }
             }
 
@@ -379,8 +413,7 @@ void BasicSc2Bot::Target() {
                 }
             }
             // Attack the selected target
-            if (target) {
-
+            if (target && target->is_alive && target->NotCloaked) {
 				// Check if the turret is nearby
                 const Unit* turret_nearest = nullptr;
                 float min_distance = max_distance;
@@ -469,6 +502,33 @@ void BasicSc2Bot::Target() {
                     }
                 }
             }
+            // No target
+            else {
+                auto abilities = Query()->GetAbilitiesForUnit(battlecruiser);
+                bool tactical_jump_available = false;
+
+                for (const auto& ability : abilities.abilities) {
+                    if (ability.ability_id == ABILITY_ID::EFFECT_TACTICALJUMP) {
+                        tactical_jump_available = true;
+                        break;
+                    }
+                }
+
+
+                if (battlecruiser->health >= 500.0f) {
+                    if (Distance2D(battlecruiser->pos, enemy_start_location) < 40.0f) {
+                        Retreat(battlecruiser);
+                        return;
+                    }
+                    else {
+                        Actions()->UnitCommand(battlecruiser, ABILITY_ID::EFFECT_TACTICALJUMP, enemy_start_location);
+                    }
+                }
+				else {
+                    Retreat(battlecruiser);
+                    return;
+				}
+            }
         }
     }
 }
@@ -480,8 +540,6 @@ void BasicSc2Bot::Retreat(const Unit* unit) {
         return;
     }
 
-    float rx = GetRandomScalar();
-    float ry = GetRandomScalar(); 
     Point2D retreat_location(start_location.x + 5.0f, start_location.y);
     battlecruiser_retreat_location[unit] = retreat_location;
     battlecruiser_retreating[unit] = true;
