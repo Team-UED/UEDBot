@@ -164,7 +164,7 @@ void BasicSc2Bot::RetreatFromDanger() {
         if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV && unit != scv_scout) {
             if (IsDangerousPosition(unit->pos)) {
                 Actions()->UnitCommand(unit, ABILITY_ID::SMART,
-                    GetSafePosition());
+                    GetNearestSafePosition(unit->pos));
             }
         }
     }
@@ -172,15 +172,42 @@ void BasicSc2Bot::RetreatFromDanger() {
 
 // SCVs repair damaged Battlecruisers during or after engagements
 void BasicSc2Bot::RepairUnits() {
+    const float base_radius =
+        15.0f; // Radius around the base considered "at base".
+    const float enemy_check_radius =
+        10.0f; // Radius to check for nearby enemies.
+    const sc2::Point2D base_location =
+        start_location; // Define your base location.
+
     for (const auto &unit : Observation()->GetUnits(Unit::Alliance::Self)) {
         if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV) {
             const Unit *target = FindDamagedUnit();
             if (target) {
-                Actions()->UnitCommand(unit, ABILITY_ID::EFFECT_REPAIR, target);
+                // Check if the unit is at the base.
+                bool is_at_base =
+                    sc2::Distance2D(target->pos, base_location) <= base_radius;
+
+                // Check if the unit is under attack (enemy units nearby).
+                bool is_under_attack = false;
+                for (const auto &enemy_unit :
+                     Observation()->GetUnits(Unit::Alliance::Enemy)) {
+                    if (sc2::Distance2D(target->pos, enemy_unit->pos) <=
+                        enemy_check_radius) {
+                        is_under_attack = true;
+                        break;
+                    }
+                }
+
+                // Repair only if the unit is at the base or not under attack.
+                if (is_at_base || !is_under_attack) {
+                    Actions()->UnitCommand(unit, ABILITY_ID::EFFECT_REPAIR,
+                                           target);
+                }
             }
         }
     }
 }
+
 
 // SCVs repair damaged structures during enemy attacks
 void BasicSc2Bot::RepairStructures() {

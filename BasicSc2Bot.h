@@ -342,6 +342,9 @@ private:
 
     bool IsWorkerUnit(const Unit* unit);
 
+    Point2D GetNearestSafePosition(const Point2D &pos);
+
+    
 	bool IsTrivialUnit(const Unit* unit);
 
     Point2D GetChokepointPosition();
