@@ -1,7 +1,7 @@
 #include "BasicSc2Bot.h"
 
 void BasicSc2Bot::Offense() {
-    if (num_marines > 30 && num_siege_tanks > 10) {
+    if (num_marines > 30 && num_siege_tanks > 1) {
         is_attacking = true;
     }
     if (is_attacking) {
