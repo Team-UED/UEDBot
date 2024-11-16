@@ -292,3 +292,45 @@ bool BasicSc2Bot::IsAnyBaseUnderAttack() {
     }
     return false;
 }
+
+int BasicSc2Bot::CalculateThreatLevel(const Unit* unit) {
+
+    if (!unit) {
+        return 0;
+    }
+
+    const float safe_radius = 20.0f;
+
+    int total_threat = 0;
+
+    const Unit* target = nullptr;
+    constexpr float max_distance = std::numeric_limits<float>::max();
+    float min_distance = max_distance;
+    constexpr float min_hp = std::numeric_limits<float>::max();
+
+    Units enemy_units = Observation()->GetUnits(Unit::Alliance::Enemy);
+
+	if (enemy_units.empty()) {
+		return total_threat;
+	}
+    else {
+        // Dynamically set threat levels for enemy units
+        for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
+            auto threat = threat_levels.find(enemy_unit->unit_type);
+
+            if (threat != threat_levels.end()) {
+                float distance = Distance2D(unit->pos, enemy_unit->pos);
+
+                if (distance < safe_radius) {
+                    total_threat += threat->second;
+
+                }
+            }
+        }
+
+        return total_threat;
+    }
+
+}
+
+
