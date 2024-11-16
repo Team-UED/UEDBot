@@ -402,7 +402,7 @@ private:
     // For controlling specific units.
     Units battlecruisers;
 
-    // Chokepoint locations.
+    // Chokepoint locations
     std::vector<Point2D> chokepoints;
 
     // Enemy strategy detected.

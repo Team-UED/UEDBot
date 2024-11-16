@@ -1,7 +1,10 @@
 #include "BasicSc2Bot.h"
 
 void BasicSc2Bot::Offense() {
-    if (num_marines > 30 && num_siege_tanks > 15) {
+    if (num_marines > 30 && num_siege_tanks > 10) {
+        is_attacking = true;
+    }
+    if (is_attacking) {
         AllOutRush();
     }
 }
@@ -54,7 +57,7 @@ void BasicSc2Bot::AllOutRush() {
                                    primary_target->pos);
         }
         for (const auto &tank : siege_tanks) {
-            // Move tanks toward the primary target
+            // Move tanks toward the primary target 
             if (Distance2D(tank->pos, primary_target->pos) > 10.0f) {
                 Actions()->UnitCommand(tank, ABILITY_ID::MOVE_MOVE,
                                        primary_target->pos);

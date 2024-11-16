@@ -131,6 +131,15 @@ void BasicSc2Bot::EarlyDefense() {
         }
     }
 
+    // Command siege tanks
+    for (const auto &tank : siege_tanks) {
+        if (tank->orders.empty() ||
+            tank->orders.front().ability_id != ABILITY_ID::ATTACK) {
+            Actions()->UnitCommand(tank, ABILITY_ID::ATTACK,
+                                   primary_target ? primary_target->pos
+                                                  : enemy_units.front()->pos);
+        }
+    }
 
     // Determine if SCV response is needed
     float enemy_strength = static_cast<float>(enemy_units.size());
