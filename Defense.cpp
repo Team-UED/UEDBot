@@ -204,7 +204,7 @@ void BasicSc2Bot::LateDefense() {
     Units missile_turrets = Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_MISSILETURRET));
     // Limit the number of Missile Turrets
     const int desired_turrets = 3 * bases.size();
-    if (missile_turrets.size() >= desired_turrets) {
+    if (missile_turrets.size() >= desired_turrets || !first_battlecruiser) {
         return;
     }
 

@@ -101,11 +101,13 @@ void BasicSc2Bot::TrainSiegeTanks() {
     const ObservationInterface* observation = Observation();
 	Units factories = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FACTORY));
 
+    Units fusioncores = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FUSIONCORE));
+
 	if (factories.empty()) {
 		return;
 	}
 
-	if (first_battlecruiser) {
+	if (!fusioncores.empty()) {
         if (observation->GetMinerals() >= 150 && 
             observation->GetVespene() >= 125 &&
             (observation->GetFoodCap() - observation->GetFoodUsed() >= 3)
