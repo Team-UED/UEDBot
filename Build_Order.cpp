@@ -14,59 +14,68 @@ void BasicSc2Bot::ExecuteBuildOrder() {
 	BuildFusionCore();
 }
 
-// Build Barracks if we have a supply depot and enough resources
+// Build Barracks if we have a Supply Depot and enough resources
 void BasicSc2Bot::BuildBarracks() {
     const ObservationInterface* observation = Observation();
 
-	// Get supply depots
+	// Get Supply Depots
 	Units supply = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SUPPLYDEPOT));
 
-	// Can't built barracks without supply depots
+	// Can't built Barracks without Supply Depots
 	if (supply.empty()) {
 		return; 
 	}
 
-	// Build only 1 barrack
+	// Build only 1 Barrack
     Units barracks = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKS));
 	if (barracks.empty() && observation->GetMinerals() >= 150) {
 		TryBuildStructure(ABILITY_ID::BUILD_BARRACKS, UNIT_TYPEID::TERRAN_SCV);
 	}
 }
 
-// Build Engineering bay if we have a barrack and enough resources
+// Build Engineering bay if we have a Barrack and enough resources
 void BasicSc2Bot::BuildEngineeringBay() {
 	const ObservationInterface* observation = Observation();
 
-	// Get barracks
+	// Get Barracks
 	Units barracks = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKS));
-	// Get factories
-	Units factories = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FACTORY));
+	// Get Startports
+	Units starports = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_STARPORT));
 
-	// Can't build engineering bay without barracks
+	// Can't build Engineering bay without Barracks
 	if (barracks.empty()) {
 		return;
 	}
 
-	// Build only 1 engineering bay (After factory)
+	// Build only 1 engineering bay (After Starports)
 	Units engineeringbays = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_ENGINEERINGBAY));
-	if (engineeringbays.empty() && !factories.empty() && observation->GetMinerals() >= 125) {
+	if (engineeringbays.empty() && !starports.empty() && observation->GetMinerals() >= 125) {
 		TryBuildStructure(ABILITY_ID::BUILD_ENGINEERINGBAY, UNIT_TYPEID::TERRAN_SCV);
 	}
 }
 
-// Build Orbital Command if we have a command center and enough resources
+// Build Orbital Command if we have a Command Center and enough resources
 void BasicSc2Bot::BuildOrbitalCommand() {
 	const ObservationInterface* observation = Observation();
 
-	// Get engineering bays
+	// Get Engineering bays
 	Units engineeringbays = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_ENGINEERINGBAY));
-	// Can't build orbital command without engineering bay
-	if (engineeringbays.empty()) {
+	// Get Fusion core
+	Units fusioncore = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FUSIONCORE));
+	// Can't build Orbital Command without Engineering bay
+	// Set Fusioncore as prerequisite for resource management
+
+	if (engineeringbays.empty() && fusioncore.empty()) {
 		return; 
 	}
 
 	// Find a Command Center that can be upgraded
 	Units command_centers = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_COMMANDCENTER));
+
+	if (command_centers.empty()) {
+		return;
+	}
+
 	for (const auto& command_center : command_centers) {
 		// Check if this Command Center is already being upgraded
 		bool is_upgrading = false;
@@ -84,19 +93,19 @@ void BasicSc2Bot::BuildOrbitalCommand() {
 	}
 }
 
-// Build factory if we have a barracks and enough resources
+// Build Factory if we have a Barracks and enough resources
 void BasicSc2Bot::BuildFactory() {
 	const ObservationInterface* observation = Observation();
 
-	// Get barracks
+	// Get Barracks
 	Units barracks = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKS));
 
-	// Can't build factory without barracks
+	// Can't build Factory without Barracks
 	if (barracks.empty()) {
 		return;
 	}
 
-	// Build only 1 factory
+	// Build only 1 Factory
 	Units factories = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FACTORY));
 	Units factories_f = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FACTORYFLYING));
 	if (factories_f.empty() && factories.empty() && (observation->GetMinerals() >= 150 && observation->GetVespene() >= 100)) {
@@ -104,19 +113,19 @@ void BasicSc2Bot::BuildFactory() {
 	}
 }
 
-// Build Starport if we have a factory and enough resources
+// Build Starport if we have a Factory and enough resources
 void BasicSc2Bot::BuildStarport() {
 	const ObservationInterface* observation = Observation();
 
-	// Get factories
+	// Get Factories
 	Units factories = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FACTORY));
 
-	// Can't build starports without factories
+	// Can't build Starports without Factories
 	if (factories.empty()) {
 		return;
 	}
 
-	// Build only 1 starport
+	// Build only 1 Starport
 	Units starports = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_STARPORT));
 	Units starports_f = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_STARPORTFLYING));
 	if (starports_f.empty() && starports.empty() && (observation->GetMinerals() >= 150 && observation->GetVespene() >= 100)) {
@@ -125,49 +134,130 @@ void BasicSc2Bot::BuildStarport() {
 }
 
 
-// Build Tech lab if we have a factory and enough resources
+// Build Tech lab if we have a Factory and enough resources
 void BasicSc2Bot::BuildTechLabAddon() {
 	const ObservationInterface* observation = Observation();
 
-	// Get factories
+	// Get Factories
 	Units factories = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FACTORY));
+	Units factories_f = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FACTORYFLYING));
 
-	// Can't build techlab without factories
-	if (factories.empty()) {
+	// Can't build Tech Lab without Factories
+	if (factories.empty() && factories_f.empty()) {
 		return;
 	}
 
-	// Build addon
-	if (!factories.empty() && (observation->GetMinerals() >= 50 && observation->GetVespene() >= 25)) {
-		const Unit* factory = factories.front();
-		if (factory->orders.empty() && factory->add_on_tag == 0) {
-			Actions()->UnitCommand(factory, ABILITY_ID::BUILD_TECHLAB_FACTORY);
+	// Get Starports
+	Units starports = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_STARPORT));
+	bool starport_has_addon = false;
+
+	if (!starports.empty()) {
+		for (const auto& starport : starports) {
+			if (starport->add_on_tag != 0) {
+				starport_has_addon = true;
+				break;
+			}
 		}
 	}
 
+	// Get Techlabs
+	Units techlabs = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_TECHLAB));
+
+	// Get Fusion cores
+	Units fusioncores = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FUSIONCORE));
+
+
+	// Build Tech Lab if we have a factory and enough resources
+	if (observation->GetMinerals() >= 50 && observation->GetVespene() >= 25 && !techlab_building_in_progress) {
+		{
+			// Find a suitable Factory to build Tech Lab
+			current_factory = nullptr;
+
+			// Factory without an addon
+			if (!factories.empty()) {
+				for (const auto& fc : factories) {
+					if (fc->unit_type == UNIT_TYPEID::TERRAN_FACTORY &&
+						fc->add_on_tag == 0 &&
+						fc->build_progress == 1.0f &&
+						fc->orders.empty()) {
+						current_factory = fc;
+						break;
+					}
+				}
+			}
+
+			// If no suitable landed Factory found, check for flying Factories
+			if (!current_factory && !factories_f.empty()) {
+				current_factory = factories_f.front();
+			}
+
+
+			// If a suitable Factory is found, build Tech Lab
+			if (current_factory) {
+				// If the Factory is landed, attempt to build Tech Lab
+				// Lift the Factory if it failed (orders.empty())
+				if (current_factory->unit_type == UNIT_TYPEID::TERRAN_FACTORY) {
+					if (!starport_has_addon) {
+						Actions()->UnitCommand(current_factory, ABILITY_ID::BUILD_TECHLAB_FACTORY);
+						if (current_factory->orders.empty()) {
+							Actions()->UnitCommand(current_factory, ABILITY_ID::LIFT);
+						}
+					}
+					else {
+						if (!fusioncores.empty()) {
+							Actions()->UnitCommand(current_factory, ABILITY_ID::BUILD_TECHLAB_FACTORY);
+							if (current_factory->orders.empty()) {
+								Actions()->UnitCommand(current_factory, ABILITY_ID::LIFT);
+							}
+						}
+					}
+				}
+				// If the Factory is flying, find a suitable landing spot
+				else if (current_factory->unit_type == UNIT_TYPEID::TERRAN_FACTORYFLYING) {
+					// Build first Tech Lab right away, Delay the second Tech Lab until We have a Fusion core
+					if (techlabs.empty() || (!techlabs.empty() && starport_has_addon && !fusioncores.empty())) {
+						// Generate a random nearby location
+						float rx = GetRandomScalar();
+						float ry = GetRandomScalar();
+						Point2D build_location(current_factory->pos.x + rx * 15.0f, current_factory->pos.y + ry * 15.0f);
+						Actions()->UnitCommand(current_factory, ABILITY_ID::BUILD_TECHLAB_FACTORY, build_location);
+						techlab_building_in_progress = true;
+					}
+				}
+			}
+		}
+
+	}
+	// Reset pointer and flag 
+	if (techlab_building_in_progress && current_factory) {
+		if (current_factory->orders.empty() || (current_factory->add_on_tag != 0)) {
+			techlab_building_in_progress = false;
+			current_factory = nullptr;
+		}
+	}
 }
 
-// Build Fusion Core if we have a starport and enough resources
+// Build Fusion Core if we have a Starport and enough resources
 void BasicSc2Bot::BuildFusionCore() {
 	const ObservationInterface* observation = Observation();
 
-	// Get starports
+	// Get Starports
 	Units starports = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_STARPORT));
 	Units starports_f = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_STARPORTFLYING));
 
-	// Can't build fusion core without starports
+	// Can't build fusion core without Starports
 	if (starports.empty() && starports_f.empty()) {
 		return;
 	}
 
-	// Build only 1 fusion core
+	// Build only 1 Fusion core
 	Units fusioncore = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FUSIONCORE));
 	if (fusioncore.empty() && (observation->GetMinerals() >= 150 && observation->GetVespene() >= 150)) {
 		TryBuildStructure(ABILITY_ID::BUILD_FUSIONCORE, UNIT_TYPEID::TERRAN_SCV);
 	}
 }
 
-// Swaps a factory with a starport
+// Swaps a Factory with a Starport
 void BasicSc2Bot::Swap() {
 	if (swappable == true) {
 		const ObservationInterface* observation = Observation();

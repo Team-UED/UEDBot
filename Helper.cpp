@@ -55,6 +55,10 @@ Point3D BasicSc2Bot::GetNextExpansion() const {
     const std::vector<Point3D>& expansions = expansion_locations;
     Units townhalls = observation->GetUnits(Unit::Alliance::Self, IsTownHall());
 
+	if (townhalls.empty() || GetMainBase() == nullptr) {
+		return Point3D(0.0f, 0.0f, 0.0f);
+	}
+
     // Find the closest unoccupied expansion location
     Point3D main_base_location = GetMainBase()->pos;
     float closest_distance = std::numeric_limits<float>::max();
@@ -134,11 +138,24 @@ const Unit *BasicSc2Bot::FindDamagedStructure() {
 bool BasicSc2Bot::IsWorkerUnit(const Unit* unit) {
     return unit->unit_type == UNIT_TYPEID::TERRAN_SCV ||
            unit->unit_type == UNIT_TYPEID::PROTOSS_PROBE ||
-           unit->unit_type == UNIT_TYPEID::ZERG_DRONE;
+           unit->unit_type == UNIT_TYPEID::ZERG_DRONE ||
+           unit->unit_type == UNIT_TYPEID::TERRAN_MULE;
 }
 
+bool BasicSc2Bot::IsTrivialUnit(const Unit* unit) {
+    return unit->unit_type == UNIT_TYPEID::ZERG_OVERLORD ||
+        unit->unit_type == UNIT_TYPEID::ZERG_OVERSEER ||
+        unit->unit_type == UNIT_TYPEID::ZERG_OVERSEERSIEGEMODE ||
+        unit->unit_type == UNIT_TYPEID::ZERG_CHANGELING ||
+        unit->unit_type == UNIT_TYPEID::ZERG_CHANGELINGMARINE ||
+        unit->unit_type == UNIT_TYPEID::ZERG_CHANGELINGMARINESHIELD ||
+        unit->unit_type == UNIT_TYPEID::PROTOSS_OBSERVER ||
+        unit->unit_type == UNIT_TYPEID::PROTOSS_OBSERVERSIEGEMODE;
+}
+
+
 // Modify IsMainBaseUnderAttack() to consider only combat units
-bool BasicSc2Bot::IsMainBaseUnderAttack() {
+bool BasicSc2Bot::IsMainBaseUnderAttack() { 
     const Unit* main_base = GetMainBase();
     if (!main_base) {
         return false;
@@ -147,7 +164,7 @@ bool BasicSc2Bot::IsMainBaseUnderAttack() {
     // Check if there are enemy combat units near our main base
     Units enemy_units_near_base = Observation()->GetUnits(Unit::Alliance::Enemy, [this, main_base](const Unit& unit) {
         float distance = Distance2D(unit.pos, main_base->pos);
-        if (distance < 15.0f && !IsWorkerUnit(&unit)) {
+        if (distance < 25.0f && !IsWorkerUnit(&unit) && !IsTrivialUnit(&unit)) {
             return true;
         }
         return false;
@@ -186,21 +203,26 @@ const Unit* BasicSc2Bot::FindUnit(sc2::UnitTypeID unit_type) const {
 
 bool BasicSc2Bot::TryBuildStructureAtLocation(ABILITY_ID ability_type_for_structure, UNIT_TYPEID unit_type, const Point2D& location) {
     const ObservationInterface* observation = Observation();
+    const Unit* builder = FindUnit(unit_type);
 
-    // Get a worker unit to build the structure.
-    const Unit* unit_to_build = FindUnit(unit_type);
-    if (!unit_to_build) {
-        return false;
-    }
+    if (!builder) return false;
 
-    // Check if the location is valid for building.
-    if (Query()->Placement(ability_type_for_structure, location, unit_to_build)) {
-        Actions()->UnitCommand(unit_to_build, ability_type_for_structure, location);
+    if (Query()->Placement(ability_type_for_structure, location, builder)) {
+        Actions()->UnitCommand(builder, ability_type_for_structure, location);
         return true;
     } else {
-        // If the location is not valid, you might want to try nearby locations or handle it accordingly.
-        return false;
+        // Try alternate locations near the initial location
+        for (float x_offset = -5.0f; x_offset <= 5.0f; x_offset += 1.0f) {
+            for (float y_offset = -5.0f; y_offset <= 5.0f; y_offset += 1.0f) {
+                Point2D new_location = location + Point2D(x_offset, y_offset);
+                if (Query()->Placement(ability_type_for_structure, new_location, builder)) {
+                    Actions()->UnitCommand(builder, ability_type_for_structure, new_location);
+                    return true;
+                }
+            }
+        }
     }
+    return false;
 }
 
 Point2D BasicSc2Bot::GetRallyPoint() {
@@ -276,4 +298,38 @@ Point2D BasicSc2Bot::GetNearestSafePosition(const Point2D &pos) {
     // Return the nearest safe position (defaults to the original position if no
     // safe position is found)
     return nearest_safe_position;
+}
+}
+
+Point2D BasicSc2Bot::GetChokepointPosition() {
+    // Get the main base location
+    const Unit* main_base = GetMainBase();
+    if (!main_base) {
+        return Point2D(0.0f, 0.0f);
+    }
+
+    // Find the closest chokepoint to the main base
+    float closest_distance = std::numeric_limits<float>::max();
+    Point2D chokepoint_position = Point2D(0.0f, 0.0f);
+
+    for (const auto& chokepoint : chokepoints) {
+        float distance = Distance2D(main_base->pos, chokepoint);
+        if (distance < closest_distance) {
+            closest_distance = distance;
+            chokepoint_position = chokepoint;
+        }
+    }
+
+    return chokepoint_position;
+}
+
+bool BasicSc2Bot::IsAnyBaseUnderAttack() {
+    const ObservationInterface* observation = Observation();
+    Units bases = observation->GetUnits(Unit::Alliance::Self, IsTownHall());
+    for (const auto& base : bases) {
+        if (base->health < base->health_max) {
+            return true;
+        }
+    }
+    return false;
 }

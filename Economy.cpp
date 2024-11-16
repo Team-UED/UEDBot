@@ -15,7 +15,7 @@ void BasicSc2Bot::ManageEconomy() {
 void BasicSc2Bot::TrainSCVs() {
     const ObservationInterface* observation = Observation();
 
-    // Get all Command Centers, Orbital Commands, and Planetary Fortresses
+    // Get all bases
     Units command_centers = observation->GetUnits(Unit::Alliance::Self, IsTownHall());
     if (command_centers.empty()) return;
 
@@ -48,10 +48,7 @@ void BasicSc2Bot::TrainSCVs() {
                 break;
             }
         }
-        if (is_training_scv) {
-            continue;
-        }
-        if (observation->GetMinerals() >= 50) {
+        if (!is_training_scv && observation->GetMinerals() >= 50) {
             Actions()->UnitCommand(cc, ABILITY_ID::TRAIN_SCV);
         }
     }
@@ -62,6 +59,11 @@ void BasicSc2Bot::UseMULE() {
 
     // Find all Orbital Commands
     Units orbital_commands = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_ORBITALCOMMAND));
+
+    // No Orbital Commands found
+    if (orbital_commands.empty()) {
+        return;
+    }
 
     // Loop Orbital Command to check if it has enough energy
     for (const auto& orbital : orbital_commands) {
@@ -94,6 +96,20 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
         return false; // Not enough minerals to build
     }
 
+    // Max distance from base center
+    const float base_radius = 25.0f;
+
+    // Minimum distance from mineral
+    const float distance_from_minerals = 10.0f;
+
+    // Find Command Centers
+    Units command_centers = observation->GetUnits(Unit::Alliance::Self, [](const Unit& unit) {
+        return unit.unit_type == UNIT_TYPEID::TERRAN_COMMANDCENTER ||
+            unit.unit_type == UNIT_TYPEID::TERRAN_ORBITALCOMMAND ||
+            unit.unit_type == UNIT_TYPEID::TERRAN_PLANETARYFORTRESS;
+    });
+
+
     // Find an SCV to build with
     Units scvs = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SCV));
     const Unit* builder = nullptr;
@@ -103,12 +119,33 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
             continue;
         }
 
+        float min_distance_to_base = std::numeric_limits<float>::max();
+        for (const auto& command_center : command_centers) {
+            float distance_to_cc = sc2::Distance2D(scv->pos, command_center->pos);
+            if (distance_to_cc < min_distance_to_base) {
+                min_distance_to_base = distance_to_cc;
+            }
+        }
+
+        // Check if the SCV is within the base radius
+        if (min_distance_to_base > base_radius) {
+            continue; 
+        }
+
         bool is_constructing = false;
         for (const auto& order : scv->orders) {
             if (order.ability_id == ABILITY_ID::BUILD_SUPPLYDEPOT ||
                 order.ability_id == ABILITY_ID::BUILD_REFINERY ||
                 order.ability_id == ABILITY_ID::BUILD_BARRACKS ||
-                order.ability_id == ABILITY_ID::BUILD_COMMANDCENTER) {
+                order.ability_id == ABILITY_ID::BUILD_COMMANDCENTER ||
+                order.ability_id == ABILITY_ID::BUILD_FACTORY ||
+                order.ability_id == ABILITY_ID::BUILD_STARPORT ||
+                order.ability_id == ABILITY_ID::BUILD_ENGINEERINGBAY ||
+                order.ability_id == ABILITY_ID::BUILD_ARMORY ||
+                order.ability_id == ABILITY_ID::BUILD_FUSIONCORE ||
+                order.ability_id == ABILITY_ID::BUILD_MISSILETURRET ||
+                order.ability_id == ABILITY_ID::BUILD_BUNKER
+                ) {
                 is_constructing = true;
                 break;
             }
@@ -118,6 +155,7 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
             break;
         }
     }
+
 
     if (builder) {
         // Get main base location
@@ -129,16 +167,43 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
         // Define a build location offset from the main base
         Point2D build_location = main_base->pos + Point2D(10.0f, 0.0f); // Adjust offset as needed
 
-        // Check for a valid build location
-        if (Query()->Placement(ability_type_for_structure, build_location)) {
+        // Ensure build location is not too close to minerals and not too far from base
+        Units mineral_patches = observation->GetUnits(Unit::Alliance::Neutral, IsUnit(UNIT_TYPEID::NEUTRAL_MINERALFIELD));
+
+        auto is_valid_build_location = [&](const Point2D& location) {
+
+            if (!main_base) {
+                return false;
+            }
+
+            // Too far from the base
+            float distance_to_base = sc2::Distance2D(location, main_base->pos);
+            if (distance_to_base > base_radius) {
+                return false; // Too far from the base
+            }
+
+            // Too close to minerals
+            for (const auto& mineral_patch : mineral_patches) {
+                float distance_to_mineral = sc2::Distance2D(location, mineral_patch->pos);
+                if (distance_to_mineral < distance_from_minerals) {
+                    return false; 
+                }
+            }
+            // Location is valid
+            return true; 
+            };
+
+        // Check the initial build location
+        if (is_valid_build_location(build_location) && Query()->Placement(ability_type_for_structure, build_location)) {
             Actions()->UnitCommand(builder, ability_type_for_structure, build_location);
             return true;
-        } else {
+        }
+        else {
             // Try to find a nearby valid location
             for (float x = -15.0f; x <= 15.0f; x += 2.0f) {
                 for (float y = -15.0f; y <= 15.0f; y += 2.0f) {
                     Point2D test_location = main_base->pos + Point2D(x, y);
-                    if (Query()->Placement(ability_type_for_structure, test_location)) {
+                    if (is_valid_build_location(test_location) && Query()->Placement(ability_type_for_structure, test_location)) {
                         Actions()->UnitCommand(builder, ability_type_for_structure, test_location);
                         return true;
                     }
@@ -154,8 +219,22 @@ bool BasicSc2Bot::TryBuildSupplyDepot() {
     int32_t supply_used = observation->GetFoodUsed();
     int32_t supply_cap = observation->GetFoodCap();
 
-    // Build a supply depot when supply used reaches a certain threshold
-    if (supply_used >= supply_cap - (phase * 3)) {
+    // Default surplus
+    int32_t supply_surplus = 2;
+
+    // Set surplus by phase
+    if (phase == 1) {
+        supply_surplus = 2;
+    }
+    else if (phase == 2) {
+        supply_surplus = 6;
+    }
+    else if (phase == 3) {
+        supply_surplus = 8;
+    }
+
+    // Build a supply depot when supply used reaches the threshold
+    if (supply_used >= supply_cap - supply_surplus) {
         // Check if a supply depot is already under construction
         Units supply_depots_building = observation->GetUnits(Unit::Self, [](const Unit& unit) {
             return unit.unit_type == UNIT_TYPEID::TERRAN_SUPPLYDEPOT && unit.build_progress < 1.0f;
@@ -229,8 +308,6 @@ void BasicSc2Bot::AssignWorkers() {
         }
     }
 }
-
-
 
 void BasicSc2Bot::ReassignWorkers() {
     const ObservationInterface* observation = Observation();
@@ -374,6 +451,11 @@ void BasicSc2Bot::BuildRefineries() {
 
 void BasicSc2Bot::BuildExpansion() {
     const ObservationInterface* observation = Observation();
+
+    // Check if the first battlecruiser is in production 
+	if (!first_battlecruiser) {
+		return;
+	}
 
     // Check if we have enough resources to expand
     if (observation->GetMinerals() < 400) {
