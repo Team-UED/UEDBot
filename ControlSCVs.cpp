@@ -1,20 +1,3 @@
-//Other than gathering resources,
-//    SCVs must
-//
-//            Retreat from dangerous
-//            situations(e.g.,
-//                       enemy rushes or harass) to avoid resource loss deaths.
-//
-//        Repair damaged Battlecruisers during
-//        or after engagements
-//               .
-//
-//           Repair structures during enemy attacks to maintain defenses.
-//
-//           Attack in some urgent situations
-//            (e.g., when the enemy is attacking the main base).
-
-
 #include "BasicSc2Bot.h"
 
 using namespace sc2;
@@ -22,10 +5,11 @@ using namespace sc2;
 // Main function to control SCVs
 void BasicSc2Bot::ControlSCVs() {
 	SCVScout();
-    //RetreatFromDanger();
-    //RepairUnits();
-    //RepairStructures();
-    //SCVAttackEmergency();
+    RetreatFromDanger();
+    RepairUnits();
+    RepairStructures();
+    UpdateRepairingSCVs();
+    SCVAttackEmergency();
 }
 
 // SCVs scout the map to find enemy bases
@@ -181,8 +165,13 @@ void BasicSc2Bot::RepairUnits() {
 
     for (const auto &unit : Observation()->GetUnits(Unit::Alliance::Self)) {
         if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV) {
+            // Skip SCVs already repairing
+            if (scvs_repairing.find(unit->tag) != scvs_repairing.end()) {
+                continue;
+            }
+
             const Unit *target = FindDamagedUnit();
-            if (target) {
+            if (target && scvs_repairing.size() < 6) {
                 // Check if the unit is at the base.
                 bool is_at_base =
                     sc2::Distance2D(target->pos, base_location) <= base_radius;
@@ -199,9 +188,10 @@ void BasicSc2Bot::RepairUnits() {
                 }
 
                 // Repair only if the unit is at the base or not under attack.
-                if (is_at_base || !is_under_attack) {
+                if (is_at_base && !is_under_attack) {
                     Actions()->UnitCommand(unit, ABILITY_ID::EFFECT_REPAIR,
                                            target);
+                    scvs_repairing.insert(unit->tag); // Mark SCV as repairing
                 }
             }
         }
@@ -209,17 +199,39 @@ void BasicSc2Bot::RepairUnits() {
 }
 
 
+
 // SCVs repair damaged structures during enemy attacks
 void BasicSc2Bot::RepairStructures() {
     for (const auto &unit : Observation()->GetUnits(Unit::Alliance::Self)) {
         if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV) {
+            // Skip SCVs already repairing
+            if (scvs_repairing.find(unit->tag) != scvs_repairing.end()) {
+                continue;
+            }
+
             const Unit *target = FindDamagedStructure();
-            if (target) {
+            if (target && scvs_repairing.size() < 6) {
                 Actions()->UnitCommand(unit, ABILITY_ID::EFFECT_REPAIR, target);
+                scvs_repairing.insert(unit->tag); // Mark SCV as repairing
             }
         }
     }
 }
+
+void BasicSc2Bot::UpdateRepairingSCVs() {
+    for (auto it = scvs_repairing.begin(); it != scvs_repairing.end();) {
+        const Unit *scv = Observation()->GetUnit(*it);
+
+        // If the SCV is no longer repairing, remove it from the set
+        if (!scv || scv->orders.empty() ||
+            scv->orders[0].ability_id != ABILITY_ID::EFFECT_REPAIR) {
+            it = scvs_repairing.erase(it);
+        } else {
+            ++it;
+        }
+    }
+}
+
 
 // SCVs attack in urgent situations (e.g., enemy attacking the main base)
 void BasicSc2Bot::SCVAttackEmergency() {
