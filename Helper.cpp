@@ -96,17 +96,14 @@ bool BasicSc2Bot::IsDangerousPosition(const Point2D &pos) {
     return false;
 }
 
-// Helper function to find a safe position for retreat
+// Helper function to find a safe position for retreat (currently returns the
+// main base position)
 Point2D BasicSc2Bot::GetSafePosition() {
-    // currently set up to return the location of command center
-    const Unit *command_center = nullptr;
-    for (const auto &unit : Observation()->GetUnits(Unit::Alliance::Self)) {
-        if (unit->unit_type == UNIT_TYPEID::TERRAN_COMMANDCENTER) {
-            command_center = unit;
-            break;
-        }
-    }
-    return command_center ? command_center->pos : Point2D(0, 0);
+    const Unit *main_base = GetMainBase();
+    return main_base
+               ? main_base->pos
+               : Point2D(0,
+                         0); // Return base position or default position (0, 0)
 }
 
 // Helper function to find damaged units for repair
@@ -122,21 +119,39 @@ const Unit *BasicSc2Bot::FindDamagedUnit() {
 
 // Helper function to find damaged structures for repair
 const Unit *BasicSc2Bot::FindDamagedStructure() {
-   for (const auto &unit : Observation()->GetUnits(Unit::Alliance::Self)) {
-       if (unit->unit_type == UNIT_TYPEID::TERRAN_COMMANDCENTER ||
-           unit->unit_type == UNIT_TYPEID::TERRAN_ORBITALCOMMAND ||
-           unit->unit_type == UNIT_TYPEID::TERRAN_PLANETARYFORTRESS ||
-           unit->unit_type == UNIT_TYPEID::TERRAN_SUPPLYDEPOT ||
-           unit->unit_type == UNIT_TYPEID::TERRAN_BARRACKS ||
-           unit->unit_type == UNIT_TYPEID::TERRAN_FACTORY ||
-           unit->unit_type == UNIT_TYPEID::TERRAN_STARPORT) {
-           if (unit->health < unit->health_max) {
-               return unit;
-           }
-       }
-   }
-   return nullptr;
+    const auto &units = Observation()->GetUnits(Unit::Alliance::Self);
+
+    const Unit *highest_priority_target = nullptr;
+    int highest_priority = std::numeric_limits<int>::max();
+
+    for (const auto &unit : units) {
+        if (unit->health < unit->health_max) {
+            int priority = std::numeric_limits<int>::max();
+
+            // Assign priorities (lower number = higher priority)
+            if (unit->unit_type == UNIT_TYPEID::TERRAN_COMMANDCENTER ||
+                unit->unit_type == UNIT_TYPEID::TERRAN_ORBITALCOMMAND ||
+                unit->unit_type == UNIT_TYPEID::TERRAN_PLANETARYFORTRESS) {
+                priority = 1;
+            } else if (unit->unit_type == UNIT_TYPEID::TERRAN_BARRACKS ||
+                       unit->unit_type == UNIT_TYPEID::TERRAN_FACTORY ||
+                       unit->unit_type == UNIT_TYPEID::TERRAN_STARPORT) {
+                priority = 2;
+            } else if (unit->unit_type == UNIT_TYPEID::TERRAN_SUPPLYDEPOT) {
+                priority = 3;
+            }
+
+            // Update the target if the current unit has a higher priority
+            if (priority < highest_priority) {
+                highest_priority_target = unit;
+                highest_priority = priority;
+            }
+        }
+    }
+
+    return highest_priority_target;
 }
+
 
 bool BasicSc2Bot::IsWorkerUnit(const Unit* unit) {
     return unit->unit_type == UNIT_TYPEID::TERRAN_SCV ||
@@ -258,6 +273,52 @@ const Unit* BasicSc2Bot::GetLeastSaturatedBase() const {
     }
 
     return least_saturated_base;
+}
+
+Point2D BasicSc2Bot::GetNearestSafePosition(const Point2D &pos) {
+    const float safe_radius =
+        15.0f; // Radius within which enemies make a position unsafe
+    const float search_radius = 50.0f; // Search range to find safe positions
+    const int grid_steps = 5;          // Granularity of the search grid
+
+    // Get all enemy units
+    Units enemy_units = Observation()->GetUnits(Unit::Alliance::Enemy);
+    if (enemy_units.empty()) {
+        return pos; // Return the original position if there are no enemies
+    }
+
+    // Check if a position is safe
+    auto is_safe = [&enemy_units, safe_radius](const Point2D &candidate) {
+        for (const auto &enemy : enemy_units) {
+            if (enemy && Distance2D(enemy->pos, candidate) <
+                             safe_radius) { // Ensure enemy is not null
+                return false; // Unsafe if an enemy is within the safe_radius
+            }
+        }
+        return true; // Safe if no enemies are within the safe_radius
+    };
+
+    // Start searching for the nearest safe position
+    Point2D nearest_safe_position = pos;
+    float min_distance = std::numeric_limits<float>::max();
+
+    // Search within a grid around the position
+    for (float dx = -search_radius; dx <= search_radius; dx += grid_steps) {
+        for (float dy = -search_radius; dy <= search_radius; dy += grid_steps) {
+            Point2D candidate = pos + Point2D(dx, dy);
+            if (is_safe(candidate)) {
+                float distance = Distance2D(pos, candidate);
+                if (distance < min_distance) {
+                    min_distance = distance;
+                    nearest_safe_position = candidate;
+                }
+            }
+        }
+    }
+
+    // Return the nearest safe position (defaults to the original position if no
+    // safe position is found)
+    return nearest_safe_position;
 }
 
 Point2D BasicSc2Bot::GetChokepointPosition() {

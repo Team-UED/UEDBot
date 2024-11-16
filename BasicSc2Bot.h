@@ -210,6 +210,9 @@ private:
     // Repairs damaged structures during enemy attacks.
     void RepairStructures();
 
+    // Updates the amoount of SCVs repairing a unit.
+    void UpdateRepairingSCVs();
+
     // SCVs attack in urgent situations (e.g., enemy attacking the main base).
     void SCVAttackEmergency();
 
@@ -342,6 +345,9 @@ private:
 
     bool IsWorkerUnit(const Unit* unit);
 
+    Point2D GetNearestSafePosition(const Point2D &pos);
+
+    
 	bool IsTrivialUnit(const Unit* unit);
 
     Point2D GetChokepointPosition();
