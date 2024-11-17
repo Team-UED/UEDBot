@@ -12,6 +12,7 @@ void BasicSc2Bot::ExecuteBuildOrder() {
 	BuildStarport();
 	Swap();
 	BuildFusionCore();
+	BuildArmory();
 }
 
 // Build Barracks if we have a Supply Depot and enough resources
@@ -254,6 +255,25 @@ void BasicSc2Bot::BuildFusionCore() {
 	Units fusioncore = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FUSIONCORE));
 	if (fusioncore.empty() && (observation->GetMinerals() >= 150 && observation->GetVespene() >= 150)) {
 		TryBuildStructure(ABILITY_ID::BUILD_FUSIONCORE, UNIT_TYPEID::TERRAN_SCV);
+	}
+}
+
+// Build Armory if we have a Fusion core and enough resources
+void BasicSc2Bot::BuildArmory() {
+	const ObservationInterface* observation = Observation();
+
+	// Get Fusion cores
+	Units fusioncores = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FUSIONCORE));
+	
+	// Can't build fusion core without Starports
+	if (fusioncores.empty()) {
+		return;
+	}
+
+	// Build only 1 Fusion core
+	Units armories = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_ARMORY));
+	if (armories.empty() && (observation->GetMinerals() >= 150 && observation->GetVespene() >= 50)) {
+		TryBuildStructure(ABILITY_ID::BUILD_ARMORY, UNIT_TYPEID::TERRAN_SCV);
 	}
 }
 
