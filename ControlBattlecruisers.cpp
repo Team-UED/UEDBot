@@ -18,8 +18,6 @@ void BasicSc2Bot::Jump() {
         return;
     }
 
-    const float enemy_base_radius = 40.0f;
-
     // Check if any Battlecruiser is still retreating
     for (const auto& unit : Observation()->GetUnits(Unit::Alliance::Self)) {
         if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER && battlecruiser_retreating[unit]) {
@@ -32,28 +30,10 @@ void BasicSc2Bot::Jump() {
     for (const auto& unit : Observation()->GetUnits(Unit::Alliance::Self)) {
         // Check if the unit is a Battlecruiser with full health and not retreating
         if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER &&
-            unit->health >= unit->health_max) {
-
-            float distance = sc2::Distance2D(unit->pos, enemy_start_location);
-
-            // Check if the Battlecruiser is outside the enemy base
-            if (distance > enemy_base_radius) {
-                // Check if Tactical Jump ability is available
-                auto abilities = Query()->GetAbilitiesForUnit(unit);
-                bool tactical_jump_available = false;
-
-                for (const auto& ability : abilities.abilities) {
-                    if (ability.ability_id == ABILITY_ID::EFFECT_TACTICALJUMP) {
-                        tactical_jump_available = true;
-                        break;
-                    }
-                }
-
-                // Use Tactical Jump if available
-                if (tactical_jump_available) {
-                    Actions()->UnitCommand(unit, ABILITY_ID::EFFECT_TACTICALJUMP, enemy_start_location);
-                }
-            }
+            unit->health >= unit->health_max &&
+            Distance2D(unit->pos, enemy_start_location) > 40.0f &&
+            HasAbility(unit, ABILITY_ID::EFFECT_TACTICALJUMP)) {
+            Actions()->UnitCommand(unit, ABILITY_ID::EFFECT_TACTICALJUMP, enemy_start_location);
         }
     }
 }
@@ -504,17 +484,6 @@ void BasicSc2Bot::Target() {
             }
             // No target
             else {
-                auto abilities = Query()->GetAbilitiesForUnit(battlecruiser);
-                bool tactical_jump_available = false;
-
-                for (const auto& ability : abilities.abilities) {
-                    if (ability.ability_id == ABILITY_ID::EFFECT_TACTICALJUMP) {
-                        tactical_jump_available = true;
-                        break;
-                    }
-                }
-
-
                 if (battlecruiser->health >= 500.0f) {
                     if (Distance2D(battlecruiser->pos, enemy_start_location) < 40.0f) {
                         Retreat(battlecruiser);
@@ -540,7 +509,6 @@ void BasicSc2Bot::Retreat(const Unit* unit) {
         return;
     }
 
-    Point2D retreat_location(start_location.x + 5.0f, start_location.y);
     battlecruiser_retreat_location[unit] = retreat_location;
     battlecruiser_retreating[unit] = true;
     Actions()->UnitCommand(unit, ABILITY_ID::MOVE_MOVE, retreat_location);
@@ -551,17 +519,12 @@ void BasicSc2Bot::RetreatCheck() {
     const float arrival_threshold = 5.0f;
 
     for (const auto& battlecruiser : Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BATTLECRUISER))) {
-        // Get the Battlecruiser's specific retreat location
-        if (battlecruiser_retreating[battlecruiser]) {
-            Point2D retreat_location = battlecruiser_retreat_location[battlecruiser];
-
-            // Check if it has reached its retreat location and in full health
-            if (Distance2D(battlecruiser->pos, retreat_location) <= arrival_threshold) {
-                if (battlecruiser->orders.empty() && battlecruiser->health >= battlecruiser->health_max) {
-                    battlecruiser_retreating[battlecruiser] = false;
-                    battlecruiser_retreat_location.erase(battlecruiser);
-                }
-            }
+		// Check if the Battlecruiser has reached the retreat location
+        if (battlecruiser_retreating[battlecruiser] &&
+            Distance2D(battlecruiser->pos, retreat_location) <= arrival_threshold &&
+            battlecruiser->health >= battlecruiser->health_max) {
+            battlecruiser_retreating[battlecruiser] = false;
+            battlecruiser_retreat_location.erase(battlecruiser);
         }
     }
 }

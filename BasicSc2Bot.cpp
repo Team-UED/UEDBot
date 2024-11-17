@@ -41,6 +41,7 @@ BasicSc2Bot::BasicSc2Bot()
 void BasicSc2Bot::OnGameStart() {
     // Initialize start locations, expansion locations, chokepoints, etc.
     start_location = Observation()->GetStartLocation();
+    retreat_location = { start_location.x + 5.0f, start_location.y };
     enemy_start_locations = Observation()->GetGameInfo().enemy_start_locations;
     if (!enemy_start_locations.empty()) {
         enemy_start_location = enemy_start_locations[0];
@@ -184,7 +185,7 @@ void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
 }
 
 void BasicSc2Bot::OnUpgradeCompleted(UpgradeID upgrade_id) {
-    
+    completed_upgrades.insert(upgrade_id);
 }
 
 void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) {
