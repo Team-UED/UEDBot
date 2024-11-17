@@ -5,6 +5,7 @@ BasicSc2Bot::BasicSc2Bot()
       num_scvs(12),
       num_marines(0),
       num_battlecruisers(0),
+	  num_siege_tanks(0),
       is_under_attack(false),
       is_attacking(false),
       need_expansion(false),
@@ -237,6 +238,7 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) {
     }
     if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER) {
 		num_battlecruisers--;
+        battlecruiser_retreating[unit] = false;
     }
     if (unit->unit_type == UNIT_TYPEID::TERRAN_MARINE) {
 		num_marines--;
