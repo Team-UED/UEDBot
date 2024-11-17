@@ -113,12 +113,12 @@ void BasicSc2Bot::TrainSiegeTanks() {
             observation->GetVespene() >= 125 &&
             (observation->GetFoodCap() - observation->GetFoodUsed() >= 3)
             ) {
-            // Find Factories with Tech Labs that ready to build a Siege Tank
-            if (!factories.empty()) {
-                const Unit* factory = factories.front();
+
+            const Unit* factory = factories.front();
+            // Maintain 1 : 4 Ratio of Marines and Siege Tanks
+            if (num_marines >= 4 * num_siege_tanks) {
                 if (factory->add_on_tag != 0) {
                     if (factory->orders.empty()) {
-                        // Build a Siege Tank (One at a time)
                         Actions()->UnitCommand(factory, ABILITY_ID::TRAIN_SIEGETANK);
                     }
                 }
@@ -154,7 +154,7 @@ void BasicSc2Bot::UpgradeSiegeTanksAndBattleCruisers() {
     Units armories = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_ARMORY));
     Units fusioncores = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FUSIONCORE));
 
-    if (armories.empty() && fusioncores.empty() && !first_battlecruiser) {
+    if (armories.empty() || fusioncores.empty() || !first_battlecruiser) {
         return;
     }
 

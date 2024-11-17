@@ -246,6 +246,9 @@ private:
 
 	// Check if retreating is complete
     void RetreatCheck();
+    
+	// Targets unit for Battlecruisers to use Yamato Cannon
+	void BasicSc2Bot::UseYamatoCannon(const Unit* battlecruiser, const Units& enemy_units, std::set<Tag>& yamato_targets);
 
     // Controls Siege Tanks (abilities, targeting, positioning).
     void ControlSiegeTanks();
@@ -481,7 +484,7 @@ private:
         {sc2::UNIT_TYPEID::TERRAN_CYCLONE, 2},
         {sc2::UNIT_TYPEID::TERRAN_VIKINGFIGHTER, 2},
         {sc2::UNIT_TYPEID::TERRAN_VIKINGASSAULT, 2},
-        {sc2::UNIT_TYPEID::TERRAN_THOR, 4},
+        {sc2::UNIT_TYPEID::TERRAN_THOR, 5},
         {sc2::UNIT_TYPEID::TERRAN_MISSILETURRET, 3},
         {sc2::UNIT_TYPEID::PROTOSS_STALKER, 3},
         {sc2::UNIT_TYPEID::PROTOSS_SENTRY, 1},
