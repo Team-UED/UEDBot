@@ -289,6 +289,12 @@ void BasicSc2Bot::RepairUnits() {
                 bool is_under_attack = false;
                 for (const auto &enemy_unit :
                      Observation()->GetUnits(Unit::Alliance::Enemy)) {
+
+					// Exclde trivial units and workers from the check.
+                    if (IsWorkerUnit(enemy_unit) || IsTrivialUnit(enemy_unit)) {
+                        continue;
+                    }
+
                     if (sc2::Distance2D(target->pos, enemy_unit->pos) <=
                         enemy_check_radius) {
                         is_under_attack = true;

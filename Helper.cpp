@@ -373,6 +373,11 @@ void BasicSc2Bot::MoveToEnemy(const Units &marines, const Units &siege_tanks) {
         }
     }
 
+    // If no closest enemy is found, do nothing
+    if (!closest_enemy) {
+        return;
+    }
+
     // Move all units to the closest enemy
     for (const auto &marine : marines) {
         Actions()->UnitCommand(marine, ABILITY_ID::MOVE_MOVE, closest_enemy->pos);
@@ -380,4 +385,19 @@ void BasicSc2Bot::MoveToEnemy(const Units &marines, const Units &siege_tanks) {
     for (const auto &tank : siege_tanks) {
         Actions()->UnitCommand(tank, ABILITY_ID::MOVE_MOVE, closest_enemy->pos);
     }
+}
+
+bool BasicSc2Bot::HasAbility(const Unit* unit, AbilityID ability_id) {
+
+    if (!unit) {
+        return false; 
+    }
+
+    const auto& abilities = Query()->GetAbilitiesForUnit(unit);
+    for (const auto& ability : abilities.abilities) {
+        if (ability.ability_id == ability_id) {
+            return true;
+        }
+    }
+    return false;
 }

@@ -103,6 +103,9 @@ private:
     // Builds a Fusion Core to enable Battlecruiser production.
     void BuildFusionCore();
 
+    // Builds a Armory to upgrate units.
+    void BuildArmory();
+
     // Builds a second base (Command Center).
     void BuildSecondBase();
 
@@ -150,6 +153,9 @@ private:
 
     // Upgrades Marines.
     void UpgradeMarines();
+
+    // Upgrades Siege Tanks
+    void UpgradeSiegeTanksAndBattleCruisers();
 
     // Manages research of upgrades.
     void ManageUpgrades();
@@ -240,6 +246,9 @@ private:
 
 	// Check if retreating is complete
     void RetreatCheck();
+    
+	// Targets unit for Battlecruisers to use Yamato Cannon
+	void BasicSc2Bot::UseYamatoCannon(const Unit* battlecruiser, const Units& enemy_units, std::set<Tag>& yamato_targets);
 
     // Controls Siege Tanks (abilities, targeting, positioning).
     void ControlSiegeTanks();
@@ -347,6 +356,9 @@ private:
     // Finds the closest enemy unit to a given position.
     const Unit* FindClosestEnemy(const Point2D& pos);
 
+	// Check if the unit has a specific ability.
+    bool HasAbility(const Unit* unit, AbilityID ability_id);
+
     bool TryBuildStructureAtLocation(ABILITY_ID ability_type_for_structure, UNIT_TYPEID unit_type, const Point2D& location);
 
     Point2D GetRallyPoint();
@@ -383,6 +395,7 @@ private:
     // Map information.
     sc2::Point2D start_location;
     sc2::Point2D enemy_start_location;
+    sc2::Point2D retreat_location;
     std::vector<sc2::Point2D> enemy_start_locations;
     std::vector<sc2::Point3D> expansion_locations;
 
@@ -471,7 +484,7 @@ private:
         {sc2::UNIT_TYPEID::TERRAN_CYCLONE, 2},
         {sc2::UNIT_TYPEID::TERRAN_VIKINGFIGHTER, 2},
         {sc2::UNIT_TYPEID::TERRAN_VIKINGASSAULT, 2},
-        {sc2::UNIT_TYPEID::TERRAN_THOR, 4},
+        {sc2::UNIT_TYPEID::TERRAN_THOR, 5},
         {sc2::UNIT_TYPEID::TERRAN_MISSILETURRET, 3},
         {sc2::UNIT_TYPEID::PROTOSS_STALKER, 3},
         {sc2::UNIT_TYPEID::PROTOSS_SENTRY, 1},
@@ -512,6 +525,34 @@ private:
                         UNIT_TYPEID::PROTOSS_PYLON
     };
 
+    // Maps UPGRADE_ID to ABILITY_ID
+    ABILITY_ID BasicSc2Bot::GetAbilityForUpgrade(UPGRADE_ID upgrade_id) {
+        switch (upgrade_id) {
+        case UPGRADE_ID::TERRANVEHICLEANDSHIPARMORSLEVEL1:
+            return ABILITY_ID::RESEARCH_TERRANVEHICLEANDSHIPPLATINGLEVEL1;
+        case UPGRADE_ID::TERRANVEHICLEANDSHIPARMORSLEVEL2:
+            return ABILITY_ID::RESEARCH_TERRANVEHICLEANDSHIPPLATINGLEVEL2;
+        case UPGRADE_ID::TERRANVEHICLEANDSHIPARMORSLEVEL3:
+            return ABILITY_ID::RESEARCH_TERRANVEHICLEANDSHIPPLATINGLEVEL3;
+        case UPGRADE_ID::TERRANSHIPWEAPONSLEVEL1:
+            return ABILITY_ID::RESEARCH_TERRANSHIPWEAPONSLEVEL1;
+        case UPGRADE_ID::TERRANSHIPWEAPONSLEVEL2:
+            return ABILITY_ID::RESEARCH_TERRANSHIPWEAPONSLEVEL2;
+        case UPGRADE_ID::TERRANSHIPWEAPONSLEVEL3:
+            return ABILITY_ID::RESEARCH_TERRANSHIPWEAPONSLEVEL3;
+        case UPGRADE_ID::TERRANVEHICLEWEAPONSLEVEL1:
+            return ABILITY_ID::RESEARCH_TERRANVEHICLEWEAPONSLEVEL1;
+        case UPGRADE_ID::TERRANVEHICLEWEAPONSLEVEL2:
+            return ABILITY_ID::RESEARCH_TERRANVEHICLEWEAPONSLEVEL2;
+        case UPGRADE_ID::TERRANVEHICLEWEAPONSLEVEL3:
+            return ABILITY_ID::RESEARCH_TERRANVEHICLEWEAPONSLEVEL3;
+        default:
+            return ABILITY_ID::INVALID;
+        }
+    }
+    
+	// Set of completed upgrades
+    std::set<UpgradeID> completed_upgrades;
 };
 
 #endif

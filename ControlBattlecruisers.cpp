@@ -18,8 +18,6 @@ void BasicSc2Bot::Jump() {
         return;
     }
 
-    const float enemy_base_radius = 40.0f;
-
     // Check if any Battlecruiser is still retreating
     for (const auto& unit : Observation()->GetUnits(Unit::Alliance::Self)) {
         if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER && battlecruiser_retreating[unit]) {
@@ -28,46 +26,25 @@ void BasicSc2Bot::Jump() {
         }
     }
 
+    
     // No retreating Battlecruisers, proceed with Tactical Jump logic
     for (const auto& unit : Observation()->GetUnits(Unit::Alliance::Self)) {
         // Check if the unit is a Battlecruiser with full health and not retreating
         if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER &&
-            unit->health >= unit->health_max) {
-
-            float distance = sc2::Distance2D(unit->pos, enemy_start_location);
-
-            // Check if the Battlecruiser is outside the enemy base
-            if (distance > enemy_base_radius) {
-                // Check if Tactical Jump ability is available
-                auto abilities = Query()->GetAbilitiesForUnit(unit);
-                bool tactical_jump_available = false;
-
-                for (const auto& ability : abilities.abilities) {
-                    if (ability.ability_id == ABILITY_ID::EFFECT_TACTICALJUMP) {
-                        tactical_jump_available = true;
-                        break;
-                    }
-                }
-
-                // Use Tactical Jump if available
-                if (tactical_jump_available) {
-                    Actions()->UnitCommand(unit, ABILITY_ID::EFFECT_TACTICALJUMP, enemy_start_location);
-                }
-            }
+            unit->health >= unit->health_max &&
+            Distance2D(unit->pos, enemy_start_location) > 40.0f &&
+            HasAbility(unit, ABILITY_ID::EFFECT_TACTICALJUMP)) {
+            Actions()->UnitCommand(unit, ABILITY_ID::EFFECT_TACTICALJUMP, enemy_start_location);
         }
     }
 }
-
 
 
 /// Target enemy units based on threat levels
 void BasicSc2Bot::Target() {
 
     // Detect radius for Battlecruisers
-    const float defense_check_radius = 12.0f;
-
-    // Distance from enemy
-    const float max_distance_from_enemy = 15.0f;
+    const float defense_check_radius = 14.0f;
 
 	// Maximum distance to consider for targetting
 	const float max_distace_for_target = 40.0f;
@@ -86,8 +63,14 @@ void BasicSc2Bot::Target() {
     for (const auto& battlecruiser : Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BATTLECRUISER))) {
         bool is_near_enemy = false;
         for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
+            
+			// Only count combat units as enemies
+            if (IsWorkerUnit(enemy_unit) || IsTrivialUnit(enemy_unit)) {
+                continue; 
+            }
+
             float distance_to_enemy = Distance2D(battlecruiser->pos, enemy_unit->pos);
-            if (distance_to_enemy <= max_distance_from_enemy) {
+            if (distance_to_enemy <= 15.0f) {
                 is_near_enemy = true;
                 break;
             }
@@ -99,11 +82,10 @@ void BasicSc2Bot::Target() {
         }
     }
 
-
-
     // Threshold for "kiting" behavior
     const int threat_threshold = 10 * num_battlecruisers_in_combat;
 
+    std::set<Tag> yamato_targets;
 
     for (const auto& battlecruiser : battlecruisers) {
         // Disables targetting while Jumping
@@ -112,10 +94,6 @@ void BasicSc2Bot::Target() {
             if (current_ability == ABILITY_ID::EFFECT_TACTICALJUMP) {
                 continue;
             }
-        }
-        // Disables targetting while Retreating
-        if (battlecruiser_retreating[battlecruiser]) {
-            continue;
         }
 
         int total_threat = 0;
@@ -140,7 +118,7 @@ void BasicSc2Bot::Target() {
 
         // Determine whether to retreat based on the threat level
         // retreat if the total threat level is above the threshold
-        if (total_threat >= threat_threshold) {
+        if (total_threat >= threat_threshold && (total_threat != 0) && (threat_threshold != 0)) {
 
             float health_threshold = 0.0f;
 
@@ -161,6 +139,7 @@ void BasicSc2Bot::Target() {
                 Retreat(battlecruiser);
             }
             else {
+
                 for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
                     // Ensure the enemy unit is alive
                     if (!enemy_unit->is_alive) {
@@ -246,60 +225,58 @@ void BasicSc2Bot::Target() {
                     // Move the Battlecruiser to the calculated kite position
                     Actions()->UnitCommand(battlecruiser, ABILITY_ID::MOVE_MOVE, kite_position);
                 }
-                // No target
-                else {
-                    if (total_threat == 0) {
-                        auto abilities = Query()->GetAbilitiesForUnit(battlecruiser);
-                        bool tactical_jump_available = false;
-
-                        for (const auto& ability : abilities.abilities) {
-                            if (ability.ability_id == ABILITY_ID::EFFECT_TACTICALJUMP) {
-                                tactical_jump_available = true;
-                                break;
-                            }
-                        }
-
-                        if (battlecruiser->health >= 500.0f) {
-                            if (Distance2D(battlecruiser->pos, enemy_start_location) < 40.0f) {
-                                Retreat(battlecruiser);
-                                return;
-                            }
-                            else {
-                                Actions()->UnitCommand(battlecruiser, ABILITY_ID::EFFECT_TACTICALJUMP, enemy_start_location);
-                            }
-                        }
-
-                        else {
-                            Retreat(battlecruiser);
-                            return;
-                        }
-                    }
-                }
             }
-
         }
         // Do not kite if the total threat level is below the threshold
         else {
-
-            // Retreat if the Battlecruiser is below 100 health and the total threat level is above 2
-            if ((battlecruiser->health <= 150.0f && total_threat >= 2)) {
+			// Retreat Immediately if the Battlecruiser is below 150 health
+            if ((battlecruiser->health <= 150.0f)) {
                 Retreat(battlecruiser);
                 return;
             }
-			// Retreat Immediately if the Battlecruiser is below 80 health
-            else if ((battlecruiser->health <= 80.0f)) {
-                Retreat(battlecruiser);
-                return;
+
+			UseYamatoCannon(battlecruiser, Observation()->GetUnits(Unit::Alliance::Enemy), yamato_targets);
+
+			// Calculate turret status
+            const Unit* turret_nearest = nullptr;
+            float min_distance = max_distance;
+            int num_turrets = 0;
+
+            for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
+                if (std::find(turret_types.begin(), turret_types.end(), enemy_unit->unit_type) != turret_types.end()) {
+                    num_turrets++;
+                    float distance = Distance2D(battlecruiser->pos, enemy_unit->pos);
+                    if (distance < min_distance) {
+                        if (!enemy_unit->is_alive) {
+                            continue;
+                        }
+                        turret_nearest = enemy_unit;
+                    }
+                }
             }
 
             // 1st Priority -> Attacking enemy units
             for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
                 auto threat = threat_levels.find(enemy_unit->unit_type);
                 if (threat != threat_levels.end()) {
-                    if (enemy_unit->unit_type != UNIT_TYPEID::ZERG_SPORECRAWLER &&
-                        enemy_unit->unit_type != UNIT_TYPEID::TERRAN_MISSILETURRET &&
-                        enemy_unit->unit_type != UNIT_TYPEID::PROTOSS_PHOTONCANNON) {
-                    
+                    if (enemy_unit->unit_type == UNIT_TYPEID::ZERG_SPORECRAWLER &&
+                        enemy_unit->unit_type == UNIT_TYPEID::TERRAN_MISSILETURRET &&
+                        enemy_unit->unit_type == UNIT_TYPEID::PROTOSS_PHOTONCANNON) {
+
+                        float distance = Distance2D(battlecruiser->pos, enemy_unit->pos);
+                        if (distance < min_distance || (distance == min_distance && enemy_unit->health < min_hp)) {
+                            if (!enemy_unit->is_alive || distance > max_distace_for_target) {
+                                continue;
+                            }
+                            if (num_turrets <= 2 * num_battlecruisers_in_combat && 
+                                total_threat - (3 * num_turrets) == 0) {
+                                min_distance = distance;
+                                min_hp = enemy_unit->health;
+                                target = enemy_unit;
+                            }
+                        }
+                    }
+                    else {
                         float distance = Distance2D(battlecruiser->pos, enemy_unit->pos);
                         if (distance < min_distance || (distance == min_distance && enemy_unit->health < min_hp)) {
                             if (!enemy_unit->is_alive || distance > max_distace_for_target) {
@@ -308,9 +285,7 @@ void BasicSc2Bot::Target() {
                             min_distance = distance;
                             min_hp = enemy_unit->health;
                             target = enemy_unit;
-
                         }
-
                     }
                 }
             }
@@ -337,7 +312,7 @@ void BasicSc2Bot::Target() {
                 for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
                     if (std::find(turret_types.begin(), turret_types.end(), enemy_unit->unit_type) != turret_types.end()) {
                         float distance = Distance2D(battlecruiser->pos, enemy_unit->pos);
-                        if (distance < min_distance || (distance == min_distance && enemy_unit->health < min_hp)) {
+                        if (enemy_unit->health < min_hp || (enemy_unit->health == min_hp && distance < min_distance)) {
                             if (!enemy_unit->is_alive || distance > max_distace_for_target) {
                                 continue;
                             }
@@ -413,36 +388,16 @@ void BasicSc2Bot::Target() {
                 }
             }
             // Attack the selected target
-            if (target && target->is_alive && target->NotCloaked) {
-				// Check if the turret is nearby
-                const Unit* turret_nearest = nullptr;
-                float min_distance = max_distance;
-
-				int num_turrets = 0;
-
-                for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
-                    if (std::find(turret_types.begin(), turret_types.end(), enemy_unit->unit_type) != turret_types.end()) {
-						num_turrets++;
-                        float distance = Distance2D(battlecruiser->pos, enemy_unit->pos);
-                        if (distance < min_distance) {
-                            if (!enemy_unit->is_alive) {
-                                continue;
-                            }
-                            turret_nearest = enemy_unit;
-                        }
-                    }
-                }
-                
+            if (target && target->NotCloaked) {
 				// No turret nearby or turret is the target or there are only turrets in threat radius -> Attack
                 if (turret_nearest == nullptr || 
-                    std::find(turret_types.begin(), turret_types.end(), target->unit_type) != turret_types.end() ||
-                    (total_threat - (3 * num_turrets) == 0)) {
-                    Actions()->UnitCommand(battlecruiser, ABILITY_ID::ATTACK_ATTACK, target);
+                    std::find(turret_types.begin(), turret_types.end(), target->unit_type) != turret_types.end()) {
+                    Actions()->UnitCommand(battlecruiser, ABILITY_ID::MOVE_MOVE, target);
 				}
                 else {
 					// Turret exists but far away from the Battlecruiser -> Attack the target
                     if (Distance2D(battlecruiser->pos, turret_nearest->pos) >= 10.0f) {
-                        Actions()->UnitCommand(battlecruiser, ABILITY_ID::ATTACK_ATTACK, target);
+                        Actions()->UnitCommand(battlecruiser, ABILITY_ID::MOVE_MOVE, target);
                     }
 					// Turret exists and near Battlecruiser -> Kite to safe position
                     else {
@@ -481,9 +436,9 @@ void BasicSc2Bot::Target() {
 
                         // Define weights for combining directions
                         // Weight for kiting direction
-                        float kite_weight = 0.3f;
+                        float kite_weight = 0.5f;
                         // Weight for avoiding enemy vertex
-                        float avoidance_weight = 0.7f;
+                        float avoidance_weight = 0.5f;
 
                         // Combine directions to get the final direction
                         Point2D final_direction = (kite_direction * kite_weight) + (avoidance_direction * avoidance_weight);
@@ -504,23 +459,19 @@ void BasicSc2Bot::Target() {
             }
             // No target
             else {
-                auto abilities = Query()->GetAbilitiesForUnit(battlecruiser);
-                bool tactical_jump_available = false;
-
-                for (const auto& ability : abilities.abilities) {
-                    if (ability.ability_id == ABILITY_ID::EFFECT_TACTICALJUMP) {
-                        tactical_jump_available = true;
-                        break;
-                    }
-                }
-
-
                 if (battlecruiser->health >= 500.0f) {
                     if (Distance2D(battlecruiser->pos, enemy_start_location) < 40.0f) {
                         Retreat(battlecruiser);
                         return;
                     }
                     else {
+                        // Check if any Battlecruiser is still retreating
+                        for (const auto& unit : Observation()->GetUnits(Unit::Alliance::Self)) {
+                            if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER && battlecruiser_retreating[unit]) {
+                                // Wait until all retreating Battlecruisers finish their retreat
+                                return;
+                            }
+                        }
                         Actions()->UnitCommand(battlecruiser, ABILITY_ID::EFFECT_TACTICALJUMP, enemy_start_location);
                     }
                 }
@@ -533,14 +484,12 @@ void BasicSc2Bot::Target() {
     }
 }
 
-
 void BasicSc2Bot::Retreat(const Unit* unit) {
 
     if (unit == nullptr) {
         return;
     }
 
-    Point2D retreat_location(start_location.x + 5.0f, start_location.y);
     battlecruiser_retreat_location[unit] = retreat_location;
     battlecruiser_retreating[unit] = true;
     Actions()->UnitCommand(unit, ABILITY_ID::MOVE_MOVE, retreat_location);
@@ -551,17 +500,93 @@ void BasicSc2Bot::RetreatCheck() {
     const float arrival_threshold = 5.0f;
 
     for (const auto& battlecruiser : Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BATTLECRUISER))) {
-        // Get the Battlecruiser's specific retreat location
-        if (battlecruiser_retreating[battlecruiser]) {
-            Point2D retreat_location = battlecruiser_retreat_location[battlecruiser];
-
-            // Check if it has reached its retreat location and in full health
-            if (Distance2D(battlecruiser->pos, retreat_location) <= arrival_threshold) {
-                if (battlecruiser->orders.empty() && battlecruiser->health >= battlecruiser->health_max) {
-                    battlecruiser_retreating[battlecruiser] = false;
-                    battlecruiser_retreat_location.erase(battlecruiser);
-                }
-            }
+		// Check if the Battlecruiser has reached the retreat location
+        if (battlecruiser_retreating[battlecruiser] &&
+            Distance2D(battlecruiser->pos, retreat_location) <= arrival_threshold &&
+            battlecruiser->health >= 550.0f) {
+            battlecruiser_retreat_location.erase(battlecruiser);
+            battlecruiser_retreating[battlecruiser] = false;
         }
+    }
+}
+
+void BasicSc2Bot::UseYamatoCannon(const Unit* battlecruiser, const Units& enemy_units, std::set<Tag>& yamato_targets) {
+
+    // Skip if Yamato Cannon is not available
+    if (!HasAbility(battlecruiser, ABILITY_ID::EFFECT_YAMATOGUN)) {
+        return; 
+    }
+
+    const int yamato_damage = 240;       // Yamato Cannon damage
+    const float yamato_range = 10.0f;    // Yamato Cannon range
+    const int low_health_threshold = 80; // Skip units with low health
+
+    const Unit* target = nullptr;
+    int highest_priority = 0;            
+    int oneshot = std::numeric_limits<int>::max(); 
+
+    for (const auto& enemy_unit : enemy_units) {
+        // Skip already targeted units
+        if (yamato_targets.find(enemy_unit->tag) != yamato_targets.end()) {
+            continue;
+        }
+
+        // Skip if the unit is dead or has very low health
+        if (!enemy_unit->is_alive || enemy_unit->health < low_health_threshold) {
+            continue;
+        }
+
+        // Check if the unit is within Yamato Cannon range
+        if (Distance2D(battlecruiser->pos, enemy_unit->pos) > yamato_range) {
+            continue;
+        }
+
+        // Determine threat level of the enemy unit
+        auto threat = threat_levels.find(enemy_unit->unit_type);
+        if (threat == threat_levels.end()) {
+            continue; 
+        }
+        int threat_level = threat->second;
+
+        // Exclude low value units
+        if (enemy_unit->unit_type == UNIT_TYPEID::TERRAN_MARINE ||
+            enemy_unit->unit_type == UNIT_TYPEID::ZERG_HYDRALISK ||
+			enemy_unit->unit_type == UNIT_TYPEID::PROTOSS_SENTRY ||
+			enemy_unit->unit_type == UNIT_TYPEID::ZERG_MUTALISK ||
+			enemy_unit->unit_type == UNIT_TYPEID::ZERG_RAVAGER ||
+            enemy_unit->unit_type == UNIT_TYPEID::TERRAN_GHOST) {
+            continue;
+        }
+
+        // Prioritize turrets and queens (if they are not low health)
+        bool is_high_value_target =
+            enemy_unit->unit_type == UNIT_TYPEID::TERRAN_MISSILETURRET ||
+            enemy_unit->unit_type == UNIT_TYPEID::PROTOSS_PHOTONCANNON ||
+            enemy_unit->unit_type == UNIT_TYPEID::ZERG_SPORECRAWLER ||
+            enemy_unit->unit_type == UNIT_TYPEID::ZERG_QUEEN;
+
+        // Immediately target high-value units
+        if (is_high_value_target && enemy_unit->health > low_health_threshold) {
+            target = enemy_unit;
+            break; 
+        }
+
+        // For other units, calculate how close the health is to Yamato Cannon's damage
+        int hp_difference = std::abs(static_cast<int>(enemy_unit->health) - yamato_damage);
+
+        // Prioritize:
+        // 1. Units closest to Yamato damage (one-shottable).
+        // 2. Among equally one-shottable units, prefer those with higher threat levels.
+        if (hp_difference < oneshot || (hp_difference == oneshot && threat_level > highest_priority)) {
+            oneshot = hp_difference;
+            highest_priority = threat_level;
+            target = enemy_unit;
+        }
+    }
+
+    // If a valid target is found, use Yamato Cannon and mark the target
+    if (target) {
+        Actions()->UnitCommand(battlecruiser, ABILITY_ID::EFFECT_YAMATOGUN, target);
+        yamato_targets.insert(target->tag);
     }
 }
