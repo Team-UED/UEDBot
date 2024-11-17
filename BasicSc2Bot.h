@@ -248,7 +248,7 @@ private:
     void RetreatCheck();
     
 	// Targets unit for Battlecruisers to use Yamato Cannon
-	void BasicSc2Bot::UseYamatoCannon(const Unit* battlecruiser, const Units& enemy_units, std::set<Tag>& yamato_targets);
+	void UseYamatoCannon(const Unit* battlecruiser, const Units& enemy_units, std::set<Tag>& yamato_targets);
 
     // Controls Siege Tanks (abilities, targeting, positioning).
     void ControlSiegeTanks();
@@ -526,7 +526,7 @@ private:
     };
 
     // Maps UPGRADE_ID to ABILITY_ID
-    ABILITY_ID BasicSc2Bot::GetAbilityForUpgrade(UPGRADE_ID upgrade_id) {
+    ABILITY_ID GetAbilityForUpgrade(UPGRADE_ID upgrade_id) {
         switch (upgrade_id) {
         case UPGRADE_ID::TERRANVEHICLEANDSHIPARMORSLEVEL1:
             return ABILITY_ID::RESEARCH_TERRANVEHICLEANDSHIPPLATINGLEVEL1;
