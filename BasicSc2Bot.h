@@ -229,8 +229,6 @@ private:
     // Updates SCV scouting status
     void UpdateSCVScouting();
 
-    // Controls Marines with micro (kiting, focus fire).
-    void ControlMarines();
 
     // Controls Battlecruisers (abilities, targeting, positioning).
     void ControlBattlecruisers();
@@ -239,7 +237,7 @@ private:
     void Jump();
 
     // Controls Battlecruisers to target enemy units
-    void Target();
+    void TargetBattlecruisers();
 
     // Controls Battlecruisers to retreat
     void Retreat(const Unit* unit);
@@ -255,6 +253,18 @@ private:
 
 	// Controls Siege Tanks (temp)
 	void SiegeMode();
+
+    // Controls SiegeTanks to target enemy units
+    void TargetSiegeTank();
+
+    // Controls Marines with micro (kiting, focus fire).
+    void ControlMarines();
+
+    // Controls Marines to target enemy units
+	void TargetMarines();
+
+	// Use stimpack ability for Marines
+    void UseStimPack(const Unit* marine);
 
     // SCV that is scouting
     const sc2::Unit* scv_scout;
