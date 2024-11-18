@@ -163,12 +163,6 @@ private:
 	// Tracks if train of the first battlecruiser is in progress
     bool first_battlecruiser;
 
-	// Retreating flag
-    std::unordered_map<const Unit*, bool> battlecruiser_retreating;
-
-	// Retreating location
-    std::unordered_map<const Unit*, Point2D> battlecruiser_retreat_location;
-
     // =========================
     // Defense Management
     // =========================
@@ -228,7 +222,6 @@ private:
 
     // Updates SCV scouting status
     void UpdateSCVScouting();
-
 
     // Controls Battlecruisers (abilities, targeting, positioning).
     void ControlBattlecruisers();
@@ -302,6 +295,15 @@ private:
 
 	// Corners adjacent to enemy base corner
     std::vector<Point2D> enemy_adjacent_corners;
+
+    // Retreating flag
+    std::unordered_map<const Unit*, bool> battlecruiser_retreating;
+
+    // Retreating location
+    std::unordered_map<const Unit*, Point2D> battlecruiser_retreat_location;
+
+    // Moving flag
+    std::unordered_map<const Unit*, bool> unit_moving;
 
     // =========================
     // Helper Methods
