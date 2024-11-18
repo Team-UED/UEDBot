@@ -1,7 +1,7 @@
 
 std::string kDefaultMap = "BelshirVestigeLE.SC2Map";
 
-static sc2::Difficulty GetDifficultyFromString(const std::string &InDifficulty)
+static sc2::Difficulty GetDifficultyFromString(const std::string& InDifficulty)
 {
 	if (InDifficulty == "VeryEasy")
 	{
@@ -23,31 +23,31 @@ static sc2::Difficulty GetDifficultyFromString(const std::string &InDifficulty)
 	{
 		return sc2::Difficulty::Hard;
 	}
-if (InDifficulty == "HardVeryHard")
-{
-	return sc2::Difficulty::HardVeryHard;
-}
-if (InDifficulty == "VeryHard")
-{
-	return sc2::Difficulty::VeryHard;
-}
-if (InDifficulty == "CheatVision")
-{
-	return sc2::Difficulty::CheatVision;
-}
-if (InDifficulty == "CheatMoney")
-{
-	return sc2::Difficulty::CheatMoney;
-}
-if (InDifficulty == "CheatInsane")
-{
-	return sc2::Difficulty::CheatInsane;
+	if (InDifficulty == "HardVeryHard")
+	{
+		return sc2::Difficulty::HardVeryHard;
+	}
+	if (InDifficulty == "VeryHard")
+	{
+		return sc2::Difficulty::VeryHard;
+	}
+	if (InDifficulty == "CheatVision")
+	{
+		return sc2::Difficulty::CheatVision;
+	}
+	if (InDifficulty == "CheatMoney")
+	{
+		return sc2::Difficulty::CheatMoney;
+	}
+	if (InDifficulty == "CheatInsane")
+	{
+		return sc2::Difficulty::CheatInsane;
+	}
+
+	return sc2::Difficulty::Easy;
 }
 
-return sc2::Difficulty::Easy;
-}
-
-static sc2::Race GetRaceFromString(const std::string & RaceIn)
+static sc2::Race GetRaceFromString(const std::string& RaceIn)
 {
 	std::string race(RaceIn);
 	std::transform(race.begin(), race.end(), race.begin(), ::tolower);
@@ -84,7 +84,7 @@ struct ConnectionOptions
 	std::string Map;
 };
 
-static void ParseArguments(int argc, char *argv[], ConnectionOptions &connect_options)
+static void ParseArguments(int argc, char* argv[], ConnectionOptions& connect_options)
 {
 	sc2::ArgParser arg_parser(argv[0]);
 	arg_parser.AddOptions({
@@ -137,13 +137,12 @@ static void ParseArguments(int argc, char *argv[], ConnectionOptions &connect_op
 	arg_parser.Get("OpponentId", connect_options.OpponentId);
 }
 
-static void RunBot(int argc, char *argv[], sc2::Agent *Agent, sc2::Race race)
+static void RunBot(int argc, char* argv[], sc2::Agent* Agent, sc2::Race race)
 {
 	ConnectionOptions Options;
 	ParseArguments(argc, argv, Options);
 
 	sc2::Coordinator coordinator;
-
 	int num_agents;
 	if (Options.ComputerOpponent) {
 		num_agents = 1;
@@ -152,6 +151,8 @@ static void RunBot(int argc, char *argv[], sc2::Agent *Agent, sc2::Race race)
 			CreateComputer(Options.ComputerRace, Options.ComputerDifficulty)
 			});
 		coordinator.LoadSettings(1, argv);
+		// added
+		coordinator.SetRealtime(true);
 		coordinator.LaunchStarcraft();
 		coordinator.StartGame(Options.Map);
 	}
