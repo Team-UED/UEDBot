@@ -238,7 +238,9 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) {
     }
     if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER) {
 		num_battlecruisers--;
-        battlecruiser_retreating[unit] = false;
+        if (battlecruiser_retreating[unit]) {
+            battlecruiser_retreating[unit] = false;
+        }
     }
     if (unit->unit_type == UNIT_TYPEID::TERRAN_MARINE) {
 		num_marines--;
