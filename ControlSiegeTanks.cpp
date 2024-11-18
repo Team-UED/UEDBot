@@ -9,7 +9,7 @@ void BasicSc2Bot::ControlSiegeTanks() {
 }
 
 void BasicSc2Bot::SiegeMode() {
-    const float enemy_detection_radius = 15.0f;
+    const float enemy_detection_radius = 14.0f;
 
     // Get all Siege Tanks that belong to the bot
     const Units siege_tanks = Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SIEGETANK));
@@ -19,11 +19,16 @@ void BasicSc2Bot::SiegeMode() {
         return;
     }
 
-
     for (const auto& tank : siege_tanks) {
         bool enemy_nearby = false;
         // Check for nearby enemies within the detection radius
         for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
+
+            // Skip trivial and worker units
+            if (IsTrivialUnit(enemy_unit) || IsWorkerUnit(enemy_unit)) {
+                continue;
+            }
+
             float distance_to_enemy = Distance2D(tank->pos, enemy_unit->pos);
 
             if (distance_to_enemy <= enemy_detection_radius) {
@@ -41,6 +46,7 @@ void BasicSc2Bot::SiegeMode() {
         bool enemy_nearby = false;
         // Check for nearby enemies within the detection radius
         for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
+
             float distance_to_enemy = Distance2D(tank->pos, enemy_unit->pos);
 
             if (distance_to_enemy <= enemy_detection_radius) {
