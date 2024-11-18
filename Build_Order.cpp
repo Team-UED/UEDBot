@@ -32,6 +32,9 @@ void BasicSc2Bot::BuildBarracks() {
 	if (barracks.empty() && observation->GetMinerals() >= 150) {
 		TryBuildStructure(ABILITY_ID::BUILD_BARRACKS, UNIT_TYPEID::TERRAN_SCV);
 	}
+	else if(barracks.size() == 1 && observation->GetMinerals() >= 150){
+		TryBuildStructure(ABILITY_ID::BUILD_BARRACKS, UNIT_TYPEID::TERRAN_SCV);
+	}
 }
 
 // Build Engineering bay if we have a Barrack and enough resources

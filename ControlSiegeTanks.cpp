@@ -2,9 +2,10 @@
 
 using namespace sc2;
 
-// Main function to control SCVs
+// Main function to control Siege Tanks
 void BasicSc2Bot::ControlSiegeTanks() {
     SiegeMode();
+	TargetSiegeTank();
 }
 
 void BasicSc2Bot::SiegeMode() {
@@ -52,4 +53,7 @@ void BasicSc2Bot::SiegeMode() {
             Actions()->UnitCommand(tank, ABILITY_ID::MORPH_UNSIEGE);
         }
     }
+}
+
+void BasicSc2Bot::TargetSiegeTank() {
 }

@@ -6,7 +6,7 @@ using namespace sc2;
 // Main function to control Battlecruisers
 void BasicSc2Bot::ControlBattlecruisers() {
 	Jump();
-	Target();
+	TargetBattlecruisers();
     RetreatCheck();
 }
 
@@ -41,7 +41,7 @@ void BasicSc2Bot::Jump() {
 
 
 /// Target enemy units based on threat levels
-void BasicSc2Bot::Target() {
+void BasicSc2Bot::TargetBattlecruisers() {
 
     // Detect radius for Battlecruisers
     const float defense_check_radius = 14.0f;
