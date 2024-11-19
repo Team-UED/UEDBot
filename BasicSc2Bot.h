@@ -514,6 +514,44 @@ private:
         {sc2::UNIT_TYPEID::ZERG_SPORECRAWLER, 3}
     };
 
+   
+    bool IsFriendlyStructure(const Unit& unit) const {
+        switch (unit.unit_type.ToType()) {
+        case UNIT_TYPEID::TERRAN_COMMANDCENTER:
+            return true;
+        case UNIT_TYPEID::TERRAN_ORBITALCOMMAND:
+            return true;
+        case UNIT_TYPEID::TERRAN_PLANETARYFORTRESS:
+            return true;
+        case UNIT_TYPEID::TERRAN_BARRACKS:
+            return true;
+        case UNIT_TYPEID::TERRAN_FACTORY:
+            return true;
+        case UNIT_TYPEID::TERRAN_STARPORT:
+            return true;
+        case UNIT_TYPEID::TERRAN_ENGINEERINGBAY:
+            return true;
+        case UNIT_TYPEID::TERRAN_ARMORY:
+            return true;
+        case UNIT_TYPEID::TERRAN_FUSIONCORE:
+            return true;
+        case UNIT_TYPEID::TERRAN_MISSILETURRET:
+            return true;
+        case UNIT_TYPEID::TERRAN_BUNKER:
+            return true;
+        case UNIT_TYPEID::TERRAN_TECHLAB:
+            return true;
+        case UNIT_TYPEID::TERRAN_FACTORYTECHLAB:
+            return true;
+		case UNIT_TYPEID::TERRAN_STARPORTTECHLAB:
+            return true;
+		case UNIT_TYPEID::TERRAN_BARRACKSTECHLAB:
+            return true;
+        default:
+            return false;
+        }
+    }
+
     // Turret types
     std::vector<UNIT_TYPEID> turret_types = {
             UNIT_TYPEID::TERRAN_MISSILETURRET,
@@ -546,18 +584,6 @@ private:
             return ABILITY_ID::RESEARCH_TERRANVEHICLEANDSHIPPLATINGLEVEL2;
         case UPGRADE_ID::TERRANVEHICLEANDSHIPARMORSLEVEL3:
             return ABILITY_ID::RESEARCH_TERRANVEHICLEANDSHIPPLATINGLEVEL3;
-        case UPGRADE_ID::TERRANSHIPWEAPONSLEVEL1:
-            return ABILITY_ID::RESEARCH_TERRANSHIPWEAPONSLEVEL1;
-        case UPGRADE_ID::TERRANSHIPWEAPONSLEVEL2:
-            return ABILITY_ID::RESEARCH_TERRANSHIPWEAPONSLEVEL2;
-        case UPGRADE_ID::TERRANSHIPWEAPONSLEVEL3:
-            return ABILITY_ID::RESEARCH_TERRANSHIPWEAPONSLEVEL3;
-        case UPGRADE_ID::TERRANVEHICLEWEAPONSLEVEL1:
-            return ABILITY_ID::RESEARCH_TERRANVEHICLEWEAPONSLEVEL1;
-        case UPGRADE_ID::TERRANVEHICLEWEAPONSLEVEL2:
-            return ABILITY_ID::RESEARCH_TERRANVEHICLEWEAPONSLEVEL2;
-        case UPGRADE_ID::TERRANVEHICLEWEAPONSLEVEL3:
-            return ABILITY_ID::RESEARCH_TERRANVEHICLEWEAPONSLEVEL3;
         default:
             return ABILITY_ID::INVALID;
         }

@@ -44,7 +44,7 @@ void BasicSc2Bot::BuildEngineeringBay() {
 	Units starports = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_STARPORT));
 
 	// Can't build Engineering bay without Barracks
-	if (barracks.empty()) {
+	if (barracks.empty() || !first_battlecruiser) {
 		return;
 	}
 
@@ -59,14 +59,12 @@ void BasicSc2Bot::BuildEngineeringBay() {
 void BasicSc2Bot::BuildOrbitalCommand() {
 	const ObservationInterface* observation = Observation();
 
-	// Get Engineering bays
-	Units engineeringbays = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_ENGINEERINGBAY));
-	// Get Fusion core
-	Units fusioncore = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FUSIONCORE));
-	// Can't build Orbital Command without Engineering bay
-	// Set Fusioncore as prerequisite for resource management
+	// Get Barracks and Factories
+	Units barracks = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKS));
+	Units factories = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FACTORY));
 
-	if (engineeringbays.empty() && fusioncore.empty()) {
+	// Can't build Orbital Command without Barracks or Factories
+	if (barracks.empty() || factories.empty()) {
 		return; 
 	}
 
@@ -262,15 +260,12 @@ void BasicSc2Bot::BuildFusionCore() {
 void BasicSc2Bot::BuildArmory() {
 	const ObservationInterface* observation = Observation();
 
-	// Get Fusion cores
-	Units fusioncores = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FUSIONCORE));
-	
-	// Can't build fusion core without Starports
-	if (fusioncores.empty()) {
+	// Can't build Armory core without the First Battlecruiser
+	if (!first_battlecruiser) {
 		return;
-	}
+	}	
 
-	// Build only 1 Fusion core
+	// Build only 1 Armory
 	Units armories = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_ARMORY));
 	if (armories.empty() && (observation->GetMinerals() >= 150 && observation->GetVespene() >= 50)) {
 		TryBuildStructure(ABILITY_ID::BUILD_ARMORY, UNIT_TYPEID::TERRAN_SCV);
