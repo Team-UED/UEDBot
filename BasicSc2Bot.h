@@ -389,6 +389,12 @@ private:
 
     void MoveToEnemy(const Units &marines, const Units &siege_tanks);
 
+    // Count units in combat
+    int UnitsInCombat(UNIT_TYPEID unit_type);
+
+    // Calculates the threat level of enemy units
+    int CalculateThreatLevel(const Unit* unit);
+
 
     // =========================
     // Member Variables
@@ -573,6 +579,28 @@ private:
                         UNIT_TYPEID::TERRAN_SUPPLYDEPOT,
                         UNIT_TYPEID::TERRAN_SUPPLYDEPOTLOWERED,
                         UNIT_TYPEID::PROTOSS_PYLON
+    };
+
+    // Heavy armored units
+    std::vector<UNIT_TYPEID> heavy_armor_units = {
+		sc2::UNIT_TYPEID::TERRAN_MARAUDER,
+        sc2::UNIT_TYPEID::TERRAN_CYCLONE,
+        sc2::UNIT_TYPEID::TERRAN_SIEGETANK,
+        sc2::UNIT_TYPEID::TERRAN_THOR,
+        sc2::UNIT_TYPEID::TERRAN_BUNKER,
+        sc2::UNIT_TYPEID::PROTOSS_STALKER,
+        sc2::UNIT_TYPEID::PROTOSS_IMMORTAL,
+		sc2::UNIT_TYPEID::PROTOSS_DISRUPTOR,
+        sc2::UNIT_TYPEID::PROTOSS_COLOSSUS,
+		sc2::UNIT_TYPEID::ZERG_ROACH,
+		sc2::UNIT_TYPEID::ZERG_ROACHBURROWED,
+		sc2::UNIT_TYPEID::ZERG_RAVAGER,
+        sc2::UNIT_TYPEID::ZERG_SWARMHOSTMP,
+		sc2::UNIT_TYPEID::ZERG_SWARMHOSTBURROWEDMP,
+		sc2::UNIT_TYPEID::ZERG_LURKERMP,
+		sc2::UNIT_TYPEID::ZERG_LURKERDENMP,
+        sc2::UNIT_TYPEID::ZERG_ULTRALISK,   
+        sc2::UNIT_TYPEID::ZERG_ULTRALISKBURROWED
     };
 
     // Maps UPGRADE_ID to ABILITY_ID
