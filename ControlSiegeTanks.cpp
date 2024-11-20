@@ -9,9 +9,10 @@ void BasicSc2Bot::ControlSiegeTanks() {
 }
 
 void BasicSc2Bot::SiegeMode() {
-    const float enemy_detection_radius = 14.0f;
 
-    // Get all Siege Tanks that belong to the bot
+    const float enemy_detection_radius = 13.0f;
+
+    // Get all Siege Tanks
     const Units siege_tanks = Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SIEGETANK));
     const Units siege_tanks_sieged = Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SIEGETANKSIEGED));
 
@@ -62,4 +63,68 @@ void BasicSc2Bot::SiegeMode() {
 }
 
 void BasicSc2Bot::TargetSiegeTank() {
+
+    // Get all Siege Tanks
+    const Units siege_tanks_sieged = Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SIEGETANKSIEGED));
+
+    if (siege_tanks_sieged.empty()) {
+        return;
+    }
+
+    for (const auto& siege_tank : siege_tanks_sieged) {
+
+        // Initialize variables to find the best target
+        const Unit* best_target = nullptr;
+        float best_score = -1.0f;
+
+        // Get all enemy units
+        for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
+            // Skip invalid or dead units
+
+            if (!enemy_unit || !enemy_unit->is_alive) {
+                continue;
+            }
+
+            // Calculate priority score for this enemy
+            float score = 0.0f;
+
+            // 1. Priority: Heavy Armor (e.g., Stalkers, Marauiders...etc)
+            if (std::find(heavy_armor_units.begin(), heavy_armor_units.end(), enemy_unit->unit_type) != heavy_armor_units.end()) {
+                score += 200.0f;
+            }
+
+            // 2. Priority: Packed Enemies (AOE Potential)
+            int packed_count = 0;
+
+            for (const auto& nearby_enemy : Observation()->GetUnits(Unit::Alliance::Enemy)) {
+                if (nearby_enemy != enemy_unit && Distance2D(enemy_unit->pos, nearby_enemy->pos) < 1.25f) {
+                    packed_count++;
+                }
+
+            }
+            // Add 10 points for each nearby enemy
+            score += packed_count * 10.0f; 
+
+
+			// 3. Priority: Enemies close to one-shot
+            // Tank damage is 40
+            float health_difference = std::abs((enemy_unit->health + enemy_unit->shield) - 40.0f);
+            score += 200.0f / (health_difference + 1.0f);
+
+            // 4. The Rest (Prefer closer targets)
+            score += 1.0f / (Distance2D(siege_tank->pos, enemy_unit->pos) + 1.0f); 
+
+            // Update best target based on score
+            if (score > best_score) {
+                best_score = score;
+                best_target = enemy_unit;
+            }
+        }
+
+        // Issue attack command if a valid target is found
+        if (best_target) {
+            Actions()->UnitCommand(siege_tank, ABILITY_ID::ATTACK, best_target);
+        }
+    }
+ 
 }

@@ -401,3 +401,61 @@ bool BasicSc2Bot::HasAbility(const Unit* unit, AbilityID ability_id) {
     }
     return false;
 }
+
+int BasicSc2Bot::UnitsInCombat(UNIT_TYPEID unit_type) {
+    int num_unit = 0;
+
+    // Get all units of the specified type
+    for (const auto& unit : Observation()->GetUnits(Unit::Alliance::Self, IsUnit(unit_type))) {
+        
+        bool is_near_enemy = false;
+
+        // Check proximity to enemy units
+        for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
+
+            // Do not count trivial units
+            if (IsTrivialUnit(enemy_unit)) {
+                continue;
+            }
+
+            float distance_to_enemy = Distance2D(unit->pos, enemy_unit->pos);
+            if (distance_to_enemy <= 15.0f) {
+                is_near_enemy = true;
+                break;
+            }
+        }
+
+        // Count unit if it is near at least one enemy
+        if (is_near_enemy) {
+            num_unit++;
+        }
+    }
+
+    return num_unit;
+}
+
+int BasicSc2Bot::CalculateThreatLevel(const Unit* unit) {
+
+	if (!unit) {
+		return 0;
+	}
+
+	int threat_level = 0;
+
+    // Detect radius for Battlecruisers
+    const float defense_check_radius = 14.0f;
+
+    for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
+        auto threat = threat_levels.find(enemy_unit->unit_type);
+
+        if (threat != threat_levels.end()) {
+            float distance = Distance2D(unit->pos, enemy_unit->pos);
+
+            if (distance < defense_check_radius) {
+                threat_level += threat->second;
+            }
+        }
+    }
+
+    return threat_level;
+}
