@@ -42,16 +42,15 @@ BasicSc2Bot::BasicSc2Bot()
 void BasicSc2Bot::OnGameStart() {
 	// Initialize start locations, expansion locations, chokepoints, etc.
 
-	// find ramps
-	find_ramps();
-
-
 	start_location = Observation()->GetStartLocation();
 	enemy_start_locations = Observation()->GetGameInfo().enemy_start_locations;
 	if (!enemy_start_locations.empty()) {
 		enemy_start_location = enemy_start_locations[0];
 	}
 	expansion_locations = search::CalculateExpansionLocations(Observation(), Query());
+
+	// find ramps
+	find_right_ramp(start_location);
 
 	// Initialize base
 	Units command_centers = Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_COMMANDCENTER));

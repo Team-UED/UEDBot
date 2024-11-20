@@ -393,7 +393,7 @@ private:
 
 	std::vector<Point2D> upper2_for_ramp_wall(const std::vector<Point2D>& points) const;
 
-	Point2D depot_in_middle(const std::vector<Point2D>& points, const std::vector<Point2D>& upper2) const;
+	Point2D depot_barrack_in_middle(const std::vector<Point2D>& points, const std::vector<Point2D>& upper2, const bool isdepot) const;
 
 	std::vector<Point2D> corner_depots(const std::vector<Point2D>& points) const;
 
@@ -401,13 +401,11 @@ private:
 
 	void find_right_ramp(const Point2D& location);
 
-	Point2D barracks_in_middle() const;
+	bool barracks_can_fit_addon(const Point2D& barrack_point) const;
 
-	bool barracks_can_fit_addon() const;
+	Point2D barracks_correct_placement(const std::vector<Point2D>& ramp_points, const std::vector<Point2D>& corner_depots) const;
 
-	Point2D barracks_correct_placement() const;
-
-
+	void depot_control();
 	// =========================
 	// Member Variables
 	// =========================
@@ -466,6 +464,9 @@ private:
 
 	// Chokepoint locations.
 	std::vector<std::vector<sc2::Point2D>> ramps;
+	std::vector<sc2::Point2D> mainBase_depot_points;
+	sc2::Point2D mainBase_barrack_point;
+
 
 	// Enemy strategy detected.
 	enum class EnemyStrategy {
