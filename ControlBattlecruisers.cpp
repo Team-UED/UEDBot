@@ -6,7 +6,7 @@ using namespace sc2;
 // Main function to control Battlecruisers
 void BasicSc2Bot::ControlBattlecruisers() {
 	Jump();
-	Target();
+	TargetBattlecruisers();
     RetreatCheck();
 }
 
@@ -26,7 +26,6 @@ void BasicSc2Bot::Jump() {
         }
     }
 
-    
     // No retreating Battlecruisers, proceed with Tactical Jump logic
     for (const auto& unit : Observation()->GetUnits(Unit::Alliance::Self)) {
         // Check if the unit is a Battlecruiser with full health and not retreating
@@ -41,10 +40,13 @@ void BasicSc2Bot::Jump() {
 
 
 /// Target enemy units based on threat levels
-void BasicSc2Bot::Target() {
+void BasicSc2Bot::TargetBattlecruisers() {
 
     // Detect radius for Battlecruisers
     const float defense_check_radius = 14.0f;
+
+    // Max check radius for enemy threats
+    const float maximum_check_radius = 20.0f;
 
 	// Maximum distance to consider for targetting
 	const float max_distace_for_target = 40.0f;
@@ -58,29 +60,7 @@ void BasicSc2Bot::Target() {
     }
 
     // Number of Battlecruisers in combat
-    int num_battlecruisers_in_combat = 0;
-
-    for (const auto& battlecruiser : Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BATTLECRUISER))) {
-        bool is_near_enemy = false;
-        for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
-            
-			// Only count combat units as enemies
-            if (IsWorkerUnit(enemy_unit) || IsTrivialUnit(enemy_unit)) {
-                continue; 
-            }
-
-            float distance_to_enemy = Distance2D(battlecruiser->pos, enemy_unit->pos);
-            if (distance_to_enemy <= 15.0f) {
-                is_near_enemy = true;
-                break;
-            }
-        }
-
-        // Only count Battlecruisers near at least one enemy unit
-        if (is_near_enemy) {
-            num_battlecruisers_in_combat++;
-        }
-    }
+	int num_battlecruisers_in_combat = UnitsInCombat(UNIT_TYPEID::TERRAN_BATTLECRUISER);
 
     // Threshold for "kiting" behavior
     const int threat_threshold = 10 * num_battlecruisers_in_combat;
@@ -88,6 +68,7 @@ void BasicSc2Bot::Target() {
     std::set<Tag> yamato_targets;
 
     for (const auto& battlecruiser : battlecruisers) {
+
         // Disables targetting while Jumping
         if (!battlecruiser->orders.empty()) {
             const AbilityID current_ability = battlecruiser->orders.front().ability_id;
@@ -96,25 +77,11 @@ void BasicSc2Bot::Target() {
             }
         }
 
-        int total_threat = 0;
+        int total_threat = CalculateThreatLevel(battlecruiser);
         const Unit* target = nullptr;
         constexpr float max_distance = std::numeric_limits<float>::max();
         float min_distance = max_distance;
         float min_hp = std::numeric_limits<float>::max();
-
-        // Dynamically set threat levels for enemy units
-        for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
-            auto threat = threat_levels.find(enemy_unit->unit_type);
-
-            if (threat != threat_levels.end()) {
-                float distance = Distance2D(battlecruiser->pos, enemy_unit->pos);
-
-                if (distance < defense_check_radius) {
-                    total_threat += threat->second;
-
-                }
-            }
-        }
 
         // Determine whether to retreat based on the threat level
         // retreat if the total threat level is above the threshold
