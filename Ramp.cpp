@@ -200,7 +200,6 @@ Point2D BasicSc2Bot::top_bottom_center(const std::vector<Point2D>& points, const
 
 std::vector<Point2D> BasicSc2Bot::upper2_for_ramp_wall(const std::vector<Point2D>& points) const
 {
-	std::vector<Point2D> upper2;
 	std::vector<Point2D> upper = upper_lower(points, true);
 	Point2D bottom_center = top_bottom_center(points, false);
 
@@ -208,16 +207,15 @@ std::vector<Point2D> BasicSc2Bot::upper2_for_ramp_wall(const std::vector<Point2D
 		[this, &bottom_center](const Point2D& a, const Point2D& b) {
 			return Distance2D(a, bottom_center) > Distance2D(b, bottom_center);
 		});
-
-	upper2 = { upper[0], upper[1] };
-	return upper2;
+	return { upper[0], upper[1] };
 }
 
-Point2D BasicSc2Bot::depot_in_middle(const std::vector<Point2D>& points, const std::vector<Point2D>& upper2) const
+Point2D BasicSc2Bot::depot_barrack_in_middle(const std::vector<Point2D>& points, const std::vector<Point2D>& upper2, const bool isdepot) const
 {
 	Point2D offset(0.5, 0.5);
+	const float inter_distance = isdepot ? 2.5 : 5;
 	std::vector<Point2D> offsetUpper2 = { upper2[0] + offset, upper2[1] + offset };
-	std::vector<Point2D> intersects = circle_intersection(offsetUpper2[0], offsetUpper2[1], std::sqrt(2.5));
+	std::vector<Point2D> intersects = circle_intersection(offsetUpper2[0], offsetUpper2[1], std::sqrt(inter_distance));
 	std::vector<Point2D> lower = upper_lower(points, false);
 
 	Point2D anyLowerPoint = lower[0];
@@ -239,15 +237,37 @@ std::vector<Point2D> BasicSc2Bot::corner_depots(const std::vector<Point2D>& poin
 	}
 
 	Point2D center = towards(corner_depots[0], corner_depots[1], (Distance2D(corner_depots[0], corner_depots[1])) / 2);
-	Point2D depotPosition = depot_in_middle(points, upper2);
+	Point2D depotPosition = depot_barrack_in_middle(points, upper2, true);
 	std::vector<Point2D> intersects = circle_intersection(center, depotPosition, std::sqrt(5));
+	std::sort(intersects.begin(), intersects.end(),
+		[](const Point2D& a, const Point2D& b) {
+			return a.x > b.x;
+		});
 
 	return intersects;
 }
 
+bool BasicSc2Bot::barracks_can_fit_addon(const Point2D& barrack_point) const
+{
+	return (barrack_point.x + 1) > (mainBase_depot_points[0].x);
+}
+
+Point2D BasicSc2Bot::barracks_correct_placement(const std::vector<Point2D>& ramp_points, const std::vector<Point2D>& corner_depots) const
+{
+	Point2D bpoint = depot_barrack_in_middle(ramp_points, upper2_for_ramp_wall(ramp_points), false);
+	if (barracks_can_fit_addon(bpoint))
+	{
+		return bpoint;
+	}
+	else
+	{
+		return Point2D(bpoint.x - 2, bpoint.y);
+	}
+}
 
 void BasicSc2Bot::find_right_ramp(const Point2D& location)
 {
+	find_ramps();
 	//location could be start location or any other command center location
 	// find the ramp set that is closest to the location
 
@@ -256,29 +276,46 @@ void BasicSc2Bot::find_right_ramp(const Point2D& location)
 			return Distance2D(Point2D_mean(a), location) < Distance2D(Point2D_mean(b), location);
 		});
 
-
-	std::cout << "Ramp[0] " << std::endl;
-	std::cout << "size: " << ramps[0].size() << std::endl;
-	std::cout << Distance2D(Point2D_mean(ramps[0]), location) << std::endl;
-	std::cout << "Ramp[1] " << std::endl;
-	std::cout << "size: " << ramps[1].size() << std::endl;
-	std::cout << Distance2D(Point2D_mean(ramps[1]), location) << std::endl;
-
 	std::vector<Point2D> main_ramp;
 	ramps[0].size() < ramps[1].size() ? main_ramp = ramps[0] : main_ramp = ramps[1];
 
 	//! right_ramp.size() == 2 and they are correct
-	std::vector<Point2D> right_ramp = corner_depots(main_ramp);
-
-	//TODO: I need a proper build function for this
-
-	/*const ObservationInterface* obs = Observation();
-	Units scvs = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SCV));
-	const Unit* scv = scvs[0];
-	const Unit* scv1 = scvs[1];
-
-	Actions()->UnitCommand(scv, ABILITY_ID::BUILD_SUPPLYDEPOT, right_ramp[0]);
-	Actions()->UnitCommand(scv1, ABILITY_ID::BUILD_SUPPLYDEPOT, right_ramp[1]);*/
-
+	mainBase_depot_points = corner_depots(main_ramp);
+	mainBase_barrack_point = barracks_correct_placement(main_ramp, mainBase_depot_points);
 	return;
 }
+
+void BasicSc2Bot::depot_control() {
+	const ObservationInterface* obs = Observation();
+	Units depots = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SUPPLYDEPOT));
+	Units lowered_depots = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SUPPLYDEPOTLOWERED));
+	Units enemy_units = obs->GetUnits(Unit::Alliance::Enemy);
+
+	// Raise depots when enemies are nearby
+	for (const auto& depo : depots) {
+		bool enemy_nearby = false;
+		for (const auto& unit : enemy_units) {
+			if (IsTrivialUnit(unit)) continue;
+			if (Distance2D(unit->pos, depo->pos) < 15) {
+				enemy_nearby = true;
+				break;
+			}
+		}
+		if (!enemy_nearby) {
+			Actions()->UnitCommand(depo, ABILITY_ID::MORPH_SUPPLYDEPOT_LOWER);
+		}
+	}
+
+	// Lower depots when no enemies are nearby
+	for (const auto& depo : lowered_depots) {
+		for (const auto& unit : enemy_units) {
+			if (IsTrivialUnit(unit)) continue;
+			if (Distance2D(unit->pos, depo->pos) < 10) {
+				Actions()->UnitCommand(depo, ABILITY_ID::MORPH_SUPPLYDEPOT_RAISE);
+				break;
+			}
+		}
+	}
+}
+
+
