@@ -129,6 +129,7 @@ void BasicSc2Bot::OnGameEnd() {
 }
 
 void BasicSc2Bot::OnStep() {
+	BasicSc2Bot::depot_control();
 	BasicSc2Bot::ManageEconomy();
 	BasicSc2Bot::ExecuteBuildOrder();
 	BasicSc2Bot::ManageProduction();
