@@ -165,12 +165,6 @@ private:
 	// Tracks if train of the first battlecruiser is in progress
     bool first_battlecruiser;
 
-	// Retreating flag
-	std::unordered_map<const Unit*, bool> battlecruiser_retreating;
-
-	// Retreating location
-	std::unordered_map<const Unit*, Point2D> battlecruiser_retreat_location;
-
     // =========================
     // Defense Management
     // =========================
@@ -231,17 +225,14 @@ private:
     // Updates SCV scouting status
     void UpdateSCVScouting();
 
-	// Controls Marines with micro (kiting, focus fire).
-	void ControlMarines();
-
-	// Controls Battlecruisers (abilities, targeting, positioning).
-	void ControlBattlecruisers();
+    // Controls Battlecruisers (abilities, targeting, positioning).
+    void ControlBattlecruisers();
 
 	// Controls Battlecruisers to jump into enemy base
 	void Jump();
 
-	// Controls Battlecruisers to target enemy units
-	void Target();
+    // Controls Battlecruisers to target enemy units
+    void TargetBattlecruisers();
 
 	// Controls Battlecruisers to retreat
 	void Retreat(const Unit* unit);
@@ -258,8 +249,20 @@ private:
 	// Controls Siege Tanks (temp)
 	void SiegeMode();
 
-	// SCV that is scouting
-	const sc2::Unit* scv_scout;
+    // Controls SiegeTanks to target enemy units
+    void TargetSiegeTank();
+
+    // Controls Marines with micro (kiting, focus fire).
+    void ControlMarines();
+
+    // Controls Marines to target enemy units
+	void TargetMarines();
+
+	// Use stimpack ability for Marines
+    void UseStimPack(const Unit* marine);
+
+    // SCV that is scouting
+    const sc2::Unit* scv_scout;
 
 	// Flag to check if SCV is scouting
 	bool is_scouting;
@@ -295,9 +298,18 @@ private:
 	// Corners adjacent to enemy base corner
     std::vector<Point2D> enemy_adjacent_corners;
 
-	// =========================
-	// Helper Methods
-	// =========================
+    // Retreating flag
+    std::unordered_map<const Unit*, bool> battlecruiser_retreating;
+
+    // Retreating location
+    std::unordered_map<const Unit*, Point2D> battlecruiser_retreat_location;
+
+    // Moving flag
+    std::unordered_map<const Unit*, bool> unit_moving;
+
+    // =========================
+    // Helper Methods
+    // =========================
 
 	// Scouting methods to gather information about the enemy.
 
@@ -410,6 +422,12 @@ private:
 	// Member Variables
 	// =========================
     void MoveToEnemy(const Units &marines, const Units &siege_tanks);
+
+    // Count units in combat
+    int UnitsInCombat(UNIT_TYPEID unit_type);
+
+    // Calculates the threat level of enemy units
+    int CalculateThreatLevel(const Unit* unit);
 
 
     // =========================
@@ -539,6 +557,44 @@ private:
         {sc2::UNIT_TYPEID::ZERG_SPORECRAWLER, 3}
     };
 
+   
+    bool IsFriendlyStructure(const Unit& unit) const {
+        switch (unit.unit_type.ToType()) {
+        case UNIT_TYPEID::TERRAN_COMMANDCENTER:
+            return true;
+        case UNIT_TYPEID::TERRAN_ORBITALCOMMAND:
+            return true;
+        case UNIT_TYPEID::TERRAN_PLANETARYFORTRESS:
+            return true;
+        case UNIT_TYPEID::TERRAN_BARRACKS:
+            return true;
+        case UNIT_TYPEID::TERRAN_FACTORY:
+            return true;
+        case UNIT_TYPEID::TERRAN_STARPORT:
+            return true;
+        case UNIT_TYPEID::TERRAN_ENGINEERINGBAY:
+            return true;
+        case UNIT_TYPEID::TERRAN_ARMORY:
+            return true;
+        case UNIT_TYPEID::TERRAN_FUSIONCORE:
+            return true;
+        case UNIT_TYPEID::TERRAN_MISSILETURRET:
+            return true;
+        case UNIT_TYPEID::TERRAN_BUNKER:
+            return true;
+        case UNIT_TYPEID::TERRAN_TECHLAB:
+            return true;
+        case UNIT_TYPEID::TERRAN_FACTORYTECHLAB:
+            return true;
+		case UNIT_TYPEID::TERRAN_STARPORTTECHLAB:
+            return true;
+		case UNIT_TYPEID::TERRAN_BARRACKSTECHLAB:
+            return true;
+        default:
+            return false;
+        }
+    }
+
     // Turret types
     std::vector<UNIT_TYPEID> turret_types = {
             UNIT_TYPEID::TERRAN_MISSILETURRET,
@@ -562,6 +618,28 @@ private:
                         UNIT_TYPEID::PROTOSS_PYLON
     };
 
+    // Heavy armored units
+    std::vector<UNIT_TYPEID> heavy_armor_units = {
+		sc2::UNIT_TYPEID::TERRAN_MARAUDER,
+        sc2::UNIT_TYPEID::TERRAN_CYCLONE,
+        sc2::UNIT_TYPEID::TERRAN_SIEGETANK,
+        sc2::UNIT_TYPEID::TERRAN_THOR,
+        sc2::UNIT_TYPEID::TERRAN_BUNKER,
+        sc2::UNIT_TYPEID::PROTOSS_STALKER,
+        sc2::UNIT_TYPEID::PROTOSS_IMMORTAL,
+		sc2::UNIT_TYPEID::PROTOSS_DISRUPTOR,
+        sc2::UNIT_TYPEID::PROTOSS_COLOSSUS,
+		sc2::UNIT_TYPEID::ZERG_ROACH,
+		sc2::UNIT_TYPEID::ZERG_ROACHBURROWED,
+		sc2::UNIT_TYPEID::ZERG_RAVAGER,
+        sc2::UNIT_TYPEID::ZERG_SWARMHOSTMP,
+		sc2::UNIT_TYPEID::ZERG_SWARMHOSTBURROWEDMP,
+		sc2::UNIT_TYPEID::ZERG_LURKERMP,
+		sc2::UNIT_TYPEID::ZERG_LURKERDENMP,
+        sc2::UNIT_TYPEID::ZERG_ULTRALISK,   
+        sc2::UNIT_TYPEID::ZERG_ULTRALISKBURROWED
+    };
+
     // Maps UPGRADE_ID to ABILITY_ID
     ABILITY_ID GetAbilityForUpgrade(UPGRADE_ID upgrade_id) {
         switch (upgrade_id) {
@@ -571,18 +649,6 @@ private:
             return ABILITY_ID::RESEARCH_TERRANVEHICLEANDSHIPPLATINGLEVEL2;
         case UPGRADE_ID::TERRANVEHICLEANDSHIPARMORSLEVEL3:
             return ABILITY_ID::RESEARCH_TERRANVEHICLEANDSHIPPLATINGLEVEL3;
-        case UPGRADE_ID::TERRANSHIPWEAPONSLEVEL1:
-            return ABILITY_ID::RESEARCH_TERRANSHIPWEAPONSLEVEL1;
-        case UPGRADE_ID::TERRANSHIPWEAPONSLEVEL2:
-            return ABILITY_ID::RESEARCH_TERRANSHIPWEAPONSLEVEL2;
-        case UPGRADE_ID::TERRANSHIPWEAPONSLEVEL3:
-            return ABILITY_ID::RESEARCH_TERRANSHIPWEAPONSLEVEL3;
-        case UPGRADE_ID::TERRANVEHICLEWEAPONSLEVEL1:
-            return ABILITY_ID::RESEARCH_TERRANVEHICLEWEAPONSLEVEL1;
-        case UPGRADE_ID::TERRANVEHICLEWEAPONSLEVEL2:
-            return ABILITY_ID::RESEARCH_TERRANVEHICLEWEAPONSLEVEL2;
-        case UPGRADE_ID::TERRANVEHICLEWEAPONSLEVEL3:
-            return ABILITY_ID::RESEARCH_TERRANVEHICLEWEAPONSLEVEL3;
         default:
             return ABILITY_ID::INVALID;
         }
