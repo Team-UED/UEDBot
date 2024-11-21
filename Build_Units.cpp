@@ -3,11 +3,11 @@
 using namespace sc2;
 
 void BasicSc2Bot::ManageProduction() {
-	TrainMarines();
-	TrainBattlecruisers();
-	TrainSiegeTanks();
+    TrainMarines();
+    TrainBattlecruisers();
+    TrainSiegeTanks();
 	UpgradeMarines();
-	UpgradeSiegeTanksAndBattleCruisers();
+	UpgradeMechs();
 }
 
 void BasicSc2Bot::TrainMarines() {
@@ -127,54 +127,66 @@ void BasicSc2Bot::TrainSiegeTanks() {
 void BasicSc2Bot::UpgradeMarines() {
 	const ObservationInterface* observation = Observation();
 
-	// Check if we have an Engineering Bay
-	Units engineering_bays = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_ENGINEERINGBAY));
-	if (engineering_bays.empty()) {
-		return;
-	}
+	// Check if we have research structures (Barracks, Engineering bay)
+    Units techlabs = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKSTECHLAB));
+	Units engineeringbays = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_ENGINEERINGBAY));
 
-	// Check if Stim Pack is already researched
-	if (observation->GetMinerals() >= 100 && observation->GetVespene() >= 100) {
-		for (const auto& barracks : observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKS))) {
-			if (barracks->orders.empty() && std::find(observation->GetUpgrades().begin(), observation->GetUpgrades().end(), UPGRADE_ID::TERRANINFANTRYWEAPONSLEVEL1) == observation->GetUpgrades().end()) {
-				Actions()->UnitCommand(barracks, ABILITY_ID::RESEARCH_STIMPACK);
-				break;
-			}
-		}
-	}
+    if (engineeringbays.empty()) {
+        return;
+    }
+  
+	// Upgrade from Engineering Bay
+    for (const auto& upgrade : engineeringbay_upgrade_order) {
+        // Skip if the upgrade is already completed
+        if (completed_upgrades.find(upgrade) != completed_upgrades.end()) {
+            continue;
+        }
+
+        // Get the ability corresponding to the upgrade
+        ABILITY_ID ability_id = GetAbilityForUpgrade(upgrade);
+        if (ability_id == ABILITY_ID::INVALID) {
+            continue;
+        }
+
+        // Check if the Engineering Bay is busy or not
+        for (const auto& engineeringbay : engineeringbays) {
+            if (engineeringbay->orders.empty()) {
+                Actions()->UnitCommand(engineeringbay, ability_id);
+                return; 
+            }
+        }
+    }
+
+    if (!techlabs.empty()) {
+        if (completed_upgrades.find(UPGRADE_ID::COMBATSHIELD) == completed_upgrades.end()) {
+            ABILITY_ID upgrade = ABILITY_ID::RESEARCH_COMBATSHIELD;
+            // Check if the Tech Lab is busy or not
+            for (const auto& techlab : techlabs) {
+                if (techlab->orders.empty()) {
+                    Actions()->UnitCommand(techlab, upgrade);
+                    return;
+                }
+            }
+        }
+    }
 }
 
-void BasicSc2Bot::UpgradeSiegeTanksAndBattleCruisers() {
-	const ObservationInterface* observation = Observation();
+void BasicSc2Bot::UpgradeMechs() {
+    const ObservationInterface* observation = Observation();
 
-	// Check if we have an Armory and Fusion Core
-	Units armories = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_ARMORY));
-	Units fusioncores = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FUSIONCORE));
+    // Check if we have research structures (Armory)
+    Units armories = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_ARMORY));
 
-	if (armories.empty() || fusioncores.empty() || !first_battlecruiser) {
-		return;
-	}
+    if (armories.empty() || !first_battlecruiser) {
+        return;
+    }
 
-	// Order of upgrades for Armory
-	std::vector<UPGRADE_ID> armory_upgrade_order = {
-		UPGRADE_ID::TERRANVEHICLEANDSHIPARMORSLEVEL1,
-		UPGRADE_ID::TERRANSHIPWEAPONSLEVEL1,
-		UPGRADE_ID::TERRANVEHICLEANDSHIPARMORSLEVEL2,
-		UPGRADE_ID::TERRANSHIPWEAPONSLEVEL2,
-		UPGRADE_ID::TERRANVEHICLEANDSHIPARMORSLEVEL3,
-		UPGRADE_ID::TERRANSHIPWEAPONSLEVEL3,
-		UPGRADE_ID::TERRANVEHICLEWEAPONSLEVEL1,
-		UPGRADE_ID::TERRANVEHICLEWEAPONSLEVEL2,
-		UPGRADE_ID::TERRANVEHICLEWEAPONSLEVEL3
-	};
-
-
-	// Upgrade from Armory
-	for (const auto& upgrade : armory_upgrade_order) {
-		// Skip if the upgrade is already completed
-		if (completed_upgrades.find(upgrade) != completed_upgrades.end()) {
-			continue;
-		}
+    // Upgrade from Armory
+    for (const auto& upgrade : armory_upgrade_order) {
+        // Skip if the upgrade is already completed
+        if (completed_upgrades.find(upgrade) != completed_upgrades.end()) {
+            continue;
+        }
 
 		// Get the ability corresponding to the upgrade
 		ABILITY_ID ability_id = GetAbilityForUpgrade(upgrade);
@@ -182,24 +194,12 @@ void BasicSc2Bot::UpgradeSiegeTanksAndBattleCruisers() {
 			continue;
 		}
 
-		// Check if the Armory is busy or not
-		for (const auto& armory : armories) {
-			if (armory->orders.empty()) {
-				Actions()->UnitCommand(armory, ability_id);
-				return;
-			}
-		}
-	}
-
-	if (completed_upgrades.find(UPGRADE_ID::BATTLECRUISERENABLESPECIALIZATIONS) == completed_upgrades.end()) {
-
-		ABILITY_ID upgrade = ABILITY_ID::RESEARCH_BATTLECRUISERWEAPONREFIT;
-		// Check if the Fusion Core is busy or not
-		for (const auto& fusioncore : fusioncores) {
-			if (fusioncore->orders.empty()) {
-				Actions()->UnitCommand(fusioncore, upgrade);
-				return;
-			}
-		}
-	}
+        // Check if the Armory is busy or not
+        for (const auto& armory : armories) {
+            if (armory->orders.empty()) {
+                Actions()->UnitCommand(armory, ability_id);
+                return;
+            }
+        }
+    }
 }
