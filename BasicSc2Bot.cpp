@@ -47,6 +47,7 @@ void BasicSc2Bot::OnGameStart() {
 	if (!enemy_start_locations.empty()) {
 		enemy_start_location = enemy_start_locations[0];
 	}
+	retreat_location = { start_location.x + 5.0f, start_location.y};
 	expansion_locations = search::CalculateExpansionLocations(Observation(), Query());
 
 	// find ramps

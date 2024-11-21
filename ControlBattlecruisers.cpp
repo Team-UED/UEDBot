@@ -65,8 +65,6 @@ void BasicSc2Bot::TargetBattlecruisers() {
     // Threshold for "kiting" behavior
     const int threat_threshold = 10 * num_battlecruisers_in_combat;
 
-    std::set<Tag> yamato_targets;
-
     for (const auto& battlecruiser : battlecruisers) {
 
         // Disables targetting while Jumping
@@ -201,8 +199,6 @@ void BasicSc2Bot::TargetBattlecruisers() {
                 Retreat(battlecruiser);
                 return;
             }
-
-			UseYamatoCannon(battlecruiser, Observation()->GetUnits(Unit::Alliance::Enemy), yamato_targets);
 
 			// Calculate turret status
             const Unit* turret_nearest = nullptr;
@@ -359,12 +355,12 @@ void BasicSc2Bot::TargetBattlecruisers() {
 				// No turret nearby or turret is the target or there are only turrets in threat radius -> Attack
                 if (turret_nearest == nullptr || 
                     std::find(turret_types.begin(), turret_types.end(), target->unit_type) != turret_types.end()) {
-                    Actions()->UnitCommand(battlecruiser, ABILITY_ID::MOVE_MOVE, target);
+                    Actions()->UnitCommand(battlecruiser, ABILITY_ID::ATTACK_ATTACK, target);
 				}
                 else {
 					// Turret exists but far away from the Battlecruiser -> Attack the target
                     if (Distance2D(battlecruiser->pos, turret_nearest->pos) >= 10.0f) {
-                        Actions()->UnitCommand(battlecruiser, ABILITY_ID::MOVE_MOVE, target);
+                        Actions()->UnitCommand(battlecruiser, ABILITY_ID::ATTACK_ATTACK, target);
                     }
 					// Turret exists and near Battlecruiser -> Kite to safe position
                     else {
@@ -477,83 +473,3 @@ void BasicSc2Bot::RetreatCheck() {
     }
 }
 
-void BasicSc2Bot::UseYamatoCannon(const Unit* battlecruiser, const Units& enemy_units, std::set<Tag>& yamato_targets) {
-
-    // Skip if Yamato Cannon is not available
-    if (!HasAbility(battlecruiser, ABILITY_ID::EFFECT_YAMATOGUN)) {
-        return; 
-    }
-
-    const int yamato_damage = 240;       // Yamato Cannon damage
-    const float yamato_range = 10.0f;    // Yamato Cannon range
-    const int low_health_threshold = 80; // Skip units with low health
-
-    const Unit* target = nullptr;
-    int highest_priority = 0;            
-    int oneshot = std::numeric_limits<int>::max(); 
-
-    for (const auto& enemy_unit : enemy_units) {
-        // Skip already targeted units
-        if (yamato_targets.find(enemy_unit->tag) != yamato_targets.end()) {
-            continue;
-        }
-
-        // Skip if the unit is dead or has very low health
-        if (!enemy_unit->is_alive || enemy_unit->health < low_health_threshold) {
-            continue;
-        }
-
-        // Check if the unit is within Yamato Cannon range
-        if (Distance2D(battlecruiser->pos, enemy_unit->pos) > yamato_range) {
-            continue;
-        }
-
-        // Determine threat level of the enemy unit
-        auto threat = threat_levels.find(enemy_unit->unit_type);
-        if (threat == threat_levels.end()) {
-            continue; 
-        }
-        int threat_level = threat->second;
-
-        // Exclude low value units
-        if (enemy_unit->unit_type == UNIT_TYPEID::TERRAN_MARINE ||
-            enemy_unit->unit_type == UNIT_TYPEID::ZERG_HYDRALISK ||
-			enemy_unit->unit_type == UNIT_TYPEID::PROTOSS_SENTRY ||
-			enemy_unit->unit_type == UNIT_TYPEID::ZERG_MUTALISK ||
-			enemy_unit->unit_type == UNIT_TYPEID::ZERG_RAVAGER ||
-            enemy_unit->unit_type == UNIT_TYPEID::TERRAN_GHOST) {
-            continue;
-        }
-
-        // Prioritize turrets and queens (if they are not low health)
-        bool is_high_value_target =
-            enemy_unit->unit_type == UNIT_TYPEID::TERRAN_MISSILETURRET ||
-            enemy_unit->unit_type == UNIT_TYPEID::PROTOSS_PHOTONCANNON ||
-            enemy_unit->unit_type == UNIT_TYPEID::ZERG_SPORECRAWLER ||
-            enemy_unit->unit_type == UNIT_TYPEID::ZERG_QUEEN;
-
-        // Immediately target high-value units
-        if (is_high_value_target && enemy_unit->health > low_health_threshold) {
-            target = enemy_unit;
-            break; 
-        }
-
-        // For other units, calculate how close the health is to Yamato Cannon's damage
-        int hp_difference = std::abs(static_cast<int>(enemy_unit->health) - yamato_damage);
-
-        // Prioritize:
-        // 1. Units closest to Yamato damage (one-shottable).
-        // 2. Among equally one-shottable units, prefer those with higher threat levels.
-        if (hp_difference < oneshot || (hp_difference == oneshot && threat_level > highest_priority)) {
-            oneshot = hp_difference;
-            highest_priority = threat_level;
-            target = enemy_unit;
-        }
-    }
-
-    // If a valid target is found, use Yamato Cannon and mark the target
-    if (target) {
-        Actions()->UnitCommand(battlecruiser, ABILITY_ID::EFFECT_YAMATOGUN, target);
-        yamato_targets.insert(target->tag);
-    }
-}
