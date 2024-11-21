@@ -154,6 +154,11 @@ void BasicSc2Bot::OnUnitCreated(const Unit* unit) {
 }
 
 void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
+
+	if (unit && unit->unit_type != UNIT_TYPEID::TERRAN_SUPPLYDEPOT) {
+		structure_locations.push_back(unit->pos);
+	}
+
 	if (unit->unit_type == UNIT_TYPEID::TERRAN_REFINERY) {
 		const ObservationInterface* observation = Observation();
 
@@ -194,6 +199,12 @@ void BasicSc2Bot::OnUpgradeCompleted(UpgradeID upgrade_id) {
 }
 
 void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) {
+
+	if (unit)
+	{
+		structure_locations.erase(std::remove(structure_locations.begin(),
+			structure_locations.end(), unit->pos), structure_locations.end());
+	}
 
 	// Scouting scv died
 	if (is_scouting && scv_scout && unit == scv_scout) {

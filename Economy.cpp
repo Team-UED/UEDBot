@@ -194,6 +194,14 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
                     return false; 
                 }
             }
+
+            // Too close to existing structures
+            for (const auto& structure_location : structure_locations) {
+                if (Distance2D(location, structure_location) < 5.0f) {
+                    return false; 
+                }
+            }
+
             // Location is valid
             return true; 
             };
