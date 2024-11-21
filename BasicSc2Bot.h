@@ -450,6 +450,7 @@ private:
     sc2::Point2D retreat_location;
     std::vector<sc2::Point2D> enemy_start_locations;
     std::vector<sc2::Point3D> expansion_locations;
+	std::vector<sc2::Point2D> structure_locations;
 
 	// Our bases.
 	Units bases;
