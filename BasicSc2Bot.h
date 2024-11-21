@@ -153,14 +153,11 @@ private:
 	// Trains Siege Tanks for later defense.
 	void TrainSiegeTanks();
 
-	// Upgrades Marines.
-	void UpgradeMarines();
+    // Upgrades Marines
+    void UpgradeMarines();
 
-    // Upgrades Siege Tanks
-    void UpgradeSiegeTanksAndBattleCruisers();
-
-    // Manages research of upgrades.
-    void ManageUpgrades();
+	// Upgrades Mechs(vehicles and ships)
+	void UpgradeMechs();
 
 	// Tracks if train of the first battlecruiser is in progress
     bool first_battlecruiser;
@@ -239,9 +236,6 @@ private:
 
 	// Check if retreating is complete
     void RetreatCheck();
-    
-	// Targets unit for Battlecruisers to use Yamato Cannon
-	void UseYamatoCannon(const Unit* battlecruiser, const Units& enemy_units, std::set<Tag>& yamato_targets);
 
     // Controls Siege Tanks (abilities, targeting, positioning).
     void ControlSiegeTanks();
@@ -257,9 +251,6 @@ private:
 
     // Controls Marines to target enemy units
 	void TargetMarines();
-
-	// Use stimpack ability for Marines
-    void UseStimPack(const Unit* marine);
 
     // SCV that is scouting
     const sc2::Unit* scv_scout;
@@ -650,6 +641,18 @@ private:
             return ABILITY_ID::RESEARCH_TERRANVEHICLEANDSHIPPLATINGLEVEL2;
         case UPGRADE_ID::TERRANVEHICLEANDSHIPARMORSLEVEL3:
             return ABILITY_ID::RESEARCH_TERRANVEHICLEANDSHIPPLATINGLEVEL3;
+		case UPGRADE_ID::TERRANINFANTRYWEAPONSLEVEL1:
+			return ABILITY_ID::RESEARCH_TERRANINFANTRYWEAPONSLEVEL1;
+		case UPGRADE_ID::TERRANINFANTRYARMORSLEVEL1:
+			return ABILITY_ID::RESEARCH_TERRANINFANTRYARMORLEVEL1;
+		case UPGRADE_ID::TERRANINFANTRYWEAPONSLEVEL2:
+			return ABILITY_ID::RESEARCH_TERRANINFANTRYWEAPONSLEVEL2;
+		case UPGRADE_ID::TERRANINFANTRYARMORSLEVEL2:
+			return ABILITY_ID::RESEARCH_TERRANINFANTRYARMORLEVEL2;
+		case UPGRADE_ID::TERRANINFANTRYWEAPONSLEVEL3:
+			return ABILITY_ID::RESEARCH_TERRANINFANTRYWEAPONSLEVEL3;
+		case UPGRADE_ID::TERRANINFANTRYARMORSLEVEL3:
+			return ABILITY_ID::RESEARCH_TERRANINFANTRYARMORLEVEL3;
         default:
             return ABILITY_ID::INVALID;
         }
@@ -657,6 +660,26 @@ private:
     
 	// Set of completed upgrades
     std::set<UpgradeID> completed_upgrades;
+
+	// Order of upgrades for Armory
+	std::vector<UPGRADE_ID> armory_upgrade_order = {
+		UPGRADE_ID::TERRANVEHICLEANDSHIPARMORSLEVEL1,
+		UPGRADE_ID::TERRANSHIPWEAPONSLEVEL1,
+		UPGRADE_ID::TERRANVEHICLEANDSHIPARMORSLEVEL2,
+		UPGRADE_ID::TERRANSHIPWEAPONSLEVEL2,
+		UPGRADE_ID::TERRANVEHICLEANDSHIPARMORSLEVEL3,
+		UPGRADE_ID::TERRANSHIPWEAPONSLEVEL3,
+	};
+
+	// Order of upgrades for Engineering Bay
+	std::vector<UPGRADE_ID> engineeringbay_upgrade_order = {
+		UPGRADE_ID::TERRANINFANTRYWEAPONSLEVEL1,
+		UPGRADE_ID::TERRANINFANTRYARMORSLEVEL1,
+		UPGRADE_ID::TERRANINFANTRYWEAPONSLEVEL2,
+		UPGRADE_ID::TERRANINFANTRYARMORSLEVEL2,
+		UPGRADE_ID::TERRANINFANTRYWEAPONSLEVEL3,
+		UPGRADE_ID::TERRANINFANTRYARMORSLEVEL3,
+	};
 };
 
 #endif
