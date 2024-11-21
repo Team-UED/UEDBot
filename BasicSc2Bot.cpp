@@ -195,6 +195,18 @@ void BasicSc2Bot::OnUpgradeCompleted(UpgradeID upgrade_id) {
 
 void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) {
 
+	// check if the destroyed unit was a ramp building
+	for (size_t i = 0; i < ramp_depots.size(); ++i) {
+		if (unit == ramp_depots[i]) {
+			ramp_depots[i] = nullptr;
+		}
+	}
+	for (size_t i = 0; i < ramp_middle.size(); ++i) {
+		if (unit == ramp_middle[i]) {
+			ramp_middle[i] = nullptr;
+		}
+	}
+
 	// Scouting scv died
 	if (is_scouting && scv_scout && unit == scv_scout) {
 
@@ -242,11 +254,11 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) {
 	}
 	if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER) {
 		num_battlecruisers--;
-        if (battlecruiser_retreating[unit]) {
-            battlecruiser_retreating[unit] = false;
-        }
-    }
-    if (unit->unit_type == UNIT_TYPEID::TERRAN_MARINE) {
+		if (battlecruiser_retreating[unit]) {
+			battlecruiser_retreating[unit] = false;
+		}
+	}
+	if (unit->unit_type == UNIT_TYPEID::TERRAN_MARINE) {
 		num_marines--;
 	}
 	if (unit->unit_type == UNIT_TYPEID::TERRAN_SIEGETANK) {
