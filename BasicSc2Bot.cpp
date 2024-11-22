@@ -520,6 +520,7 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) {
 		is_scouting = false;
 	}
 
+	// SCV died while scouting
 	if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV) {
 		num_scvs--;
 	}

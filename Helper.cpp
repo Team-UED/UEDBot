@@ -18,8 +18,11 @@ bool BasicSc2Bot::CanBuild(const int32_t mineral, const int32_t gas, const int32
 bool BasicSc2Bot::NeedExpansion() const {
 	const ObservationInterface* observation = Observation();
 
+	// Check if we have any bases
 	Units all_bases = observation->GetUnits(Unit::Self, IsTownHall());
 	Units bases;
+
+	// Filter out completed bases
 	for (const auto& base : all_bases) {
 		if (base->build_progress == 1.0f) {
 			bases.push_back(base);
@@ -69,6 +72,7 @@ Point3D BasicSc2Bot::GetNextExpansion() const {
 	float closest_distance = std::numeric_limits<float>::max();
 	Point3D next_expansion = Point3D(0.0f, 0.0f, 0.0f);
 
+	// Find the closest expansion that is not already occupied
 	for (const auto& expansion_pos : expansions) {
 		bool occupied = false;
 		for (const auto& townhall : townhalls) {
@@ -77,10 +81,16 @@ Point3D BasicSc2Bot::GetNextExpansion() const {
 				break;
 			}
 		}
+
+		// Skip this expansion if it is already occupied
 		if (occupied) {
 			continue;
 		}
+
+		// Find the closest expansion to the main base
 		float distance = DistanceSquared3D(expansion_pos, main_base_location);
+
+		// Update the closest expansion if the current one is closer
 		if (distance < closest_distance) {
 			closest_distance = distance;
 			next_expansion = expansion_pos;
@@ -89,7 +99,7 @@ Point3D BasicSc2Bot::GetNextExpansion() const {
 	return next_expansion;
 }
 
-// Helper function to detect dangerous positions
+// Detect dangerous positions
 bool BasicSc2Bot::IsDangerousPosition(const Point2D& pos) {
 	// if enemy units are within a certain radius (run!!!!)
 	auto enemy_units = Observation()->GetUnits(Unit::Alliance::Enemy);
@@ -101,8 +111,7 @@ bool BasicSc2Bot::IsDangerousPosition(const Point2D& pos) {
 	return false;
 }
 
-// Helper function to find a safe position for retreat (currently returns the
-// main base position)
+// Get a safe position for the main base
 Point2D BasicSc2Bot::GetSafePosition() {
 	const Unit* main_base = GetMainBase();
 	return main_base
@@ -111,7 +120,7 @@ Point2D BasicSc2Bot::GetSafePosition() {
 			0); // Return base position or default position (0, 0)
 }
 
-// Helper function to find damaged units for repair
+// Find the closest damaged unit for repair
 const Unit* BasicSc2Bot::FindDamagedUnit() {
 	for (const auto& unit : Observation()->GetUnits(Unit::Alliance::Self)) {
 		if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER &&
@@ -122,7 +131,7 @@ const Unit* BasicSc2Bot::FindDamagedUnit() {
 	return nullptr;
 }
 
-// Helper function to find damaged structures for repair
+// Find the closest damaged structure for repair
 const Unit* BasicSc2Bot::FindDamagedStructure() {
 	const auto& units = Observation()->GetUnits(Unit::Alliance::Self);
 
@@ -159,6 +168,8 @@ const Unit* BasicSc2Bot::FindDamagedStructure() {
 	return highest_priority_target;
 }
 
+
+// Check if the main base is under attack
 bool BasicSc2Bot::IsWorkerUnit(const Unit* unit) {
 	return unit->unit_type == UNIT_TYPEID::TERRAN_SCV ||
 		unit->unit_type == UNIT_TYPEID::PROTOSS_PROBE ||
@@ -221,7 +232,7 @@ bool BasicSc2Bot::IsMainBaseUnderAttack() {
 }
 
 
-// Helper function to find the closest enemy unit
+// Find the closest enemy unit to a given position
 const Unit* BasicSc2Bot::FindClosestEnemy(const Point2D& pos) {
 	const Unit* closest_enemy = nullptr;
 	float closest_distance = std::numeric_limits<float>::max();
@@ -236,6 +247,7 @@ const Unit* BasicSc2Bot::FindClosestEnemy(const Point2D& pos) {
 	return closest_enemy;
 }
 
+// Check if the unit has a specific ability
 const Unit* BasicSc2Bot::FindUnit(sc2::UnitTypeID unit_type) const {
 	const ObservationInterface* observation = Observation();
 	Units units = observation->GetUnits(Unit::Alliance::Self, IsUnit(unit_type));
@@ -248,6 +260,7 @@ const Unit* BasicSc2Bot::FindUnit(sc2::UnitTypeID unit_type) const {
 	return nullptr;
 }
 
+// Returns the count of units of a given type
 bool BasicSc2Bot::TryBuildStructureAtLocation(ABILITY_ID ability_type_for_structure, UNIT_TYPEID unit_type, const Point2D& location) {
 	const Unit* builder = FindUnit(unit_type);
 	if (!builder) return false;
@@ -270,6 +283,7 @@ bool BasicSc2Bot::TryBuildStructureAtLocation(ABILITY_ID ability_type_for_struct
 	return false;
 }
 
+// Returns the count of units of a given type
 Point2D BasicSc2Bot::GetRallyPoint() {
 	const Unit* main_base = GetMainBase();
 	if (main_base) {
@@ -468,7 +482,6 @@ int BasicSc2Bot::UnitsInCombat(UNIT_TYPEID unit_type) {
 }
 
 int BasicSc2Bot::CalculateThreatLevel(const Unit* unit) {
-
 	if (!unit) {
 		return 0;
 	}
