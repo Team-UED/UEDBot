@@ -1,6 +1,5 @@
 #include "BasicSc2Bot.h"
 
-// Manages defensive structures and units.
 void BasicSc2Bot::Defense() {
 	//BlockRamp();
 	EarlyDefense();
