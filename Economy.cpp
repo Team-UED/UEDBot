@@ -170,7 +170,7 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
         }
 
         // Define a build location offset from the main base
-        Point2D build_location = main_base->pos + Point2D(10.0f, 0.0f); // Adjust offset as needed
+        Point2D build_location = main_base->pos + Point2D(10.0f, 0.0f);
 
         // Ensure build location is not too close to minerals and not too far from base
         Units mineral_patches = observation->GetUnits(Unit::Alliance::Neutral, IsUnit(UNIT_TYPEID::NEUTRAL_MINERALFIELD));
@@ -417,22 +417,28 @@ void BasicSc2Bot::ReassignWorkers() {
     }
 }
 
+// Build refineries near bases
 void BasicSc2Bot::BuildRefineries() {
     Units bases = Observation()->GetUnits(Unit::Alliance::Self, IsTownHall());
 
+    // Find geysers near bases
     for (const auto& base : bases) {
         Units geysers = Observation()->GetUnits(Unit::Alliance::Neutral, [base](const Unit& unit) {
             return unit.unit_type == UNIT_TYPEID::NEUTRAL_VESPENEGEYSER && Distance2D(unit.pos, base->pos) < 10.0f;
         });
 
+        // Build a refinery near each geyser
         for (const auto& geyser : geysers) {
             Units refineries = Observation()->GetUnits(Unit::Alliance::Self, [geyser](const Unit& unit) {
                 return unit.unit_type == UNIT_TYPEID::TERRAN_REFINERY && Distance2D(unit.pos, geyser->pos) < 1.0f;
             });
+
+            // Build a refinery if none exists
             if (refineries.empty() && Observation()->GetMinerals() >= 75) {
                 Units scvs = Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SCV));
                 const Unit* builder = nullptr;
 
+                // Find an idle SCV to build the refinery
                 for (const auto& scv : scvs) {
                     bool is_constructing = false;
                     for (const auto& order : scv->orders) {
@@ -449,6 +455,8 @@ void BasicSc2Bot::BuildRefineries() {
                         break;
                     }
                 }
+
+                // Build the refinery
                 if (builder) {
                     if (Query()->Placement(ABILITY_ID::BUILD_REFINERY, geyser->pos)) {
                         Actions()->UnitCommand(builder, ABILITY_ID::BUILD_REFINERY, geyser);

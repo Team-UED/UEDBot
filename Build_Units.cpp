@@ -136,9 +136,11 @@ void BasicSc2Bot::UpgradeMarines() {
         return;
     }
 
-    // Check if Stim Pack is already researched
+    // Check if we have the resources
     if (observation->GetMinerals() >= 100 && observation->GetVespene() >= 100) {
+        // Check if the upgrade is already completed
         for (const auto& barracks : observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKS))) {
+            // Skip if the upgrade is already completed
             if (barracks->orders.empty() && std::find(observation->GetUpgrades().begin(), observation->GetUpgrades().end(), UPGRADE_ID::TERRANINFANTRYWEAPONSLEVEL1) == observation->GetUpgrades().end()) {
                 Actions()->UnitCommand(barracks, ABILITY_ID::RESEARCH_STIMPACK);
                 break;
