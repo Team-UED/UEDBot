@@ -440,6 +440,7 @@ void BasicSc2Bot::ReassignWorkers() {
 	}
 }
 
+// Build refineries near bases
 void BasicSc2Bot::BuildRefineries() {
 
 	const ObservationInterface* obs = Observation();

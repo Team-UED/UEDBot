@@ -23,7 +23,7 @@
 
 using namespace sc2;
 
-// Add the hash specialization for sc2::AbilityID
+// Hash function for AbilityID
 template <>
 struct std::hash<sc2::AbilityID> {
 	size_t operator()(const sc2::AbilityID& ability_id) const noexcept {
