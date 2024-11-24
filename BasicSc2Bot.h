@@ -16,6 +16,8 @@
 #include <unordered_map>
 #include <functional>
 #include <iostream>
+#include <string>
+#include <cmath>
 #include <map>
 #include <memory>
 
@@ -45,6 +47,19 @@ public:
 	virtual void OnUnitEnterVision(const Unit* unit) final;
 
 private:
+	// =========================
+	// Debugging
+	// =========================
+	void Debugging();
+	void DrawBoxesOnMap(sc2::DebugInterface* debug, int map_width, int map_height);
+	void DrawBoxAtLocation(sc2::DebugInterface* debug, const sc2::Point3D& location, float size, const sc2::Color& color = sc2::Colors::Red) const;
+
+	uint32_t current_gameloop;
+	uint32_t last_gameloop;
+
+	// test
+	void CancelTraining();
+
 	// =========================
 	// Economy Management
 	// =========================
@@ -78,10 +93,11 @@ private:
 	void UseMULE();
 
 	// Phase of the strategy
-	// Phase 1 -> Start of the game ~ until the first star port is built
-	// Phase 2 -> First star port is built ~ until the first battlecruiser is built
-	// Phase 3 -> First battlecruiser is built ~ rest of the game
-	int phase;
+	// phase 0 -> Start of the game ~ until the first barracks with techlab is built
+	// Phase 1 -> ~ until first factory is built
+	// Phase 2 -> ~ until star port and first battlecruiser is built
+	// Phase 3 -> ~ rest of the game
+	int phase = 0;
 
 	// =========================
 	// Build Order Execution
@@ -124,17 +140,17 @@ private:
 	const Unit* current_factory = nullptr;
 
 	// Swaps building
-	void Swap();
+	void Swap(const Unit* a, const Unit* b, bool lift);
 
 	// Check if swap is possible
 	bool swappable;
 
 	// Check if swap is in progress
-	bool swap_in_progress;
+	bool swap_in_progress = false;
 
-	// Swpas location of 2 structures
-	Point2D swap_factory_position;
-	Point2D swap_starport_position;
+	// Swap buildings
+	const Unit* swap_a = nullptr;
+	const Unit* swap_b = nullptr;
 
 
 	// =========================
@@ -393,6 +409,16 @@ private:
 	// Ramp
 	// =========================
 
+	float cross_product(const Point2D& O, const Point2D& A, const Point2D& B) const;
+
+	Point2D Point2D_mean(const std::vector<Point2D>& points) const;
+
+	std::vector<Point2D> convexHull(std::vector<Point2D>& points) const;
+
+	std::vector<Point2D> circle_intersection(const Point2D& p1, const Point2D& p2, float r) const;
+
+	Point2D towards(const Point2D& p1, const Point2D& p2, float distance) const;
+
 	int height_at(const Point2DI& p) const;
 
 	void find_ramps();
@@ -443,6 +469,9 @@ private:
 	size_t num_marines;
 	size_t num_battlecruisers;
 	size_t num_siege_tanks;
+	size_t num_barracks;
+	size_t num_factories;
+	size_t num_starports;
 
 	// Map information.
 	sc2::Point2D start_location;
@@ -450,6 +479,7 @@ private:
 	sc2::Point2D retreat_location;
 	std::vector<sc2::Point2D> enemy_start_locations;
 	std::vector<sc2::Point3D> expansion_locations;
+	std::vector<sc2::Point2D> structure_locations;
 
 	// Our bases.
 	Units bases;

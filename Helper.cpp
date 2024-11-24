@@ -172,7 +172,6 @@ bool BasicSc2Bot::IsTrivialUnit(const Unit* unit) {
 		unit->unit_type == UNIT_TYPEID::PROTOSS_OBSERVERSIEGEMODE;
 }
 
-
 // Modify IsMainBaseUnderAttack() to consider only combat units
 bool BasicSc2Bot::IsMainBaseUnderAttack() {
 	const Unit* main_base = GetMainBase();
