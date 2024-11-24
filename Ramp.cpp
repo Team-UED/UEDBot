@@ -1,7 +1,46 @@
 #include "BasicSc2Bot.h"
 
 // ------------------ Helper Functions ------------------
-Point2D Point2D_mean(const std::vector<Point2D>& points)
+
+float BasicSc2Bot::cross_product(const Point2D& O, const Point2D& A, const Point2D& B) const
+{
+	return (A.x - O.x) * (B.y - O.y) - (A.y - O.y) * (B.x - O.x);
+}
+
+std::vector<Point2D> BasicSc2Bot::convexHull(std::vector<Point2D>& points) const {
+	// Sort points
+	std::sort(points.begin(), points.end(),
+		[this](const Point2D& a, const Point2D& b) {
+			return a.x > b.x;
+		});
+
+	// Build the hull
+	std::vector<Point2D> hull;
+
+	// Lower hull
+	for (const auto& p : points) {
+		while (hull.size() >= 2 && cross_product(hull[hull.size() - 2], hull.back(), p) <= 0) {
+			hull.pop_back();
+		}
+		hull.emplace_back(p);
+	}
+
+	// Upper hull
+	size_t lowerHullSize = hull.size();
+	for (auto it = points.rbegin(); it != points.rend(); ++it) {
+		while (hull.size() > lowerHullSize && cross_product(hull[hull.size() - 2], hull.back(), *it) <= 0) {
+			hull.pop_back();
+		}
+		hull.emplace_back(*it);
+	}
+
+	// Remove the last point because it's the same as the first
+	hull.pop_back();
+
+	return hull;
+}
+
+Point2D BasicSc2Bot::Point2D_mean(const std::vector<Point2D>& points) const
 {
 	Point2D mean;
 
@@ -14,7 +53,7 @@ Point2D Point2D_mean(const std::vector<Point2D>& points)
 	return mean;
 }
 
-std::vector<Point2D> circle_intersection(const Point2D& p1, const Point2D& p2, float r) {
+std::vector<Point2D> BasicSc2Bot::circle_intersection(const Point2D& p1, const Point2D& p2, float r) const {
 	assert(p1 != p2);
 	float distanceBetweenPoints = Distance2D(p1, p2);
 	assert(r > distanceBetweenPoints / 2);
@@ -39,7 +78,7 @@ std::vector<Point2D> circle_intersection(const Point2D& p1, const Point2D& p2, f
 	return { intersect1, intersect2 };
 }
 
-Point2D towards(const Point2D& p1, const Point2D& p2, float distance)
+Point2D BasicSc2Bot::towards(const Point2D& p1, const Point2D& p2, float distance) const
 {
 	if (p1 == p2) {
 		return p1;
@@ -272,7 +311,7 @@ void BasicSc2Bot::find_right_ramp(const Point2D& location)
 	// find the ramp set that is closest to the location
 
 	std::sort(ramps.begin(), ramps.end(),
-		[&location](const std::vector<Point2D>& a, const std::vector<Point2D>& b) {
+		[this, &location](const std::vector<Point2D>& a, const std::vector<Point2D>& b) {
 			return Distance2D(Point2D_mean(a), location) < Distance2D(Point2D_mean(b), location);
 		});
 
@@ -287,6 +326,23 @@ void BasicSc2Bot::find_right_ramp(const Point2D& location)
 
 void BasicSc2Bot::depot_control() {
 	const ObservationInterface* obs = Observation();
+
+	Units dp_being_built = obs->GetUnits(Unit::Self, [](const Unit& unit) {
+		// display_type == 4 means the unit is Placeholder(?)
+		return unit.unit_type == UNIT_TYPEID::TERRAN_SUPPLYDEPOT && unit.build_progress < 1.0f && unit.display_type
+			!= 4;
+		});
+	if ((!ramp_depots[0] || !ramp_depots[1]) && !dp_being_built.empty()) {
+		sc2::Unit* first_unit = const_cast<sc2::Unit*>(dp_being_built.front());
+		if (!ramp_depots[0]) {
+			ramp_depots[0] = first_unit;
+		}
+		//TODO: make sure if ramp_depots[1] becomes ramp_depots[0] when ramp_depots[0] is destroyed, 
+		else if (!ramp_depots[1] && ramp_depots[0] != first_unit) {
+			ramp_depots[1] = first_unit;
+		}
+	}
+
 	Units depots = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SUPPLYDEPOT));
 	Units lowered_depots = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SUPPLYDEPOTLOWERED));
 	Units enemy_units = obs->GetUnits(Unit::Alliance::Enemy);

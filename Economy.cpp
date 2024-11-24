@@ -109,15 +109,6 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
 			unit.unit_type == UNIT_TYPEID::TERRAN_PLANETARYFORTRESS;
 		});
 
-	Units avoid_buildings = observation->GetUnits(Unit::Alliance::Self, [](const Unit& unit) {
-		return unit.unit_type == UNIT_TYPEID::TERRAN_TECHLAB ||
-			unit.unit_type == UNIT_TYPEID::TERRAN_REACTOR ||
-			unit.unit_type == UNIT_TYPEID::TERRAN_FACTORY ||
-			unit.unit_type == UNIT_TYPEID::TERRAN_BARRACKS ||
-			unit.unit_type == UNIT_TYPEID::TERRAN_STARPORT;
-		});
-
-
 	// Find an SCV to build with
 	Units scvs = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SCV));
 	const Unit* builder = nullptr;
@@ -202,9 +193,53 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
 					return false;
 				}
 			}
+
+			// Too close to other buildings
+			for (const auto& structure_location : structure_locations) {
+				if (Distance2D(location, structure_location) < 5.0f) {
+					return false;
+				}
+			}
+
 			// Location is valid
 			return true;
 			};
+
+
+		if (ability_type_for_structure == ABILITY_ID::BUILD_SUPPLYDEPOT)
+		{
+			// check if ramp is blocked
+			for (size_t i = 0; i < ramp_depots.size(); ++i) {
+
+				if (ramp_depots[i])
+				{
+					continue;
+				}
+
+				// find the closest mineral patch to the chokepoint
+				if (Query()->Placement(ABILITY_ID::BUILD_SUPPLYDEPOT, mainBase_depot_points[i]))
+				{
+					Actions()->UnitCommand(builder, ability_type_for_structure, mainBase_depot_points[i]);
+					return true;
+				}
+
+				return false;
+			}
+		}
+
+		if (ability_type_for_structure == ABILITY_ID::BUILD_BARRACKS)
+		{
+			// check if ramp is blocked
+			if (phase == 0)
+			{
+				if (Query()->Placement(ABILITY_ID::BUILD_BARRACKS, mainBase_barrack_point))
+				{
+					Actions()->UnitCommand(builder, ability_type_for_structure, mainBase_barrack_point);
+					return true;
+				}
+				return false;
+			}
+		}
 
 		// Check the initial build location
 		if (is_valid_build_location(build_location) && Query()->Placement(ability_type_for_structure, build_location)) {
@@ -228,30 +263,47 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
 }
 
 bool BasicSc2Bot::TryBuildSupplyDepot() {
-	const ObservationInterface* observation = Observation();
-	int32_t supply_used = observation->GetFoodUsed();
-	int32_t supply_cap = observation->GetFoodCap();
+	const ObservationInterface* obs = Observation();
+	int32_t supply_used = obs->GetFoodUsed();
+	int32_t supply_cap = obs->GetFoodCap();
 
 	// Default surplus
-	int32_t supply_surplus = 2;
-
+	int32_t supply_surplus = 1;
+	static bool ramp_dp_blocked = false;
 	// Set surplus by phase
-	if (phase == 1) {
-		supply_surplus = 2;
-	}
-	else if (phase == 2) {
+	if (phase == 2) {
 		supply_surplus = 6;
 	}
 	else if (phase == 3) {
 		supply_surplus = 8;
 	}
 
+	// block ramp right while building barracks
+	Units barracks = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKS));
+	if (ramp_depots[0] && phase == 0 && !barracks.empty())
+	{
+		if (!ramp_depots[1] && !ramp_dp_blocked)
+		{
+			std::cout << "Building Supply Depot" << std::endl;
+			ramp_dp_blocked = true;
+			return TryBuildStructure(ABILITY_ID::BUILD_SUPPLYDEPOT, UNIT_TYPEID::TERRAN_SCV);
+		}
+	}
+
 	// Build a supply depot when supply used reaches the threshold
 	if (supply_used >= supply_cap - supply_surplus) {
 		// Check if a supply depot is already under construction
-		Units supply_depots_building = observation->GetUnits(Unit::Self, [](const Unit& unit) {
+		Units supply_depots_building = obs->GetUnits(Unit::Self, [](const Unit& unit) {
 			return unit.unit_type == UNIT_TYPEID::TERRAN_SUPPLYDEPOT && unit.build_progress < 1.0f;
 			});
+		Units supply_depots_building1 = obs->GetUnits(Unit::Self, [](const Unit& unit) {
+			return unit.unit_type == UNIT_TYPEID::TERRAN_SUPPLYDEPOT && !unit.tag;
+			});
+
+		if (!supply_depots_building1.empty())
+		{
+			return false;
+		}
 
 		if (supply_depots_building.empty()) {
 			return TryBuildStructure(ABILITY_ID::BUILD_SUPPLYDEPOT, UNIT_TYPEID::TERRAN_SCV);
@@ -426,20 +478,28 @@ void BasicSc2Bot::ReassignWorkers() {
 	}
 }
 
+
+
 void BasicSc2Bot::BuildRefineries() {
-	Units bases = Observation()->GetUnits(Unit::Alliance::Self, IsTownHall());
+
+	const ObservationInterface* obs = Observation();
+	Units bases = obs->GetUnits(Unit::Alliance::Self, IsTownHall());
+
+
 
 	for (const auto& base : bases) {
-		Units geysers = Observation()->GetUnits(Unit::Alliance::Neutral, [base](const Unit& unit) {
-			return unit.unit_type == UNIT_TYPEID::NEUTRAL_VESPENEGEYSER && Distance2D(unit.pos, base->pos) < 10.0f;
+		Units geysers = obs->GetUnits(Unit::Alliance::Neutral, [base](const Unit& unit) {
+			return IsGeyser()(unit) && Distance2D(unit.pos, base->pos) < 15.0f;
 			});
-
 		for (const auto& geyser : geysers) {
-			Units refineries = Observation()->GetUnits(Unit::Alliance::Self, [geyser](const Unit& unit) {
+			Units refineries = obs->GetUnits(Unit::Alliance::Self, [geyser](const Unit& unit) {
 				return unit.unit_type == UNIT_TYPEID::TERRAN_REFINERY && Distance2D(unit.pos, geyser->pos) < 1.0f;
 				});
-			if (refineries.empty() && Observation()->GetMinerals() >= 75) {
-				Units scvs = Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SCV));
+			Units barracks = obs->GetUnits(Unit::Alliance::Self, [](const Unit& unit) {
+				return unit.unit_type == UNIT_TYPEID::TERRAN_BARRACKS && unit.build_progress < 1.0f;
+				});
+			if (refineries.empty() && obs->GetMinerals() >= 75 && !barracks.empty()) {
+				Units scvs = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SCV));
 				const Unit* builder = nullptr;
 
 				for (const auto& scv : scvs) {
@@ -453,7 +513,7 @@ void BasicSc2Bot::BuildRefineries() {
 							break;
 						}
 					}
-					if (!is_constructing) {
+					if (!is_constructing && scv != scv_scout) {
 						builder = scv;
 						break;
 					}

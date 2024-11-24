@@ -21,7 +21,6 @@ BasicSc2Bot::BasicSc2Bot()
 	scout_complete(false),
 	current_scout_location_index(0),
 	scv_scout(nullptr),
-	phase(1),
 	nearest_corner_ally(0.0f, 0.0f),
 	nearest_corner_enemy(0.0f, 0.0f) {
 
@@ -39,6 +38,68 @@ BasicSc2Bot::BasicSc2Bot()
 	};
 }
 
+void BasicSc2Bot::DrawBoxesOnMap(sc2::DebugInterface* debug, int map_width, int map_height)
+{
+	for (int x = 0; x < map_width; ++x) {
+		for (int y = 0; y < map_height; ++y) {
+
+			int z = height_at(Point2DI(x, y));
+			sc2::Point3D p_min(0, 0, z);
+			sc2::Point3D p_max(0.5, 0.5, z + 0.5);
+			debug->DebugBoxOut(p_min, p_max, sc2::Colors::Red);
+		}
+	}
+	debug->SendDebug();
+}
+
+void BasicSc2Bot::DrawBoxAtLocation(sc2::DebugInterface* debug, const sc2::Point3D& location, float size, const sc2::Color& color) const
+{
+
+	sc2::Point3D p_min = location;
+	p_min.x -= size / 2.0f;
+	p_min.y -= size / 2.0f;
+	p_min.z -= size / 2.0f;
+
+	sc2::Point3D p_max = location;
+	p_max.x += size / 2.0f;
+	p_max.y += size / 2.0f;
+	p_max.z += size / 2.0f;
+
+	debug->DebugBoxOut(p_min, p_max, color);
+
+}
+
+void BasicSc2Bot::Debugging()
+{
+	Control()->GetObservation();
+
+	const sc2::ObservationInterface* obs = Observation();
+	sc2::QueryInterface* query = Query();
+	sc2::DebugInterface* debug = Debug();
+	const Unit* main_base = GetMainBase();
+	if (main_base != nullptr)
+	{
+		Units mineral_patches = obs->GetUnits(Unit::Alliance::Neutral, [main_base](const Unit& unit) {
+			return IsMineralPatch()(unit) && Distance2D(unit.pos, main_base->pos) < 10.0f;
+			});
+
+		// extra depots build
+		std::vector<Point2D> mineral_positions;
+		for (const auto& m : mineral_patches) {
+			if (Distance2D(m->pos, main_base->pos) < 10.0f) {
+				mineral_positions.emplace_back(m->pos);
+			}
+		}
+
+		std::vector<Point2D> edges = convexHull(mineral_positions);
+
+		for (const auto& e : edges) {
+			DrawBoxAtLocation(debug, Point3D(e.x, e.y, height_at(Point2DI(e))), 1.0f, sc2::Colors::Red);
+		}
+	}
+	debug->SendDebug();
+}
+
 void BasicSc2Bot::OnGameStart() {
 	// Initialize start locations, expansion locations, chokepoints, etc.
 
@@ -49,6 +110,7 @@ void BasicSc2Bot::OnGameStart() {
 	}
 	expansion_locations = search::CalculateExpansionLocations(Observation(), Query());
 	retreat_location = { start_location.x + 5.0f, start_location.y };
+
 	// find ramps
 	find_right_ramp(start_location);
 
@@ -129,6 +191,8 @@ void BasicSc2Bot::OnGameEnd() {
 }
 
 void BasicSc2Bot::OnStep() {
+	current_gameloop = Observation()->GetGameLoop();
+	BasicSc2Bot::Debugging();
 	BasicSc2Bot::depot_control();
 	BasicSc2Bot::ManageEconomy();
 	BasicSc2Bot::ExecuteBuildOrder();
@@ -151,9 +215,29 @@ void BasicSc2Bot::OnUnitCreated(const Unit* unit) {
 	if (unit->unit_type == UNIT_TYPEID::TERRAN_SIEGETANK) {
 		num_siege_tanks++;
 	}
+
 }
 
 void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
+
+	const ObservationInterface* obs = Observation();
+	if (unit && unit->unit_type != UNIT_TYPEID::TERRAN_SUPPLYDEPOT) {
+		if (unit->unit_type == UNIT_TYPEID::TERRAN_BARRACKS)
+		{
+			++num_barracks;
+		}
+		else if (unit->unit_type == UNIT_TYPEID::TERRAN_FACTORY)
+		{
+			++num_factories;
+		}
+		else if (unit->unit_type == UNIT_TYPEID::TERRAN_STARPORT)
+		{
+			++num_starports;
+		}
+
+		structure_locations.emplace_back(unit->pos);
+	}
+
 	if (unit->unit_type == UNIT_TYPEID::TERRAN_REFINERY) {
 		const ObservationInterface* observation = Observation();
 
@@ -168,14 +252,53 @@ void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
 		for (const auto& scv : scvs) {
 			// Assign SCV to the refinery
 			Actions()->UnitCommand(scv, ABILITY_ID::HARVEST_GATHER, unit);
-			scv_count++;
+			++scv_count;
 			// Stop after assigning 3 SCVs
 			if (scv_count >= 3) break;
 		}
 	}
 
+	if (phase == 0) {
+
+		if (unit->unit_type == UNIT_TYPEID::TERRAN_BARRACKS) {
+			Units barracks = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKS));
+			const Unit* b = barracks.front();
+			ramp_middle[0] = const_cast<sc2::Unit*>(b);
+			if (obs->GetMinerals() >= 50 && obs->GetVespene() >= 25)
+			{
+				Actions()->UnitCommand(b, ABILITY_ID::BUILD_TECHLAB_BARRACKS);
+			}
+
+		}
+
+		if (unit->unit_type == UNIT_TYPEID::TERRAN_BARRACKSTECHLAB) {
+			Units techlab = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKSTECHLAB));
+			const Unit* t = techlab.front();
+			ramp_middle[1] = const_cast<sc2::Unit*>(t);
+			++phase;
+		}
+	}
+
+
+	else if (phase == 1)
+	{
+
+		if (unit->unit_type == UNIT_TYPEID::TERRAN_FACTORY)
+		{
+			Units factories = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FACTORY));
+			Units barracks = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKS));
+
+			const Unit* b = barracks.front();
+			const Unit* f = factories.front();
+			ramp_middle[0] = const_cast<sc2::Unit*>(f);
+
+			Swap(b, f, true);
+			++phase;
+		}
+	}
+
 	if (unit->unit_type == UNIT_TYPEID::TERRAN_STARPORT) {
-		++phase;
+		/*++phase;*/
 		const ObservationInterface* observation = Observation();
 		Units factories = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FACTORY));
 		Units starports = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_STARPORT));
@@ -195,16 +318,39 @@ void BasicSc2Bot::OnUpgradeCompleted(UpgradeID upgrade_id) {
 
 void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) {
 
-	// check if the destroyed unit was a ramp building
-	for (size_t i = 0; i < ramp_depots.size(); ++i) {
-		if (unit == ramp_depots[i]) {
-			ramp_depots[i] = nullptr;
-		}
+	//TODO: make sure if ramp_depots[1] becomes ramp_depots[0] when ramp_depots[0] is destroyed, 
+	if (unit == ramp_depots[0]) {
+		ramp_depots[0] = ramp_depots[1];
+		ramp_depots[1] = nullptr;
 	}
+	else if (unit == ramp_depots[1]) {
+		ramp_depots[1] = nullptr;
+	}
+
 	for (size_t i = 0; i < ramp_middle.size(); ++i) {
 		if (unit == ramp_middle[i]) {
 			ramp_middle[i] = nullptr;
 		}
+	}
+
+	if (unit)
+	{
+
+		if (unit->unit_type == UNIT_TYPEID::TERRAN_BARRACKS)
+		{
+			--num_barracks;
+		}
+		else if (unit->unit_type == UNIT_TYPEID::TERRAN_FACTORY)
+		{
+			--num_factories;
+		}
+		else if (unit->unit_type == UNIT_TYPEID::TERRAN_STARPORT)
+		{
+			--num_starports;
+		}
+
+		structure_locations.erase(std::remove(structure_locations.begin(),
+			structure_locations.end(), unit->pos), structure_locations.end());
 	}
 
 	// Scouting scv died
