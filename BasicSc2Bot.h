@@ -94,8 +94,8 @@ private:
 
 	// Phase of the strategy
 	// phase 0 -> Start of the game ~ until the first barracks with techlab is built
-	// Phase 1 -> ~ until first factory is built
-	// Phase 2 -> ~ until star port and first battlecruiser is built
+	// Phase 1 -> ~ until first factory is built and swapped
+	// Phase 2 -> ~ until star port and swapped + first battlecruiser is built
 	// Phase 3 -> ~ rest of the game
 	int phase = 0;
 
@@ -142,9 +142,6 @@ private:
 	// Swaps building
 	void Swap(const Unit* a, const Unit* b, bool lift);
 
-	// Check if swap is possible
-	bool swappable;
-
 	// Check if swap is in progress
 	bool swap_in_progress = false;
 
@@ -189,7 +186,7 @@ private:
 	void Defense();
 
 	// Blocks the chokepoint with buildings for early defense.
-	void BlockRamp();
+	//void BlockRamp();
 
 	// Defends against early rushes using Marines and SCVs if necessary.
 	void EarlyDefense();
@@ -276,6 +273,9 @@ private:
 
 	// Use stimpack ability for Marines
 	void UseStimPack(const Unit* marine);
+
+	// SCV that is building
+	const sc2::Unit* scv_building;
 
 	// SCV that is scouting
 	const sc2::Unit* scv_scout;
@@ -421,7 +421,7 @@ private:
 
 	int height_at(const Point2DI& p) const;
 
-	void find_ramps();
+	void find_ramps_build_map(bool isRamp);
 
 	void find_groups(std::vector<Point2D>& points, int minimum_points_per_group, int max_distance_between_points);
 
@@ -480,6 +480,7 @@ private:
 	std::vector<sc2::Point2D> enemy_start_locations;
 	std::vector<sc2::Point3D> expansion_locations;
 	std::vector<sc2::Point2D> structure_locations;
+	std::vector<std::vector<sc2::Point2D>> build_map;
 
 	// Our bases.
 	Units bases;

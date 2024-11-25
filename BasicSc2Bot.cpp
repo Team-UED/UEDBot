@@ -6,6 +6,9 @@ BasicSc2Bot::BasicSc2Bot()
 	num_marines(0),
 	num_battlecruisers(0),
 	num_siege_tanks(0),
+	num_barracks(0),
+	num_factories(0),
+	num_starports(0),
 	is_under_attack(false),
 	is_attacking(false),
 	need_expansion(false),
@@ -14,7 +17,6 @@ BasicSc2Bot::BasicSc2Bot()
 	last_expansion_check(0),
 	last_scout_time(0),
 	enemy_strategy(EnemyStrategy::Unknown),
-	swappable(false),
 	swap_in_progress(false),
 	first_battlecruiser(false),
 	is_scouting(false),
@@ -58,15 +60,15 @@ void BasicSc2Bot::DrawBoxAtLocation(sc2::DebugInterface* debug, const sc2::Point
 	sc2::Point3D p_min = location;
 	p_min.x -= size / 2.0f;
 	p_min.y -= size / 2.0f;
-	p_min.z -= size / 2.0f;
 
 	sc2::Point3D p_max = location;
 	p_max.x += size / 2.0f;
 	p_max.y += size / 2.0f;
-	p_max.z += size / 2.0f;
+
+	// Keep the z-coordinate constant to make the box flat
+	p_max.z = p_min.z = location.z;
 
 	debug->DebugBoxOut(p_min, p_max, color);
-
 }
 
 void BasicSc2Bot::Debugging()
@@ -97,6 +99,25 @@ void BasicSc2Bot::Debugging()
 			DrawBoxAtLocation(debug, Point3D(e.x, e.y, height_at(Point2DI(e))), 1.0f, sc2::Colors::Red);
 		}
 	}
+	//if (current_gameloop % 100)
+	//{
+	//	build_map.clear();
+	//	find_ramps_build_map(false);
+
+	//	std::sort(build_map.begin(), build_map.end(), [this](const std::vector<Point2D>& a, const std::vector<Point2D>& b) {
+	//		return Distance2D(Point2D_mean(a), start_location) < Distance2D(Point2D_mean(b), start_location);
+	//		});
+
+	//	// Draw the build map
+	//	for (const auto& test : build_map) {
+	//		for (const auto& t : test) {
+	//			DrawBoxAtLocation(debug, Point3D(t.x, t.y, height_at(Point2DI(t))), 0.9f, sc2::Colors::Green);
+	//		}
+	//		break;
+	//	}
+	//}
+
+
 	debug->SendDebug();
 }
 
@@ -290,24 +311,26 @@ void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
 
 			const Unit* b = barracks.front();
 			const Unit* f = factories.front();
-			ramp_middle[0] = const_cast<sc2::Unit*>(f);
 
+			//assert(b != nullptr && f != nullptr);
+			ramp_middle[0] = const_cast<sc2::Unit*>(f);
 			Swap(b, f, true);
 			++phase;
 		}
 	}
 
-	if (unit->unit_type == UNIT_TYPEID::TERRAN_STARPORT) {
-		/*++phase;*/
-		const ObservationInterface* observation = Observation();
-		Units factories = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FACTORY));
-		Units starports = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_STARPORT));
-		if (!factories.empty() && !starports.empty()) {
-			const Unit* factory = factories.front();
-			const Unit* starport = starports.front();
-			Actions()->UnitCommand(factory, ABILITY_ID::LIFT);
-			Actions()->UnitCommand(starport, ABILITY_ID::LIFT);
-			swappable = true;
+	else if (phase == 2)
+	{
+		if (unit->unit_type == UNIT_TYPEID::TERRAN_STARPORT) {
+			/*++phase;*/
+			Units barracks = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKS));
+			Units starport = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_STARPORT));
+			const Unit* b = barracks.front();
+			const Unit* s = starport.front();
+
+			//assert(b != nullptr && s != nullptr);
+			Swap(b, s, true);
+			++phase;
 		}
 	}
 }
