@@ -60,11 +60,11 @@ void BasicSc2Bot::BuildEngineeringBay() {
 
 // Build Orbital Command if we have a Command Center and enough resources
 void BasicSc2Bot::BuildOrbitalCommand() {
-	const ObservationInterface* observation = Observation();
+	const ObservationInterface* obs = Observation();
 
 	// Get Barracks and Factories
-	Units barracks = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKS));
-	Units factories = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FACTORY));
+	Units barracks = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKS));
+	Units factories = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FACTORY));
 
 	// Can't build Orbital Command without Barracks or Factories
 	if (barracks.empty() || factories.empty()) {
@@ -72,24 +72,25 @@ void BasicSc2Bot::BuildOrbitalCommand() {
 	}
 
 	// Find a Command Center that can be upgraded
-	Units command_centers = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_COMMANDCENTER));
+	Units command_centers = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_COMMANDCENTER));
 
 	if (command_centers.empty()) {
 		return;
 	}
 
-	for (const auto& command_center : command_centers) {
+	for (const auto& cc : command_centers) {
 		// Check if this Command Center is already being upgraded
 		bool is_upgrading = false;
-		for (const auto& order : command_center->orders) {
+		for (const auto& order : cc->orders) {
 			if (order.ability_id == ABILITY_ID::MORPH_ORBITALCOMMAND) {
 				is_upgrading = true;
 				break;
 			}
 		}
 		// If its not upgrading, upgrade it
-		if (!is_upgrading && observation->GetMinerals() >= 150) {
-			Actions()->UnitCommand(command_center, ABILITY_ID::MORPH_ORBITALCOMMAND);
+		if (!is_upgrading && obs->GetMinerals() >= 150) {
+			std::cout << "Upgrading Command Center" << std::endl;
+			Actions()->UnitCommand(cc, ABILITY_ID::MORPH_ORBITALCOMMAND, true);
 			return;
 		}
 	}
@@ -140,61 +141,62 @@ void BasicSc2Bot::BuildStarport() {
 
 // Build Tech lab if we have a Factory and enough resources
 void BasicSc2Bot::BuildTechLabAddon() {
-	const ObservationInterface* obs = Observation();
+	if (!swap_in_progress) {
+		const ObservationInterface* obs = Observation();
+		// Get Barracks
+		Units barracks = obs->GetUnits(Unit::Alliance::Self, [](const Unit& unit) {
+			return unit.unit_type == UNIT_TYPEID::TERRAN_BARRACKS && !unit.is_flying &&
+				!unit.add_on_tag;
+			});
 
-	// Get Barracks
-	Units barracks = obs->GetUnits(Unit::Alliance::Self, [](const Unit& unit) {
-		return unit.unit_type == UNIT_TYPEID::TERRAN_BARRACKS && !unit.is_flying &&
-			!unit.add_on_tag;
-		});
+		// Get Factories
+		Units factories = obs->GetUnits(Unit::Alliance::Self, [](const Unit& unit) {
+			return unit.unit_type == UNIT_TYPEID::TERRAN_FACTORY && !unit.is_flying &&
+				!unit.add_on_tag;
+			});
 
-	// Get Factories
-	Units factories = obs->GetUnits(Unit::Alliance::Self, [](const Unit& unit) {
-		return unit.unit_type == UNIT_TYPEID::TERRAN_FACTORY && !unit.is_flying &&
-			!unit.add_on_tag;
-		});
+		// Get Starports
+		Units starports = obs->GetUnits(Unit::Alliance::Self, [](const Unit& unit) {
+			return unit.unit_type == UNIT_TYPEID::TERRAN_STARPORT && !unit.is_flying &&
+				!unit.add_on_tag;
+			});
 
-	// Get Starports
-	Units starports = obs->GetUnits(Unit::Alliance::Self, [](const Unit& unit) {
-		return unit.unit_type == UNIT_TYPEID::TERRAN_STARPORT && !unit.is_flying &&
-			!unit.add_on_tag;
-		});
+		// use 3 bits to represent buildings without any addons
+		char addon_bits = 0;
+		addon_bits |= (!barracks.empty() ? 1 : 0);
+		addon_bits |= (!factories.empty() ? 2 : 0);
+		addon_bits |= (!starports.empty() ? 4 : 0);
 
-	// use 3 bits to represent buildings without any addons
-	char addon_bits = 0;
-	addon_bits |= (!barracks.empty() ? 1 : 0);
-	addon_bits |= (!factories.empty() ? 2 : 0);
-	addon_bits |= (!starports.empty() ? 4 : 0);
+		// any is not empty then..
+		if (addon_bits != 0) {
 
-	// any is not empty then..
-	if (addon_bits != 0) {
-
-		// enough resources
-		if (obs->GetMinerals() >= 50 && obs->GetVespene() >= 25)
-		{
-			for (size_t i = 0; i < 3; ++i)
+			// enough resources
+			if (obs->GetMinerals() >= 50 && obs->GetVespene() >= 25)
 			{
-				if (addon_bits & 1)
+				for (size_t i = 0; i < 3; ++i)
 				{
-					// Get the first building without an addon
-					const Unit* building = nullptr;
-					switch (i)
+					if (addon_bits & 1)
 					{
-					case 0:
-						building = barracks.front();
-						break;
-					case 1:
-						building = factories.front();
-						break;
-					case 2:
-						building = starports.front();
+						// Get the first building without an addon
+						const Unit* building = nullptr;
+						switch (i)
+						{
+						case 0:
+							building = barracks.front();
+							break;
+						case 1:
+							building = factories.front();
+							break;
+						case 2:
+							building = starports.front();
+							break;
+						}
+						// Build a Tech Lab
+						Actions()->UnitCommand(building, ABILITY_ID::BUILD_TECHLAB);
 						break;
 					}
-					// Build a Tech Lab
-					Actions()->UnitCommand(building, ABILITY_ID::BUILD_TECHLAB);
-					break;
+					addon_bits >>= 1;
 				}
-				addon_bits >>= 1;
 			}
 		}
 	}

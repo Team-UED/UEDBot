@@ -91,6 +91,44 @@ Point2D BasicSc2Bot::towards(const Point2D& p1, const Point2D& p2, float distanc
 
 	return p;
 }
+
+//void BasicSc2Bot::flood_fill(std::vector<std::vector<int>>& picture, const Point2DI& start, int newColor, int max_distance_between_points, std::vector<Point2DI>& group) const {
+//	const int NOT_COLORED_YET = -1;
+//	std::deque<Point2DI> queue;
+//
+//	queue.push_back(start);
+//	int originalColor = picture[start.y][start.x];
+//	picture[start.y][start.x] = newColor;
+//	group.push_back(start);
+//
+//	std::vector<Point2DI> nearby;
+//	for (int dx = -max_distance_between_points; dx <= max_distance_between_points; ++dx) {
+//		for (int dy = -max_distance_between_points; dy <= max_distance_between_points; ++dy) {
+//			if (abs(dx) + abs(dy) <= max_distance_between_points) {
+//				nearby.emplace_back(Point2DI(dx, dy));
+//			}
+//		}
+//	}
+//
+//	while (!queue.empty()) {
+//		Point2DI base = queue.front();
+//		queue.pop_front();
+//		for (const auto& offset : nearby) {
+//			int px = base.x + offset.x;
+//			int py = base.y + offset.y;
+//			if (px < 0 || py < 0 || px >= picture[0].size() || py >= picture.size()) {
+//				continue;
+//			}
+//			if (picture[py][px] != originalColor) {
+//				continue;
+//			}
+//			picture[py][px] = newColor;
+//			queue.emplace_back(Point2DI(px, py));
+//			group.push_back(Point2DI(px, py));
+//		}
+//	}
+//}
+
 // ------------------ Helper Functions ------------------
 
 int BasicSc2Bot::height_at(const Point2DI& p) const {
@@ -117,7 +155,6 @@ void BasicSc2Bot::find_groups(std::vector<Point2D>& points, int minimum_points_p
 			}
 		}
 	}
-
 	for (const auto& point : points) {
 		paint(point);
 	}
@@ -125,10 +162,11 @@ void BasicSc2Bot::find_groups(std::vector<Point2D>& points, int minimum_points_p
 	std::vector<Point2D> remaining(points.begin(), points.end());
 	std::deque<Point2D> queue;
 
+	// flood fill
 	while (!remaining.empty()) {
 		std::vector<Point2D> currentGroup;
 		if (queue.empty()) {
-			currentColor++;
+			++currentColor;
 			auto start = remaining.back();
 			remaining.pop_back();
 			paint(start);
@@ -157,38 +195,47 @@ void BasicSc2Bot::find_groups(std::vector<Point2D>& points, int minimum_points_p
 				}
 			}
 		}
-		if (currentGroup.size() >= minimum_points_per_group) {
-			std::sort(currentGroup.begin(), currentGroup.end(),
+		if (minimum_points_per_group != -1)
+		{
+			if (currentGroup.size() >= minimum_points_per_group) {
+				std::sort(currentGroup.begin(), currentGroup.end(),
+					[this](const Point2D& a, const Point2D& b) {
+						return height_at(Point2DI(a)) > height_at(Point2DI(b));
+					});
+				ramps.emplace_back(currentGroup);
+			}
+		}
+		else {
+			/*std::sort(currentGroup.begin(), currentGroup.end(),
 				[this](const Point2D& a, const Point2D& b) {
 					return height_at(Point2DI(a)) > height_at(Point2DI(b));
-				});
-			ramps.emplace_back(currentGroup);
+				});*/
+			build_map.emplace_back(currentGroup);
 		}
 	}
 	return;
 }
 
-void BasicSc2Bot::find_ramps()
+void BasicSc2Bot::find_ramps_build_map(bool isRamp)
 {
 	const ObservationInterface* obs = Observation();
-	std::vector<Point2D> rampVec;
+	std::vector<Point2D> mapVec;
 	unsigned int width = obs->GetGameInfo().width;
 	unsigned int height = obs->GetGameInfo().height;
+	int max_num_points = isRamp ? 8 : -1;
 
 	for (unsigned int i = 0; i < width; ++i)
 	{
 		for (unsigned int j = 0; j < height; ++j)
 		{
 			Point2D temp(i, j);
-			if (obs->IsPathable(temp) && !obs->IsPlacable(temp))
+			if (obs->IsPathable(temp) && (isRamp ? !obs->IsPlacable(temp) : obs->IsPlacable(temp)))
 			{
-				rampVec.emplace_back(Point2D(i, j));
+				mapVec.emplace_back(temp);
 			}
-
 		}
 	}
-	find_groups(rampVec, 8, 2);
-	return;
+	find_groups(mapVec, max_num_points, 2);
 }
 
 std::vector<Point2D> BasicSc2Bot::upper_lower(const std::vector<Point2D>& points, bool up) const
@@ -306,7 +353,7 @@ Point2D BasicSc2Bot::barracks_correct_placement(const std::vector<Point2D>& ramp
 
 void BasicSc2Bot::find_right_ramp(const Point2D& location)
 {
-	find_ramps();
+	find_ramps_build_map(true);
 	//location could be start location or any other command center location
 	// find the ramp set that is closest to the location
 
@@ -332,12 +379,14 @@ void BasicSc2Bot::depot_control() {
 		return unit.unit_type == UNIT_TYPEID::TERRAN_SUPPLYDEPOT && unit.build_progress < 1.0f && unit.display_type
 			!= 4;
 		});
+
+	//! first depot is the one that is built first
 	if ((!ramp_depots[0] || !ramp_depots[1]) && !dp_being_built.empty()) {
 		sc2::Unit* first_unit = const_cast<sc2::Unit*>(dp_being_built.front());
 		if (!ramp_depots[0]) {
 			ramp_depots[0] = first_unit;
 		}
-		//TODO: make sure if ramp_depots[1] becomes ramp_depots[0] when ramp_depots[0] is destroyed, 
+		//! make sure if ramp_depots[1] becomes ramp_depots[0] when ramp_depots[0] is destroyed, 
 		else if (!ramp_depots[1] && ramp_depots[0] != first_unit) {
 			ramp_depots[1] = first_unit;
 		}

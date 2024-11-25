@@ -17,17 +17,25 @@ void BasicSc2Bot::TrainMarines() {
 	const ObservationInterface* observation = Observation();
 	Units barracks = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKS));
 	Units factories = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FACTORY));
+	Units starports = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_STARPORT));
 	Units fusioncores = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FUSIONCORE));
 	if (barracks.empty() || phase == 0) {
 		return;
 	}
 
 	// factory is built...gotta swap
-	if (!factories.empty())
+	if (phase == 1 && !factories.empty())
 	{
-		if (factories.front()->build_progress > 0.5 && phase == 1)
+		if (factories.front()->build_progress > 0.5)
 		{
-			Actions()->UnitCommand(barracks.front(), ABILITY_ID::CANCEL);
+			//Actions()->UnitCommand(barracks.front(), ABILITY_ID::CANCEL);
+			return;
+		}
+	}
+	else if (phase == 2 && !starports.empty())
+	{
+		if (starports.front()->build_progress > 0.5)
+		{
 			return;
 		}
 	}
