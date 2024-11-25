@@ -231,6 +231,9 @@ private:
     // Controls Battlecruisers to target enemy units
     void TargetBattlecruisers();
 
+	// Calculate the Kite Vector for a unit
+	Point2D GetKiteVector(const Unit* unit, const Unit* target);	
+
 	// Controls Battlecruisers to retreat
 	void Retreat(const Unit* unit);
 
@@ -409,9 +412,7 @@ private:
 	Point2D barracks_correct_placement(const std::vector<Point2D>& ramp_points, const std::vector<Point2D>& corner_depots) const;
 
 	void depot_control();
-	// =========================
-	// Member Variables
-	// =========================
+
     void MoveToEnemy(const Units &marines, const Units &siege_tanks);
 
     // Count units in combat
@@ -420,6 +421,8 @@ private:
     // Calculates the threat level of enemy units
     int CalculateThreatLevel(const Unit* unit);
 
+	// Get the closest threat to a unit
+	const Unit* GetClosestThreat(const Unit* unit);
 
     // =========================
     // Member Variables
