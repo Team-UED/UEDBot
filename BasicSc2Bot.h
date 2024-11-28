@@ -313,7 +313,6 @@ private:
     // Helper Methods
     // =========================
 
-
 	// Manages army units and their composition.
 	void ManageArmy();
 
@@ -405,6 +404,7 @@ private:
 
     // Calculates the threat level of enemy units
     int CalculateThreatLevel(const Unit* unit);
+
 
     // =========================
     // Member Variables
