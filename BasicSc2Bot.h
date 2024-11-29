@@ -300,8 +300,11 @@ private:
     // Retreating location
     std::unordered_map<const Unit*, Point2D> battlecruiser_retreat_location;
 
-    // Moving flag
-    std::unordered_map<const Unit*, bool> unit_moving;
+	// Moving flag
+	std::unordered_map<const Unit*, bool> unit_moving;
+
+	// Moving location
+	std::unordered_map<const Unit*, Point2D> unit_moving_location;
 
     // =========================
     // Helper Methods

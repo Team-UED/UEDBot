@@ -99,7 +99,7 @@ bool BasicSc2Bot::IsDangerousPosition(const Point2D& pos) {
 	// if enemy units are within a certain radius (run!!!!)
 	auto enemy_units = Observation()->GetUnits(Unit::Alliance::Enemy);
 	for (const auto& enemy : enemy_units) {
-		if (Distance2D(pos, enemy->pos) < 10.0f) {
+		if (Distance2D(pos, enemy->pos) < 5.0f) {
 			return true;
 		}
 	}

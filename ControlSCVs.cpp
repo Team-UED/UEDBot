@@ -249,8 +249,8 @@ void BasicSc2Bot::RetreatFromDanger() {
                     break;
                 }
             }
-            if (scv_is_attacking) {
-                continue; // Skip SCVs that are currently attacking
+            if (scv_is_attacking || scvs_repairing.find(unit->tag) != scvs_repairing.end()) {
+                continue; // Skip SCVs that are currently attacking, or reparing
             }
 
             // If the SCV is in a dangerous position, make it retreat
@@ -304,9 +304,8 @@ void BasicSc2Bot::RepairUnits() {
 
                 // Repair only if the unit is at the base or not under attack.
                 if (is_at_base && !is_under_attack) {
-                    Actions()->UnitCommand(unit, ABILITY_ID::EFFECT_REPAIR,
-                                           target);
                     scvs_repairing.insert(unit->tag); // Mark SCV as repairing
+                    Actions()->UnitCommand(unit, ABILITY_ID::EFFECT_REPAIR,target);
                 }
             }
         }
@@ -326,8 +325,8 @@ void BasicSc2Bot::RepairStructures() {
 
             const Unit *target = FindDamagedStructure();
             if (target && scvs_repairing.size() < 6) {
-                Actions()->UnitCommand(unit, ABILITY_ID::EFFECT_REPAIR, target);
                 scvs_repairing.insert(unit->tag); // Mark SCV as repairing
+                Actions()->UnitCommand(unit, ABILITY_ID::EFFECT_REPAIR, target);
             }
         }
     }
@@ -391,12 +390,12 @@ void BasicSc2Bot::SCVAttackEmergency() {
                     if (target && !IsWorkerUnit(target) &&
                         Distance2D(target->pos, main_base->pos) <
                             max_distance_from_base) {
-                        Actions()->UnitCommand(unit, ABILITY_ID::ATTACK,
-                                               target);
                         scvs_sent++;
-                        if (scvs_sent >= max_scvs_to_send) {
+                        if (scvs_sent > max_scvs_to_send) {
                             break;
                         }
+                        Actions()->UnitCommand(unit, ABILITY_ID::ATTACK,
+                                               target);
                     }
                 }
             }
