@@ -1,6 +1,5 @@
 #include "BasicSc2Bot.h"
 
-// Manages defensive structures and units.
 void BasicSc2Bot::Defense() {
     BlockChokepoint();
     EarlyDefense();
@@ -28,7 +27,7 @@ void BasicSc2Bot::BlockChokepoint() {
             for (int i = 0; i < 2; ++i) {
                 Point2D expected_pos = chokepoint + Point2D(i * 3.0f, 0.0f);
                 if (Distance2D(structure->pos, expected_pos) < 0.5f && 
-                    structure->build_progress == 1.0f) {
+                    structure->build_progress == 1.0f) { // Check if structure is completed
                     supply_depots_built[i] = true;
                 }
             }

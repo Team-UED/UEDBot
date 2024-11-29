@@ -49,7 +49,7 @@ void BasicSc2Bot::OnGameStart() {
 	}
 	retreat_location = { start_location.x + 5.0f, start_location.y};
 	expansion_locations = search::CalculateExpansionLocations(Observation(), Query());
-
+	retreat_location = { start_location.x + 5.0f, start_location.y };
 	// find ramps
 	find_right_ramp(start_location);
 
@@ -258,18 +258,25 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) {
 		is_scouting = false;
 	}
 
+	// SCV died while scouting
 	if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV) {
 		num_scvs--;
 	}
+
+	// Battlecruiser died
 	if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER) {
 		num_battlecruisers--;
         if (battlecruiser_retreating[unit]) {
             battlecruiser_retreating[unit] = false;
         }
     }
+
+	// Marine died
     if (unit->unit_type == UNIT_TYPEID::TERRAN_MARINE) {
 		num_marines--;
 	}
+
+	// Siege tank died
 	if (unit->unit_type == UNIT_TYPEID::TERRAN_SIEGETANK) {
 		num_siege_tanks--;
 	}
