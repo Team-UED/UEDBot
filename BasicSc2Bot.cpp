@@ -298,6 +298,11 @@ void BasicSc2Bot::OnUnitIdle(const Unit* unit)
 }
 
 void BasicSc2Bot::OnUnitCreated(const Unit* unit) {
+
+	if (!unit) {
+		return;
+	}
+
 	if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV) {
 		num_scvs++;
 	}
