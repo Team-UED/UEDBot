@@ -184,17 +184,13 @@ std::vector<Point2D> BasicSc2Bot::upper_lower(const std::vector<Point2D>& points
 Point2D BasicSc2Bot::top_bottom_center(const std::vector<Point2D>& points, const bool up) const
 {
 	std::vector<Point2D> top_bottom_points;
-	switch (up)
-	{
-		// up == true, then finding top_center
-	case true:
+	if(up) {
 		top_bottom_points = upper_lower(points, up);
-		break;
-		// up == false, then finding bottom_center
-	case false:
-		top_bottom_points = upper_lower(points, up);
-		break;
 	}
+	else {
+		top_bottom_points = upper_lower(points, up);
+	}
+	
 	return Point2D_mean(top_bottom_points);
 }
 
