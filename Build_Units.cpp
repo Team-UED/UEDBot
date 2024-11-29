@@ -88,6 +88,7 @@ void BasicSc2Bot::TrainSiegeTanks() {
 
 	Units fusioncores = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FUSIONCORE));
 
+	// Can't train Siege Tanks without Factories
 	if (factories.empty()) {
 		return;
 	}
@@ -126,11 +127,10 @@ void BasicSc2Bot::TrainSiegeTanks() {
 
 void BasicSc2Bot::UpgradeMarines() {
 	const ObservationInterface* observation = Observation();
-
-	// Check if we have research structures (Barracks, Engineering bay)
     Units techlabs = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKSTECHLAB));
 	Units engineeringbays = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_ENGINEERINGBAY));
 
+    // Can't upgrade Marines without Engineering Bays
     if (engineeringbays.empty()) {
         return;
     }
@@ -157,6 +157,7 @@ void BasicSc2Bot::UpgradeMarines() {
         }
     }
 
+	// Upgrade from Tech Lab(Combat Shield)
     if (!techlabs.empty()) {
         if (completed_upgrades.find(UPGRADE_ID::COMBATSHIELD) == completed_upgrades.end()) {
             ABILITY_ID upgrade = ABILITY_ID::RESEARCH_COMBATSHIELD;
@@ -180,11 +181,12 @@ void BasicSc2Bot::UpgradeMarines() {
 }
 
 void BasicSc2Bot::UpgradeMechs() {
-    const ObservationInterface* observation = Observation();
 
-    // Check if we have research structures (Armory)
+    const ObservationInterface* observation = Observation();
     Units armories = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_ARMORY));
 
+	// Can't upgrade Mechs(Battlecruisers and Tanks) without Armories
+	// Also, save resources for first Battlecruiser
     if (armories.empty() || !first_battlecruiser) {
         return;
     }
