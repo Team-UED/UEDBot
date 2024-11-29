@@ -303,15 +303,19 @@ void BasicSc2Bot::OnUnitCreated(const Unit* unit) {
 		return;
 	}
 
+	// SCV created
 	if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV) {
 		num_scvs++;
 	}
+	// Battlecruiser created
 	if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER) {
 		num_battlecruisers++;
 	}
+	// Marine created
 	if (unit->unit_type == UNIT_TYPEID::TERRAN_MARINE) {
 		num_marines++;
 	}
+	// Siege Tank created
 	if (unit->unit_type == UNIT_TYPEID::TERRAN_SIEGETANK) {
 		num_siege_tanks++;
 	}
@@ -426,6 +430,7 @@ void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
 }
 
 void BasicSc2Bot::OnUpgradeCompleted(UpgradeID upgrade_id) {
+	// Add completed upgrades to the set
 	completed_upgrades.insert(upgrade_id);
 }
 
@@ -480,7 +485,6 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) {
 
 	// Scouting scv died
 	if (is_scouting && scv_scout && unit == scv_scout) {
-
 		// find the nearest possible enemy location to its last known position
 		float min_distance = std::numeric_limits<float>::max();
 		sc2::Point2D nearest_location;
@@ -496,9 +500,9 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) {
 		// Set the nearest location as the confirmed enemy base location
 		enemy_start_location = nearest_location;
 
+		// Find the nearest corner to the enemy base
 		float min_corner_distance = std::numeric_limits<float>::max();
 
-		// Find the nearest corner to the enemy base
 		for (const auto& corner : map_corners) {
 			float corner_distance = DistanceSquared2D(enemy_start_location, corner);
 			if (corner_distance < min_corner_distance) {
