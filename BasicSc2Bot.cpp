@@ -140,6 +140,11 @@ void BasicSc2Bot::OnStep() {
 }
 
 void BasicSc2Bot::OnUnitCreated(const Unit* unit) {
+
+	if (!unit) {
+		return;
+	}
+
 	if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV) {
 		num_scvs++;
 	}
@@ -156,7 +161,11 @@ void BasicSc2Bot::OnUnitCreated(const Unit* unit) {
 
 void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
 
-	if (unit && unit->unit_type != UNIT_TYPEID::TERRAN_SUPPLYDEPOT) {
+	if (!unit) {
+		return;
+	}
+
+	if (unit->unit_type != UNIT_TYPEID::TERRAN_SUPPLYDEPOT) {
 		structure_locations.push_back(unit->pos);
 	}
 
@@ -204,7 +213,7 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) {
 	if (unit)
 	{
 		structure_locations.erase(std::remove(structure_locations.begin(),
-			structure_locations.end(), unit->pos), structure_locations.end());
+		structure_locations.end(), unit->pos), structure_locations.end());
 	}
 
 	// Scouting scv died
