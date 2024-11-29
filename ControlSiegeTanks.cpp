@@ -10,6 +10,7 @@ void BasicSc2Bot::ControlSiegeTanks() {
 
 void BasicSc2Bot::SiegeMode() {
 
+	// Detect radius of the Siege Tank
     const float enemy_detection_radius = 13.0f;
 
     // Get all Siege Tanks

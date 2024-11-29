@@ -40,8 +40,8 @@ BasicSc2Bot::BasicSc2Bot()
 }
 
 void BasicSc2Bot::OnGameStart() {
-	// Initialize start locations, expansion locations, chokepoints, etc.
 
+	// Initialize start locations, expansion locations, retreat locations, chokepoints, etc.
 	start_location = Observation()->GetStartLocation();
 	enemy_start_locations = Observation()->GetGameInfo().enemy_start_locations;
 	if (!enemy_start_locations.empty()) {
@@ -49,7 +49,7 @@ void BasicSc2Bot::OnGameStart() {
 	}
 	retreat_location = { start_location.x + 5.0f, start_location.y};
 	expansion_locations = search::CalculateExpansionLocations(Observation(), Query());
-	retreat_location = { start_location.x + 5.0f, start_location.y };
+
 	// find ramps
 	find_right_ramp(start_location);
 
@@ -58,14 +58,6 @@ void BasicSc2Bot::OnGameStart() {
 	if (!command_centers.empty()) {
 		bases.push_back(command_centers.front());
 	}
-
-	// Initialize chokepoints (Why push mineral to the base?)
-	//for (auto& expansion : expansion_locations) {
-	//    Units units = Observation()->GetUnits(Unit::Alliance::Neutral, IsUnit(UNIT_TYPEID::NEUTRAL_MINERALFIELD));
-	//    if (!units.empty()) {
-	//        bases.push_back(units.front());
-	//    }
-	//}
 
 	// Initialize build tasks based on build order
 	for (auto ability : build_order) {
@@ -145,15 +137,19 @@ void BasicSc2Bot::OnUnitCreated(const Unit* unit) {
 		return;
 	}
 
+	// SCV created
 	if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV) {
 		num_scvs++;
 	}
+	// Battlecruiser created
 	if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER) {
 		num_battlecruisers++;
 	}
+	// Marine created
 	if (unit->unit_type == UNIT_TYPEID::TERRAN_MARINE) {
 		num_marines++;
 	}
+	// Siege Tank created
 	if (unit->unit_type == UNIT_TYPEID::TERRAN_SIEGETANK) {
 		num_siege_tanks++;
 	}
@@ -165,10 +161,12 @@ void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
 		return;
 	}
 
+	// Add completed structures to the list(Except Supply Depots)
 	if (unit->unit_type != UNIT_TYPEID::TERRAN_SUPPLYDEPOT) {
 		structure_locations.push_back(unit->pos);
 	}
 
+	// Refinery completed
 	if (unit->unit_type == UNIT_TYPEID::TERRAN_REFINERY) {
 		const ObservationInterface* observation = Observation();
 
@@ -205,20 +203,22 @@ void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
 }
 
 void BasicSc2Bot::OnUpgradeCompleted(UpgradeID upgrade_id) {
+	// Add completed upgrades to the set
 	completed_upgrades.insert(upgrade_id);
 }
 
 void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) {
 
-	if (unit)
-	{
-		structure_locations.erase(std::remove(structure_locations.begin(),
-		structure_locations.end(), unit->pos), structure_locations.end());
+	if (!unit) {
+		return;
 	}
+
+	// Remove destroyed structures from the list
+	structure_locations.erase(std::remove(structure_locations.begin(),
+	structure_locations.end(), unit->pos), structure_locations.end());
 
 	// Scouting scv died
 	if (is_scouting && scv_scout && unit == scv_scout) {
-
 		// find the nearest possible enemy location to its last known position
 		float min_distance = std::numeric_limits<float>::max();
 		sc2::Point2D nearest_location;
@@ -234,9 +234,9 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) {
 		// Set the nearest location as the confirmed enemy base location
 		enemy_start_location = nearest_location;
 
+		// Find the nearest corner to the enemy base
 		float min_corner_distance = std::numeric_limits<float>::max();
 
-		// Find the nearest corner to the enemy base
 		for (const auto& corner : map_corners) {
 			float corner_distance = DistanceSquared2D(enemy_start_location, corner);
 			if (corner_distance < min_corner_distance) {

@@ -8,8 +8,9 @@ void BasicSc2Bot::ControlMarines() {
 }
 
 void BasicSc2Bot::TargetMarines() {
-    const ObservationInterface* observation = Observation();
-    Units marines = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_MARINE));
+
+	// Get all Marines
+    Units marines = Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_MARINE));
     
     if (marines.empty()) {
         return;
@@ -17,47 +18,24 @@ void BasicSc2Bot::TargetMarines() {
 
     // For each marine
     for (const auto& marine : marines) {
-        // Skip marines already attacking or using abilities
-        if (!marine->orders.empty() && 
-            (marine->orders.front().ability_id == ABILITY_ID::ATTACK || 
-             marine->orders.front().ability_id == ABILITY_ID::EFFECT_STIM)) {
+        if (!marine->is_alive || marine->orders.empty()) {
             continue;
         }
 
-        // Find closest enemy unit
         const Unit* target = nullptr;
         float min_distance = std::numeric_limits<float>::max();
+        float min_hp = std::numeric_limits<float>::max();
 
-        for (const auto& enemy : observation->GetUnits(Unit::Alliance::Enemy)) {
-            // Skip invalid targets
-            if (!enemy->is_alive || IsWorkerUnit(enemy) || IsTrivialUnit(enemy)) {
-                continue;
+        auto UpdateTarget = [&](const Unit* enemy_unit, float max_distance) {
+            float distance = Distance2D(marine->pos, enemy_unit->pos);
+            if (!enemy_unit->is_alive || distance > max_distance) {
+                return;
             }
-
-            float distance = Distance2D(marine->pos, enemy->pos);
-            if (distance < min_distance) {
+            if (distance < min_distance || (distance == min_distance && enemy_unit->health < min_hp)) {
                 min_distance = distance;
-                target = enemy;
+                min_hp = enemy_unit->health;
+                target = enemy_unit;
             }
-        }
+        };
 
-        // If target found, attack it
-        if (target) {
-            // Use stimpacks if close enough to enemy
-            if (min_distance <= 7.5f) {
-                UseStimPack(marine);
-            }
-            Actions()->UnitCommand(marine, ABILITY_ID::ATTACK, target);
-        }
-        // If no target found and not in combat, move to rally point or attack enemy base
-        else if (!is_attacking) {
-            Point2D rally = GetRallyPoint();
-            if (Distance2D(marine->pos, rally) > 5.0f) {
-                Actions()->UnitCommand(marine, ABILITY_ID::MOVE_MOVE, rally);
-            }
-        }
-        else {
-            Actions()->UnitCommand(marine, ABILITY_ID::ATTACK, enemy_start_location);
-        }
-    }
 }
