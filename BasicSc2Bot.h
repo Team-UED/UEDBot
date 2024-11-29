@@ -21,7 +21,7 @@
 
 using namespace sc2;
 
-// Add the hash specialization for sc2::AbilityID
+// Hash function for AbilityID
 template <>
 struct std::hash<sc2::AbilityID> {
 	size_t operator()(const sc2::AbilityID& ability_id) const noexcept {
@@ -134,6 +134,8 @@ private:
 
 	// Swpas location of 2 structures
 	Point2D swap_factory_position;
+
+    
 	Point2D swap_starport_position;
 
 
@@ -522,9 +524,11 @@ private:
 
     // Track if we need to scout the entire map
     bool scout_entire_map = false;
-
+    
     bool chokepoint_blocked = false;
+
     bool supply_depots_built[2] = {false, false};
+
     bool barracks_built = false;
 
     // Map of threat levels for specific anti-air units
