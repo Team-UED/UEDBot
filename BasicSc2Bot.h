@@ -351,8 +351,6 @@ private:
 	// checks if enough resources are available to build
 	bool CanBuild(const int32_t mineral, const int32_t gas = 0, const int32_t food = 0) const;
 
-	// Updates the game state (e.g., under attack, need expansion).
-	void UpdateGameState();
 
 	// Manages supply to avoid supply blocks.
 	void ManageSupply();
@@ -360,35 +358,17 @@ private:
 	// Manages army units and their composition.
 	void ManageArmy();
 
-	// Checks if the bot is supply blocked.
-	bool IsSupplyBlocked() const;
-
 	// Checks if an expansion is needed.
 	bool NeedExpansion() const;
 
 	// Gets the next available expansion location.
 	Point3D GetNextExpansion() const;
 
-	// Checks if the enemy is rushing.
-	bool IsEnemyRushing() const;
-
 	// Find a unit of a given type.
 	const Unit* FindUnit(UnitTypeID unit_type) const;
 
 	// Get the main base.
 	const Unit* GetMainBase() const;
-
-	// Get the newest base.
-	const Unit* GetNewestBase() const;
-
-	// Returns the count of units of a given type.
-	size_t CountUnitType(UnitTypeID unit_type) const;
-
-	// Returns the count of units being built of a given type.
-	size_t CountUnitTypeBuilding(UnitTypeID unit_type) const;
-
-	// Returns true if the ability is being researched or built.
-	bool IsAbilityInProgress(AbilityID ability_id) const;
 
 	// Returns true if the position is dangerous. (e.g., enemy units nearby)
 	bool IsDangerousPosition(const Point2D& pos);
