@@ -339,9 +339,12 @@ private:
 	// Moving flag
 	std::unordered_map<const Unit*, bool> unit_moving;
 
-	// =========================
-	// Helper Methods
-	// =========================
+	// Moving location
+	std::unordered_map<const Unit*, Point2D> unit_moving_location;
+
+    // =========================
+    // Helper Methods
+    // =========================
 
 	// Scouting methods to gather information about the enemy.
 
