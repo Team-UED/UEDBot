@@ -566,11 +566,18 @@ void BasicSc2Bot::BuildExpansion() {
 
     // Find an idle SCV to build the expansion
     for (const auto& scv : scvs) {
+        // Skip SCVs that are in the scvs_repairing set
+        if (scvs_repairing.find(scv->tag) != scvs_repairing.end()) {
+            continue;
+        }
+
+        // Check if the SCV is idle (has no orders)
         if (scv->orders.empty()) {
-            builder = scv;
+            builder = scv; 
             break;
         }
     }
+
 
     if (builder) {
         if (Query()->Placement(ABILITY_ID::BUILD_COMMANDCENTER, next_expansion)) {
