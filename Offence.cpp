@@ -31,14 +31,13 @@ void BasicSc2Bot::AllOutRush() {
     // Get all our combat units
     Units marines = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_MARINE));
     Units siege_tanks = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SIEGETANK));
-    Units battlecruisers = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BATTLECRUISER));
 
 	// Check if we have any units to attack with
 	if (marines.empty() && siege_tanks.empty() && battlecruisers.empty()) {
 		return;
 	}
 
-    // Determine attack target
+    // Determine attack target (Default target)
     Point2D attack_target = enemy_start_location;
 
     // Check for enemy presence at the attack target
@@ -55,7 +54,6 @@ void BasicSc2Bot::AllOutRush() {
     }
 
     if (enemy_base_destroyed) {
-
         const Unit* closest_snapshot_unit = nullptr;
         float min_distance = std::numeric_limits<float>::max();
 
@@ -69,6 +67,7 @@ void BasicSc2Bot::AllOutRush() {
                 }
             }
         }
+
         // If a snapshot unit is found, set it as the new attack target
         if (closest_snapshot_unit) {
             attack_target = closest_snapshot_unit->pos;
@@ -76,16 +75,16 @@ void BasicSc2Bot::AllOutRush() {
     }
 
     // Move units to the target location
-    for (const auto& bc : battlecruisers) {
-        Actions()->UnitCommand(bc, ABILITY_ID::MOVE_MOVE, attack_target);
-    }
-
     for (const auto& marine : marines) {
-        Actions()->UnitCommand(marine, ABILITY_ID::MOVE_MOVE, attack_target);
+        if (marine->orders.empty() && Distance2D(marine->pos, attack_target) > 5.0f) {
+            Actions()->UnitCommand(marine, ABILITY_ID::MOVE_MOVE, attack_target);
+        }
     }
 
     for (const auto& tank : siege_tanks) {
-        Actions()->UnitCommand(tank, ABILITY_ID::MOVE_MOVE, attack_target);
+        if (tank->orders.empty() && Distance2D(tank->pos, attack_target) > 5.0f) {
+            Actions()->UnitCommand(tank, ABILITY_ID::MOVE_MOVE, attack_target);
+        }
     }
 
     if (!is_attacking) {

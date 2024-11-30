@@ -308,8 +308,8 @@ private:
 	// Track visited enemy base locations
 	int current_scout_location_index;
 
-	// Track visted map locations
-	int current_scout_index = 0; // Current index of scout points
+    // Track visted map locations
+    int current_scout_index = 0;
 
 	// Track location of scouting SCV
 	sc2::Point2D scout_location;
@@ -346,17 +346,10 @@ private:
     // Helper Methods
     // =========================
 
-	// Scouting methods to gather information about the enemy.
 
 	// checks if enough resources are available to build
 	bool CanBuild(const int32_t mineral, const int32_t gas = 0, const int32_t food = 0) const;
 
-
-	// Manages supply to avoid supply blocks.
-	void ManageSupply();
-
-	// Manages army units and their composition.
-	void ManageArmy();
 
 	// Checks if an expansion is needed.
 	bool NeedExpansion() const;

@@ -8,17 +8,6 @@ void BasicSc2Bot::ControlSCVs() {
     RepairStructures();
     UpdateRepairingSCVs();
     SCVAttackEmergency();
-
-    // scvs scout full map (i think enemy_units might cause nullptr exceptions
-    // when the enemy unit is destroyed)
-    // hence why this is commented out and offence.cpp is using enemy start location still
-   /* if (is_attacking) {
-        if (!is_scouting && enemy_units.empty()) {
-           SCVScoutMapInit();
-        } else {
-            UpdateSCVScouting();
-        }
-    }*/
 }
 
 // SCVs scout the map to find enemy bases
@@ -28,13 +17,9 @@ void BasicSc2Bot::SCVScoutEnemySpawn() {
     // Check if we have enough SCVs
     sc2::Units scvs = observation->GetUnits(sc2::Unit::Alliance::Self, sc2::IsUnit(sc2::UNIT_TYPEID::TERRAN_SCV));
 
-	if (scvs.empty()) {
+	if (scvs.empty() || scvs.size() < 12 || scout_complete) {
 		return;
 	}
-
-    if (scvs.size() < 12 || scout_complete) {
-        return;
-    }
 
 	// Check if enemy start locations are available
     if (enemy_start_locations.empty()) {
@@ -45,7 +30,6 @@ void BasicSc2Bot::SCVScoutEnemySpawn() {
     if (is_scouting) {
         // Get scouting SCV
         scv_scout = observation->GetUnit(scv_scout->tag);
-
 
         if (scv_scout) {
             // Update the scouting SCV's current locationcd.
@@ -65,12 +49,31 @@ void BasicSc2Bot::SCVScoutEnemySpawn() {
                         unit.unit_type == sc2::UNIT_TYPEID::ZERG_LAIR ||
                         unit.unit_type == sc2::UNIT_TYPEID::ZERG_HIVE ||
                         unit.unit_type == sc2::UNIT_TYPEID::PROTOSS_NEXUS;
-                    });
+                });
 
                 for (const auto& structure : enemy_structures) {
                     if (sc2::Distance2D(scout_location, structure->pos) < 5.0f) {
                         // Set the enemy start location and stop scouting
                         enemy_start_location = structure->pos;
+
+
+                        // Find the nearest corner to the enemy base
+                        float min_corner_distance = std::numeric_limits<float>::max();
+
+                        for (const auto& corner : map_corners) {
+                            float corner_distance = DistanceSquared2D(enemy_start_location, corner);
+                            if (corner_distance < min_corner_distance) {
+                                min_corner_distance = corner_distance;
+                                nearest_corner_enemy = corner;
+                            }
+                        }
+
+                        // Find the corners adjacent to the enemy base
+                        for (const auto& corner : map_corners) {
+                            if (corner.x == nearest_corner_enemy.x || corner.y == nearest_corner_enemy.y) {
+                                enemy_adjacent_corners.push_back(corner);
+                            }
+                        }
 
                         const ObservationInterface* observation = Observation();
                         sc2::Units mineral_patches = observation->GetUnits(Unit::Alliance::Neutral, IsUnit(UNIT_TYPEID::NEUTRAL_MINERALFIELD));
@@ -90,24 +93,6 @@ void BasicSc2Bot::SCVScoutEnemySpawn() {
                         // harvest mineral if a mineral patch is found
                         if (closest_mineral && scv_scout) {
                             Actions()->UnitCommand(scv_scout, ABILITY_ID::HARVEST_GATHER, closest_mineral);
-                        }
-
-                        float min_corner_distance = std::numeric_limits<float>::max();
-
-                        // Find the nearest corner to the enemy base
-                        for (const auto& corner : map_corners) {
-                            float corner_distance = DistanceSquared2D(enemy_start_location, corner);
-                            if (corner_distance < min_corner_distance) {
-                                min_corner_distance = corner_distance;
-                                nearest_corner_enemy = corner;
-                            }
-                        }
-
-                        // Find the corners adjacent to the enemy base
-                        for (const auto& corner : map_corners) {
-                            if (corner.x == nearest_corner_enemy.x || corner.y == nearest_corner_enemy.y) {
-                                enemy_adjacent_corners.push_back(corner);
-                            }
                         }
 
                         // Mark scouting as complete
