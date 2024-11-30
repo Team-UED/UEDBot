@@ -38,7 +38,7 @@ void BasicSc2Bot::TargetMarines() {
             float distance_to_enemy = Distance2D(marine->pos, enemy_unit->pos);
 
             // Find the closest unit
-            if (distance_to_enemy < min_distance) {
+            if (distance_to_enemy < min_distance && distance_to_enemy < 13.0f) {
                 min_distance = distance_to_enemy;
                 target = enemy_unit; // Update the target to the closest unit
             }

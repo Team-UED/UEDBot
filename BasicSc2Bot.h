@@ -77,6 +77,9 @@ private:
 	// Call down MULEs to gather resources
 	void UseMULE();
 
+	// Scan cloacked units
+	void UseScan();
+
 	// Phase of the strategy
 	// Phase 1 -> Start of the game ~ until the first star port is built
 	// Phase 2 -> First star port is built ~ until the first battlecruiser is built
