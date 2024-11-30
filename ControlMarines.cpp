@@ -9,9 +9,9 @@ void BasicSc2Bot::ControlMarines() {
 
 void BasicSc2Bot::TargetMarines() {
 
-	// Get all Marines
+    // Get all Marines
     Units marines = Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_MARINE));
-    
+
     if (marines.empty()) {
         return;
     }
@@ -37,5 +37,6 @@ void BasicSc2Bot::TargetMarines() {
                 target = enemy_unit;
             }
         };
-
+        Actions()->UnitCommand(marine, ABILITY_ID::ATTACK_ATTACK, target);
+    }
 }
