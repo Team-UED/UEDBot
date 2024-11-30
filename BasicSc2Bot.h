@@ -93,6 +93,9 @@ private:
 	// Call down MULEs to gather resources
 	void UseMULE();
 
+	// Scan cloacked units
+	void UseScan();
+
 	// Phase of the strategy
 	// phase 0 -> Start of the game ~ until the first barracks with techlab is built
 	// Phase 1 -> ~ until first factory is built and swapped

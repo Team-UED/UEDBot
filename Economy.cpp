@@ -69,13 +69,22 @@ void BasicSc2Bot::UseMULE() {
 		return;
 	}
 
-	// Loop Orbital Command to check if it has enough energy
-	for (const auto& orbital : orbital_commands) {
-		if (orbital->energy >= 50) {
-			// Find the nearest mineral patch to the Orbital Command
-			Units mineral_patches = observation->GetUnits(Unit::Alliance::Neutral, IsMineralPatch());
-			const Unit* closest_mineral = nullptr;
-			float min_distance = std::numeric_limits<float>::max();
+    float energy_cost = 0.0f;
+
+	if(!first_battlecruiser){
+        energy_cost = 50.0f;
+    }
+    else {
+        energy_cost = 100.0f;
+    }
+
+    // Loop Orbital Command to check if it has enough energy
+    for (const auto& orbital : orbital_commands) {
+        if (orbital->energy >= energy_cost) { 
+            // Find the nearest mineral patch to the Orbital Command
+            Units mineral_patches = observation->GetUnits(Unit::Alliance::Neutral, IsMineralPatch());
+            const Unit* closest_mineral = nullptr;
+            float min_distance = std::numeric_limits<float>::max();
 
 			for (const auto& mineral : mineral_patches) {
 				float distance = sc2::Distance2D(orbital->pos, mineral->pos);
@@ -85,13 +94,49 @@ void BasicSc2Bot::UseMULE() {
 				}
 			}
 
-			// use MULE on nearest mineral patch
-			if (closest_mineral) {
-				Actions()->UnitCommand(orbital, ABILITY_ID::EFFECT_CALLDOWNMULE, closest_mineral);
-				return;
-			}
-		}
-	}
+            // use MULE on nearest mineral patch
+            if (closest_mineral) {
+                Actions()->UnitCommand(orbital, ABILITY_ID::EFFECT_CALLDOWNMULE, closest_mineral);
+                return;
+            }
+        }
+    }
+}
+
+void BasicSc2Bot::UseScan() {
+    const ObservationInterface* observation = Observation();
+
+    // Find all Orbital Commands
+    Units orbital_commands = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_ORBITALCOMMAND));
+
+    // No Orbital Commands found
+    if (orbital_commands.empty()) {
+        return;
+    }
+
+    Units enemies = observation->GetUnits(Unit::Alliance::Enemy);
+	Units allies = observation->GetUnits(Unit::Alliance::Self);
+
+    const Unit* cloacked_enemy = nullptr;
+
+    for (const auto& enemy : enemies) {
+        if (enemy->Cloaked) {
+            cloacked_enemy = enemy;
+            break;
+        }
+    }
+
+    float energy_cost = 50.0f;
+
+    if (cloacked_enemy) {
+        // Loop Orbital Command to check if it has enough energy
+        for (const auto& orbital : orbital_commands) {
+            if (orbital->energy >= energy_cost) {
+                Actions()->UnitCommand(orbital, ABILITY_ID::EFFECT_SCAN,cloacked_enemy->pos);
+            }
+        }
+
+    }
 }
 
 bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_TYPEID unit_type) {
