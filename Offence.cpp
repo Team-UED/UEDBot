@@ -20,7 +20,7 @@ void BasicSc2Bot::Offense() {
         if (UnitsInCombat((UNIT_TYPEID::TERRAN_BATTLECRUISER)) > 0) {
             for (const auto& unit : Observation()->GetUnits(Unit::Alliance::Self)) {
                 if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER && !battlecruiser_retreating[unit]) {
-                    if (num_marines >= 5 && num_siege_tanks >= 1) {
+                    if (num_marines >= 8 && num_siege_tanks >= 1) {
                         AllOutRush();
                         return;
                     }

@@ -43,7 +43,7 @@ void BasicSc2Bot::Jump() {
 void BasicSc2Bot::TargetBattlecruisers() {
 
 	// Maximum distance to consider for targetting
-	const float max_distace_for_target = 40.0f;
+	const float max_distace_for_target = 20.0f;
 
 	// Get Battlecruisers
 	const Units battlecruisers = Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BATTLECRUISER));
