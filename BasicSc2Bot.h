@@ -77,6 +77,9 @@ private:
 	// Call down MULEs to gather resources
 	void UseMULE();
 
+	// Scan cloacked units
+	void UseScan();
+
 	// Phase of the strategy
 	// Phase 1 -> Start of the game ~ until the first star port is built
 	// Phase 2 -> First star port is built ~ until the first battlecruiser is built
@@ -612,6 +615,20 @@ private:
         sc2::UNIT_TYPEID::ZERG_ULTRALISK,   
         sc2::UNIT_TYPEID::ZERG_ULTRALISKBURROWED
     };
+
+	// Meele units
+	std::set<UNIT_TYPEID> melee_units = {
+		UNIT_TYPEID::ZERG_DRONE,
+		UNIT_TYPEID::PROTOSS_PROBE,
+		UNIT_TYPEID::TERRAN_SCV,
+		UNIT_TYPEID::ZERG_ZERGLING,
+		UNIT_TYPEID::ZERG_BANELING,
+		UNIT_TYPEID::ZERG_ULTRALISK,
+		UNIT_TYPEID::TERRAN_HELLIONTANK,
+		UNIT_TYPEID::PROTOSS_ZEALOT,
+		UNIT_TYPEID::PROTOSS_DARKTEMPLAR,
+		UNIT_TYPEID::ZERG_BROODLING
+	};
 
     // Maps UPGRADE_ID to ABILITY_ID
     ABILITY_ID GetAbilityForUpgrade(UPGRADE_ID upgrade_id) {

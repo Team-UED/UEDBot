@@ -1,25 +1,76 @@
 #include "BasicSc2Bot.h"
 
 void BasicSc2Bot::Offense() {
+
     const ObservationInterface* observation = Observation();
-    
+
     // Check if we should start attacking
     if (!is_attacking) {
-        if (num_marines >= 10 && num_siege_tanks >= 1) {
-            is_attacking = true;
+
+        Units starports = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_STARPORT));
+        
+        if (starports.empty()) {
+            return;
+        }
+
+		const Unit* starport = starports.front();
+
+		// Check if we have enough army to attack
+        if (num_marines >= 10) {
+            
+			// At least one battlecruisers is currently in combat and not retreating
+            if (UnitsInCombat((UNIT_TYPEID::TERRAN_BATTLECRUISER)) > 0) {
+                for (const auto& unit : Observation()->GetUnits(Unit::Alliance::Self)) {
+                    if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER && !battlecruiser_retreating[unit]) {
+                        AllOutRush();
+                        return; 
+                    }
+                }
+            }
+
+			// No Battlecruisers in combat
+            else {
+				// No Battlecruisers trained yet
+                if (num_battlecruisers == 0) {
+                    if (!starport->orders.empty()) {
+                        for (const auto& order : starport->orders) {
+                            if (order.ability_id == ABILITY_ID::TRAIN_BATTLECRUISER) {
+                                if (order.progress >= 0.5f) {
+                                    AllOutRush();
+                                }
+                                return;
+                            }
+                        }
+                    }
+                }
+				// Battlecruisers are not in combat, and retreating
+                else {
+                    bool attack = true; 
+                    for (const auto& unit : Observation()->GetUnits(Unit::Alliance::Self)) {
+                        if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER && battlecruiser_retreating[unit]) {
+                            if (unit->health < 0.5f * unit->health_max) {
+                                attack = false;
+                                break; 
+                            }
+                        }
+                    }
+                    // If all retreating Battlecruisers are healthy, execute the attack
+                    if (attack) {
+                        AllOutRush();
+                    }
+                }
+            }
         }
     }
-
-    // Once we're attacking, keep up the pressure
-    if (is_attacking) {
+    else {
         // Check if our army is mostly dead
         Units marines = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_MARINE));
-        Units siege_tanks = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SIEGETANK));
-        
+
         // If army is severely depleted, rebuild before attacking again
-        if (marines.size() < 10 && siege_tanks.empty()) {
+        if (marines.size() < 5) {
             is_attacking = false;
-        } else {
+        }
+        else {
             AllOutRush();
         }
     }
@@ -33,7 +84,7 @@ void BasicSc2Bot::AllOutRush() {
     Units siege_tanks = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SIEGETANK));
 
 	// Check if we have any units to attack with
-	if (marines.empty() && siege_tanks.empty() && battlecruisers.empty()) {
+	if (marines.empty() && siege_tanks.empty()) {
 		return;
 	}
 
@@ -54,23 +105,43 @@ void BasicSc2Bot::AllOutRush() {
     }
 
     if (enemy_base_destroyed) {
-        const Unit* closest_snapshot_unit = nullptr;
+        const Unit* closest_unit = nullptr;
         float min_distance = std::numeric_limits<float>::max();
 
-        // Search for the closest snapshot unit
+        // Search for any visible unit
         for (const auto& enemy_unit : observation->GetUnits(Unit::Alliance::Enemy)) {
-            if (enemy_unit->display_type == Unit::DisplayType::Snapshot && enemy_unit->is_alive) {
+            if (enemy_unit->display_type == Unit::DisplayType::Visible && enemy_unit->is_alive) {
                 float distance = Distance2D(enemy_unit->pos, start_location);
                 if (distance < min_distance) {
                     min_distance = distance;
-                    closest_snapshot_unit = enemy_unit;
+                    closest_unit = enemy_unit;
                 }
             }
         }
 
-        // If a snapshot unit is found, set it as the new attack target
-        if (closest_snapshot_unit) {
-            attack_target = closest_snapshot_unit->pos;
+        // If a unit is found, set it as the new attack target
+        if (closest_unit) {
+            attack_target = closest_unit->pos;
+        }
+        else {
+            // Search for the closest snapshot unit
+            for (const auto& enemy_unit : observation->GetUnits(Unit::Alliance::Enemy)) {
+                if (enemy_unit->display_type == Unit::DisplayType::Snapshot && enemy_unit->is_alive) {
+                    float distance = Distance2D(enemy_unit->pos, start_location);
+                    if (distance < min_distance) {
+                        min_distance = distance;
+                        closest_unit = enemy_unit;
+                    }
+                }
+            }
+            // If a snapshot unit is found, set it as the new attack target
+            if (closest_unit) {
+                attack_target = closest_unit->pos;
+            }
+            // When there are no snapshot units
+            else {
+                return;
+            }
         }
     }
 

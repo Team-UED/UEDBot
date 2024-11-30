@@ -16,27 +16,66 @@ void BasicSc2Bot::TargetMarines() {
         return;
     }
 
-    // For each marine
+    // Marine parameters
+    const float marine_attack_cooldown = 0.61f;  // Attack cooldown in seconds
+    const float marine_range = 9.0f;             // Marine's vision
+    const float fallback_distance = 3.0f;        // Distance to kite away for melee units
+    const float advance_distance = 0.5f;         // Distance to close for ranged units
+
+    // For each Marine
     for (const auto& marine : marines) {
-        if (!marine->is_alive || marine->orders.empty()) {
-            continue;
+        const Unit* target = nullptr;
+        float min_distance = std::numeric_limits<float>::max(); 
+
+        // Find the closest enemy 
+        for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
+            // Skip invalid or dead units
+            if (!enemy_unit || !enemy_unit->is_alive) {
+                continue;
+            }
+
+            // Calculate distance to the enemy unit
+            float distance_to_enemy = Distance2D(marine->pos, enemy_unit->pos);
+
+            // Find the closest unit
+            if (distance_to_enemy < min_distance && distance_to_enemy < 13.0f) {
+                min_distance = distance_to_enemy;
+                target = enemy_unit; // Update the target to the closest unit
+            }
         }
 
-        const Unit* target = nullptr;
-        float min_distance = std::numeric_limits<float>::max();
-        float min_hp = std::numeric_limits<float>::max();
+        if (target) {
+            // Check if the target is a melee unit
+            bool is_melee = melee_units.find(target->unit_type) != melee_units.end();
+            float distance_to_target = Distance2D(marine->pos, target->pos);
 
-        auto UpdateTarget = [&](const Unit* enemy_unit, float max_distance) {
-            float distance = Distance2D(marine->pos, enemy_unit->pos);
-            if (!enemy_unit->is_alive || distance > max_distance) {
-                return;
+            if (marine->weapon_cooldown == 0.0f) {
+                Actions()->UnitCommand(marine, ABILITY_ID::ATTACK_ATTACK, target);
+			}
+            else {
+                if (is_melee && Distance2D(marine->pos,target->pos) <= 4.5f) {
+                    // Fall back if the target is melee
+                    Point2D fallback_direction = marine->pos - target->pos;
+                    float length = std::sqrt(fallback_direction.x * fallback_direction.x + fallback_direction.y * fallback_direction.y);
+                    if (length > 0) {
+                        fallback_direction /= length;
+                    }
+                    Point2D fallback_position = marine->pos + fallback_direction * fallback_distance;
+                    Actions()->UnitCommand(marine, ABILITY_ID::MOVE_MOVE, fallback_position);
+                }
+                else {
+                    // Advance if the target is ranged
+                    if (Distance2D(marine->pos, target->pos) > 4.5f) {
+                        Point2D advance_direction = target->pos - marine->pos;
+                        float length = std::sqrt(advance_direction.x * advance_direction.x + advance_direction.y * advance_direction.y);
+                        if (length > 0) {
+                            advance_direction /= length;
+                        }
+                        Point2D advance_position = marine->pos + advance_direction * advance_distance;
+                        Actions()->UnitCommand(marine, ABILITY_ID::MOVE_MOVE, advance_position);
+                    }
+                }
             }
-            if (distance < min_distance || (distance == min_distance && enemy_unit->health < min_hp)) {
-                min_distance = distance;
-                min_hp = enemy_unit->health;
-                target = enemy_unit;
-            }
-        };
-        Actions()->UnitCommand(marine, ABILITY_ID::ATTACK_ATTACK, target);
+        }
     }
 }
