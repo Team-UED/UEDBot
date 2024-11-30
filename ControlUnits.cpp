@@ -4,4 +4,5 @@ void BasicSc2Bot::ControlUnits() {
     ControlSCVs();
 	ControlBattlecruisers();
 	ControlSiegeTanks();
+	ControlMarines();
 }

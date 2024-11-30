@@ -277,7 +277,7 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) {
 	}
 
 	// Siege tank died
-	if (unit->unit_type == UNIT_TYPEID::TERRAN_SIEGETANK) {
+	if (unit->unit_type == UNIT_TYPEID::TERRAN_SIEGETANK || unit->unit_type == UNIT_TYPEID::TERRAN_SIEGETANKSIEGED) {
 		num_siege_tanks--;
 	}
 }
