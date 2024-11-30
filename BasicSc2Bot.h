@@ -273,7 +273,7 @@ private:
 	int current_scout_location_index;
 
     // Track visted map locations
-    int current_scout_index = 0; // Current index of scout points
+    int current_scout_index = 0;
 
     // Track location of scouting SCV
     sc2::Point2D scout_location;
@@ -309,9 +309,6 @@ private:
     // =========================
     // Helper Methods
     // =========================
-
-	// Manages army units and their composition.
-	void ManageArmy();
 
 	// Checks if an expansion is needed.
 	bool NeedExpansion() const;
