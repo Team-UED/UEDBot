@@ -255,7 +255,7 @@ void BasicSc2Bot::RepairUnits() {
     const float enemy_check_radius =
         10.0f; // Radius to check for nearby enemies.
     const sc2::Point2D base_location =
-        start_location; // Define your base location.
+        start_location;
 
     for (const auto &unit : Observation()->GetUnits(Unit::Alliance::Self)) {
         if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV) {
