@@ -17,9 +17,8 @@ void BasicSc2Bot::TargetMarines() {
     }
 
     // Marine parameters
-    const float marine_attack_cooldown = 0.61f;  // Attack cooldown in seconds
     const float marine_range = 9.0f;             // Marine's vision
-    const float fallback_distance = 3.0f;        // Distance to kite away for melee units
+    const float fallback_distance = 1.0f;        // Distance to kite away for melee units
     const float advance_distance = 0.5f;         // Distance to close for ranged units
 
     // For each Marine
