@@ -155,14 +155,11 @@ private:
 	// Trains Siege Tanks for later defense.
 	void TrainSiegeTanks();
 
-	// Upgrades Marines.
-	void UpgradeMarines();
+    // Upgrades Marines
+    void UpgradeMarines();
 
-    // Upgrades Siege Tanks
-    void UpgradeSiegeTanksAndBattleCruisers();
-
-    // Manages research of upgrades.
-    void ManageUpgrades();
+	// Upgrades Mechs(vehicles and ships)
+	void UpgradeMechs();
 
 	// Tracks if train of the first battlecruiser is in progress
     bool first_battlecruiser;
@@ -236,14 +233,14 @@ private:
     // Controls Battlecruisers to target enemy units
     void TargetBattlecruisers();
 
+	// Calculate the Kite Vector for a unit
+	Point2D GetKiteVector(const Unit* unit, const Unit* target);	
+
 	// Controls Battlecruisers to retreat
 	void Retreat(const Unit* unit);
 
 	// Check if retreating is complete
     void RetreatCheck();
-    
-	// Targets unit for Battlecruisers to use Yamato Cannon
-	void UseYamatoCannon(const Unit* battlecruiser, const Units& enemy_units, std::set<Tag>& yamato_targets);
 
     // Controls Siege Tanks (abilities, targeting, positioning).
     void ControlSiegeTanks();
@@ -259,9 +256,6 @@ private:
 
     // Controls Marines to target enemy units
 	void TargetMarines();
-
-	// Use stimpack ability for Marines
-    void UseStimPack(const Unit* marine);
 
     // SCV that is scouting
     const sc2::Unit* scv_scout;
@@ -279,7 +273,7 @@ private:
 	int current_scout_location_index;
 
     // Track visted map locations
-    int current_scout_index = 0; // Current index of scout points
+    int current_scout_index = 0;
 
     // Track location of scouting SCV
     sc2::Point2D scout_location;
@@ -306,15 +300,15 @@ private:
     // Retreating location
     std::unordered_map<const Unit*, Point2D> battlecruiser_retreat_location;
 
-    // Moving flag
-    std::unordered_map<const Unit*, bool> unit_moving;
+	// Moving flag
+	std::unordered_map<const Unit*, bool> unit_moving;
+
+	// Moving location
+	std::unordered_map<const Unit*, Point2D> unit_moving_location;
 
     // =========================
     // Helper Methods
     // =========================
-
-	// Manages army units and their composition.
-	void ManageArmy();
 
 	// Checks if an expansion is needed.
 	bool NeedExpansion() const;
@@ -394,9 +388,7 @@ private:
 	Point2D barracks_correct_placement(const std::vector<Point2D>& ramp_points, const std::vector<Point2D>& corner_depots) const;
 
 	void depot_control();
-	// =========================
-	// Member Variables
-	// =========================
+
     void MoveToEnemy(const Units &marines, const Units &siege_tanks);
 
     // Count units in combat
@@ -405,6 +397,8 @@ private:
     // Calculates the threat level of enemy units
     int CalculateThreatLevel(const Unit* unit);
 
+	// Get the closest threat to a unit
+	const Unit* GetClosestThreat(const Unit* unit);
 
     // =========================
     // Member Variables
@@ -426,6 +420,7 @@ private:
     sc2::Point2D retreat_location;
     std::vector<sc2::Point2D> enemy_start_locations;
     std::vector<sc2::Point3D> expansion_locations;
+	std::vector<sc2::Point2D> structure_locations;
 
 	// Our bases.
 	Units bases;
@@ -627,6 +622,18 @@ private:
             return ABILITY_ID::RESEARCH_TERRANVEHICLEANDSHIPPLATINGLEVEL2;
         case UPGRADE_ID::TERRANVEHICLEANDSHIPARMORSLEVEL3:
             return ABILITY_ID::RESEARCH_TERRANVEHICLEANDSHIPPLATINGLEVEL3;
+		case UPGRADE_ID::TERRANINFANTRYWEAPONSLEVEL1:
+			return ABILITY_ID::RESEARCH_TERRANINFANTRYWEAPONSLEVEL1;
+		case UPGRADE_ID::TERRANINFANTRYARMORSLEVEL1:
+			return ABILITY_ID::RESEARCH_TERRANINFANTRYARMORLEVEL1;
+		case UPGRADE_ID::TERRANINFANTRYWEAPONSLEVEL2:
+			return ABILITY_ID::RESEARCH_TERRANINFANTRYWEAPONSLEVEL2;
+		case UPGRADE_ID::TERRANINFANTRYARMORSLEVEL2:
+			return ABILITY_ID::RESEARCH_TERRANINFANTRYARMORLEVEL2;
+		case UPGRADE_ID::TERRANINFANTRYWEAPONSLEVEL3:
+			return ABILITY_ID::RESEARCH_TERRANINFANTRYWEAPONSLEVEL3;
+		case UPGRADE_ID::TERRANINFANTRYARMORSLEVEL3:
+			return ABILITY_ID::RESEARCH_TERRANINFANTRYARMORLEVEL3;
         default:
             return ABILITY_ID::INVALID;
         }
@@ -634,6 +641,26 @@ private:
     
 	// Set of completed upgrades
     std::set<UpgradeID> completed_upgrades;
+
+	// Order of upgrades for Armory
+	std::vector<UPGRADE_ID> armory_upgrade_order = {
+		UPGRADE_ID::TERRANVEHICLEANDSHIPARMORSLEVEL1,
+		UPGRADE_ID::TERRANSHIPWEAPONSLEVEL1,
+		UPGRADE_ID::TERRANVEHICLEANDSHIPARMORSLEVEL2,
+		UPGRADE_ID::TERRANSHIPWEAPONSLEVEL2,
+		UPGRADE_ID::TERRANVEHICLEANDSHIPARMORSLEVEL3,
+		UPGRADE_ID::TERRANSHIPWEAPONSLEVEL3,
+	};
+
+	// Order of upgrades for Engineering Bay
+	std::vector<UPGRADE_ID> engineeringbay_upgrade_order = {
+		UPGRADE_ID::TERRANINFANTRYWEAPONSLEVEL1,
+		UPGRADE_ID::TERRANINFANTRYARMORSLEVEL1,
+		UPGRADE_ID::TERRANINFANTRYWEAPONSLEVEL2,
+		UPGRADE_ID::TERRANINFANTRYARMORSLEVEL2,
+		UPGRADE_ID::TERRANINFANTRYWEAPONSLEVEL3,
+		UPGRADE_ID::TERRANINFANTRYARMORSLEVEL3,
+	};
 };
 
 #endif
