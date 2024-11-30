@@ -65,9 +65,18 @@ void BasicSc2Bot::UseMULE() {
         return;
     }
 
+    float energy_cost = 0.0f;
+
+	if(!first_battlecruiser){
+        energy_cost = 50.0f;
+    }
+    else {
+        energy_cost = 100.0f;
+    }
+
     // Loop Orbital Command to check if it has enough energy
     for (const auto& orbital : orbital_commands) {
-        if (orbital->energy >= 50) { 
+        if (orbital->energy >= energy_cost) { 
             // Find the nearest mineral patch to the Orbital Command
             Units mineral_patches = observation->GetUnits(Unit::Alliance::Neutral, IsMineralPatch());
             const Unit* closest_mineral = nullptr;
@@ -87,6 +96,42 @@ void BasicSc2Bot::UseMULE() {
                 return;
             }
         }
+    }
+}
+
+void BasicSc2Bot::UseScan() {
+    const ObservationInterface* observation = Observation();
+
+    // Find all Orbital Commands
+    Units orbital_commands = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_ORBITALCOMMAND));
+
+    // No Orbital Commands found
+    if (orbital_commands.empty()) {
+        return;
+    }
+
+    Units enemies = observation->GetUnits(Unit::Alliance::Enemy);
+	Units allies = observation->GetUnits(Unit::Alliance::Self);
+
+    const Unit* cloacked_enemy = nullptr;
+
+    for (const auto& enemy : enemies) {
+        if (enemy->Cloaked) {
+            cloacked_enemy = enemy;
+            break;
+        }
+    }
+
+    float energy_cost = 50.0f;
+
+    if (cloacked_enemy) {
+        // Loop Orbital Command to check if it has enough energy
+        for (const auto& orbital : orbital_commands) {
+            if (orbital->energy >= energy_cost) {
+                Actions()->UnitCommand(orbital, ABILITY_ID::EFFECT_SCAN,cloacked_enemy->pos);
+            }
+        }
+
     }
 }
 
