@@ -4,6 +4,7 @@
 void BasicSc2Bot::ControlSCVs() {
     SCVScoutEnemySpawn();
     RetreatFromDanger();
+	UpdateRepairingSCVs();
     RepairUnits();
     RepairStructures();
     UpdateRepairingSCVs();
@@ -250,83 +251,132 @@ void BasicSc2Bot::RetreatFromDanger() {
 
 // SCVs repair damaged Battlecruisers during or after engagements
 void BasicSc2Bot::RepairUnits() {
-    const float base_radius =
-        15.0f; // Radius around the base considered "at base".
-    const float enemy_check_radius =
-        10.0f; // Radius to check for nearby enemies.
-    const sc2::Point2D base_location =
-        start_location;
+    
+    // Radius around the base considered "at base".
+    const float base_radius = 15.0f; 
+    const Unit* target = FindDamagedUnit();
 
-    for (const auto &unit : Observation()->GetUnits(Unit::Alliance::Self)) {
-        if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV) {
-            // Skip SCVs already repairing
-            if (scvs_repairing.find(unit->tag) != scvs_repairing.end()) {
+    if (target) {
+        for (const auto& scv_tag : scvs_repairing) {
+
+            const Unit* scv = Observation()->GetUnit(scv_tag);
+
+            // Skip if the SCV is invalid
+            if (!scv || !scv->is_alive) {
                 continue;
             }
 
-            const Unit *target = FindDamagedUnit();
-            if (target && scvs_repairing.size() < 6) {
-                // Check if the unit is at the base.
-                bool is_at_base =
-                    sc2::Distance2D(target->pos, base_location) <= base_radius;
-
-                // Check if the unit is under attack (enemy units nearby).
-                bool is_under_attack = false;
-                for (const auto &enemy_unit :
-                     Observation()->GetUnits(Unit::Alliance::Enemy)) {
-
-					// Exclde trivial units and workers from the check.
-                    if (IsWorkerUnit(enemy_unit) || IsTrivialUnit(enemy_unit)) {
-                        continue;
-                    }
-
-                    if (sc2::Distance2D(target->pos, enemy_unit->pos) <=
-                        enemy_check_radius) {
-                        is_under_attack = true;
-                        break;
-                    }
+            // Check if SCV is already repairing
+            bool is_repairing = false;
+            for (const auto& order : scv->orders) {
+                if (order.ability_id == ABILITY_ID::EFFECT_REPAIR || order.ability_id == ABILITY_ID::EFFECT_REPAIR_SCV) {
+                    is_repairing = true;
+                    break;
                 }
+            }
 
-                // Repair only if the unit is at the base or not under attack.
-                if (is_at_base && !is_under_attack) {
-                    scvs_repairing.insert(unit->tag); // Mark SCV as repairing
-                    Actions()->UnitCommand(unit, ABILITY_ID::EFFECT_REPAIR,target);
-                }
+            // Skip SCV if it is already repairing
+            if (is_repairing) {
+                continue; 
+            }
+
+            bool is_at_base = sc2::Distance2D(target->pos, start_location) <= base_radius;
+            if (is_at_base) {
+                Actions()->UnitCommand(scv, ABILITY_ID::EFFECT_REPAIR, target);
             }
         }
     }
 }
 
-
-
 // SCVs repair damaged structures during enemy attacks
 void BasicSc2Bot::RepairStructures() {
-    for (const auto &unit : Observation()->GetUnits(Unit::Alliance::Self)) {
-        if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV) {
-            // Skip SCVs already repairing
-            if (scvs_repairing.find(unit->tag) != scvs_repairing.end()) {
+    const Unit* target = FindDamagedStructure();
+
+    if (target) {
+        for (const auto& scv_tag : scvs_repairing) {
+
+            const Unit* scv = Observation()->GetUnit(scv_tag);
+
+            // Skip if the SCV is invalid
+            if (!scv || !scv->is_alive) {
                 continue;
             }
 
-            const Unit *target = FindDamagedStructure();
-            if (target && scvs_repairing.size() < 6) {
-                scvs_repairing.insert(unit->tag); // Mark SCV as repairing
-                Actions()->UnitCommand(unit, ABILITY_ID::EFFECT_REPAIR, target);
+            // Check if SCV is already repairing
+            bool is_repairing = false;
+            for (const auto& order : scv->orders) {
+                if (order.ability_id == ABILITY_ID::EFFECT_REPAIR || order.ability_id == ABILITY_ID::EFFECT_REPAIR_SCV) {
+                    is_repairing = true;
+                    break;
+                }
+            }
+
+            // Skip SCV if it is already repairing
+            if (!is_repairing) {
+                Actions()->UnitCommand(scv, ABILITY_ID::EFFECT_REPAIR, target);
             }
         }
     }
 }
 
 void BasicSc2Bot::UpdateRepairingSCVs() {
-    for (auto it = scvs_repairing.begin(); it != scvs_repairing.end();) {
-        const Unit *scv = Observation()->GetUnit(*it);
+    for (const auto& scv_tag : scvs_repairing) {
+        const Unit* scv = Observation()->GetUnit(scv_tag);
 
-        // If the SCV is no longer repairing, remove it from the set
-        if (!scv || scv->orders.empty() ||
-            scv->orders[0].ability_id != ABILITY_ID::EFFECT_REPAIR) {
-            it = scvs_repairing.erase(it);
-        } else {
-            ++it;
+        // Skip dead or invalid SCVs
+        if (!scv || !scv->is_alive) {
+            continue; 
+        }
+
+		// Return SCVs to harvest when repair is complete
+        if (!scv->orders.empty()) {
+			// Check if the SCV is repairing
+            const auto& order = scv->orders.front();
+            if (order.ability_id == ABILITY_ID::EFFECT_REPAIR ||
+                order.ability_id == ABILITY_ID::EFFECT_REPAIR_SCV) {
+				// Check if the repair target is fully repaired
+                const Unit* target = Observation()->GetUnit(order.target_unit_tag);
+                if (target && target->health == target->health_max) {
+
+                    // Find all refineries
+					Units refineries = Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_REFINERY));
+                    
+                    // Find a refinery with fewer than 3 workers
+                    const Unit* target_refinery = nullptr;
+                    if (!refineries.empty()) {
+                        for (const auto& refinery : refineries) {
+                            if (refinery->assigned_harvesters < refinery->ideal_harvesters) {
+                                target_refinery = refinery;
+                                break;
+                            }
+                        }
+                    }
+
+                    // Assign the SCV to the refinery if found
+                    if (target_refinery) {
+                        Actions()->UnitCommand(scv, ABILITY_ID::HARVEST_GATHER, target_refinery);
+                        continue;
+                    }
+
+                    // Otherwise, find the closest mineral patch
+                    Units mineral_patches = Observation()->GetUnits(Unit::Alliance::Neutral, IsUnit(UNIT_TYPEID::NEUTRAL_MINERALFIELD));
+                    const Unit* closest_mineral = nullptr;
+                    float min_distance = std::numeric_limits<float>::max();
+
+                    for (const auto& mineral : mineral_patches) {
+                        float distance = sc2::Distance2D(start_location, mineral->pos);
+                        if (distance < min_distance) {
+                            min_distance = distance;
+                            closest_mineral = mineral;
+                        }
+                    }
+
+                    // Assign the SCV to harvest minerals if a mineral patch is found
+                    if (closest_mineral) {
+                        Actions()->UnitCommand(scv, ABILITY_ID::HARVEST_GATHER, closest_mineral);
+                    }
+                }
+            }
         }
     }
 }

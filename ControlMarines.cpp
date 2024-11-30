@@ -17,7 +17,7 @@ void BasicSc2Bot::TargetMarines() {
     }
 
     // Marine parameters
-    const float marine_range = 9.0f;             // Marine's vision
+    const float marine_range = 13.0f;             // Marine's vision
     const float fallback_distance = 1.0f;        // Distance to kite away for melee units
     const float advance_distance = 0.5f;         // Distance to close for ranged units
 
@@ -63,8 +63,19 @@ void BasicSc2Bot::TargetMarines() {
                     Actions()->UnitCommand(marine, ABILITY_ID::MOVE_MOVE, fallback_position);
                 }
                 else {
-                    // Advance if the target is ranged
-                    if (Distance2D(marine->pos, target->pos) > 4.5f) {
+                    // Check if the target is ranged but not a structure
+                    const UnitTypeData& target_type_data = Observation()->GetUnitTypeData().at(target->unit_type);
+                    bool is_structure = false;
+
+                    for (const auto& attribute : target_type_data.attributes) {
+                        if (attribute == Attribute::Structure) {
+                            is_structure = true;
+                            break;
+                        }
+                    }
+
+                    // Advance if the target is ranged and not a structure
+                    if (!is_structure && Distance2D(marine->pos, target->pos) > 4.5f) {
                         Point2D advance_direction = target->pos - marine->pos;
                         float length = std::sqrt(advance_direction.x * advance_direction.x + advance_direction.y * advance_direction.y);
                         if (length > 0) {
