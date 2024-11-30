@@ -33,7 +33,7 @@ void BasicSc2Bot::AllOutRush() {
     Units siege_tanks = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SIEGETANK));
 
 	// Check if we have any units to attack with
-	if (marines.empty() && siege_tanks.empty() && battlecruisers.empty()) {
+	if (marines.empty() && siege_tanks.empty()) {
 		return;
 	}
 
@@ -54,23 +54,44 @@ void BasicSc2Bot::AllOutRush() {
     }
 
     if (enemy_base_destroyed) {
-        const Unit* closest_snapshot_unit = nullptr;
+
+        const Unit* closest_unit = nullptr;
         float min_distance = std::numeric_limits<float>::max();
 
-        // Search for the closest snapshot unit
+        // Search for any visible unit
         for (const auto& enemy_unit : observation->GetUnits(Unit::Alliance::Enemy)) {
-            if (enemy_unit->display_type == Unit::DisplayType::Snapshot && enemy_unit->is_alive) {
+            if (enemy_unit->display_type == Unit::DisplayType::Visible && enemy_unit->is_alive) {
                 float distance = Distance2D(enemy_unit->pos, start_location);
                 if (distance < min_distance) {
                     min_distance = distance;
-                    closest_snapshot_unit = enemy_unit;
+                    closest_unit = enemy_unit;
                 }
             }
         }
 
-        // If a snapshot unit is found, set it as the new attack target
-        if (closest_snapshot_unit) {
-            attack_target = closest_snapshot_unit->pos;
+        // If a unit is found, set it as the new attack target
+        if (closest_unit) {
+            attack_target = closest_unit->pos;
+        }
+        else {
+            // Search for the closest snapshot unit
+            for (const auto& enemy_unit : observation->GetUnits(Unit::Alliance::Enemy)) {
+                if (enemy_unit->display_type == Unit::DisplayType::Snapshot && enemy_unit->is_alive) {
+                    float distance = Distance2D(enemy_unit->pos, start_location);
+                    if (distance < min_distance) {
+                        min_distance = distance;
+                        closest_unit = enemy_unit;
+                    }
+                }
+            }
+            // If a snapshot unit is found, set it as the new attack target
+            if (closest_unit) {
+                attack_target = closest_unit->pos;
+            }
+            // When there are no snapshot units
+            else {
+                return;
+            }
         }
     }
 
