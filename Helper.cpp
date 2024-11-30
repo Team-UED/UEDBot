@@ -132,30 +132,42 @@ const Unit* BasicSc2Bot::FindDamagedStructure() {
 
 	const Unit* highest_priority_target = nullptr;
 	int highest_priority = std::numeric_limits<int>::max();
+	float lowest_health = std::numeric_limits<float>::max();
 
 	for (const auto& unit : units) {
-		if (unit->health < unit->health_max) {
+		if (unit->health < unit->health_max && unit->is_alive) {
 			int priority = std::numeric_limits<int>::max();
 
 			// Assign priorities (lower number = higher priority)
-			if (unit->unit_type == UNIT_TYPEID::TERRAN_COMMANDCENTER ||
-				unit->unit_type == UNIT_TYPEID::TERRAN_ORBITALCOMMAND ||
-				unit->unit_type == UNIT_TYPEID::TERRAN_PLANETARYFORTRESS) {
+			if (unit->unit_type == UNIT_TYPEID::TERRAN_SUPPLYDEPOT ||
+				unit->unit_type == UNIT_TYPEID::TERRAN_BARRACKS ||
+				unit->unit_type == UNIT_TYPEID::TERRAN_FACTORY ||
+				unit->unit_type == UNIT_TYPEID::TERRAN_BARRACKSTECHLAB ||
+				unit->unit_type == UNIT_TYPEID::TERRAN_FACTORYTECHLAB) {
 				priority = 1;
 			}
-			else if (unit->unit_type == UNIT_TYPEID::TERRAN_BARRACKS ||
-				unit->unit_type == UNIT_TYPEID::TERRAN_FACTORY ||
-				unit->unit_type == UNIT_TYPEID::TERRAN_STARPORT) {
+			else if (unit->unit_type == UNIT_TYPEID::TERRAN_COMMANDCENTER ||
+				unit->unit_type == UNIT_TYPEID::TERRAN_ORBITALCOMMAND ||
+				unit->unit_type == UNIT_TYPEID::TERRAN_STARPORT ||
+				unit->unit_type == UNIT_TYPEID::TERRAN_STARPORTTECHLAB ||
+				unit->unit_type == UNIT_TYPEID::TERRAN_ENGINEERINGBAY ||
+				unit->unit_type == UNIT_TYPEID::TERRAN_ARMORY ||
+				unit->unit_type == UNIT_TYPEID::TERRAN_FUSIONCORE ||
+				unit->unit_type == UNIT_TYPEID::TERRAN_MISSILETURRET ||
+				unit->unit_type == UNIT_TYPEID::TERRAN_REFINERY) {
 				priority = 2;
-			}
-			else if (unit->unit_type == UNIT_TYPEID::TERRAN_SUPPLYDEPOT) {
-				priority = 3;
 			}
 
 			// Update the target if the current unit has a higher priority
-			if (priority < highest_priority) {
+			if (priority < highest_priority ||
+				(priority == highest_priority && unit->health < lowest_health)) {
+				// Skip if the priority is too high (Units)
+				if (priority > 2) {
+					continue; 
+				}
 				highest_priority_target = unit;
 				highest_priority = priority;
+				lowest_health = unit->health;
 			}
 		}
 	}

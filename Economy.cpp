@@ -112,14 +112,12 @@ void BasicSc2Bot::UseScan() {
     }
 
     Units enemies = observation->GetUnits(Unit::Alliance::Enemy);
-	Units allies = observation->GetUnits(Unit::Alliance::Self);
 
     const Unit* cloacked_enemy = nullptr;
 
     for (const auto& enemy : enemies) {
-        if (enemy->Cloaked) {
+        if (enemy->cloak == 1) {
             cloacked_enemy = enemy;
-            break;
         }
     }
 
