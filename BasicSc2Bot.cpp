@@ -95,6 +95,18 @@ void BasicSc2Bot::OnGameStart() {
 			nearest_corner_ally = corner;
 		}
 	}
+	
+	// Mark 6 scvs to repair
+	for (const auto& unit : Observation()->GetUnits(Unit::Alliance::Self)) {
+		if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV) {
+			if (scvs_repairing.size() >= 6) {
+				break;
+			}
+			if (scvs_repairing.find(unit->tag) == scvs_repairing.end()) {
+				scvs_repairing.insert(unit->tag);
+			}
+		}
+	}
 }
 
 void BasicSc2Bot::OnGameEnd() {
@@ -140,6 +152,9 @@ void BasicSc2Bot::OnUnitCreated(const Unit* unit) {
 	// SCV created
 	if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV) {
 		num_scvs++;
+		if (scvs_repairing.size() < 6) {
+			scvs_repairing.insert(unit->tag);
+		}
 	}
 	// Battlecruiser created
 	if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER) {
@@ -258,9 +273,10 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) {
 		is_scouting = false;
 	}
 
-	// SCV died while scouting
+	// SCV died
 	if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV) {
 		num_scvs--;
+		scvs_repairing.erase(unit->tag);
 	}
 
 	// Battlecruiser died
