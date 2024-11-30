@@ -16,48 +16,46 @@ void BasicSc2Bot::Offense() {
 		const Unit* starport = starports.front();
 
 		// Check if we have enough army to attack
-        if (num_marines >= 10) {
-            
-			// At least one battlecruisers is currently in combat and not retreating
-            if (UnitsInCombat((UNIT_TYPEID::TERRAN_BATTLECRUISER)) > 0) {
-                for (const auto& unit : Observation()->GetUnits(Unit::Alliance::Self)) {
-                    if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER && !battlecruiser_retreating[unit]) {
+        // At least one battlecruisers is currently in combat and not retreating
+        if (UnitsInCombat((UNIT_TYPEID::TERRAN_BATTLECRUISER)) > 0) {
+            for (const auto& unit : Observation()->GetUnits(Unit::Alliance::Self)) {
+                if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER && !battlecruiser_retreating[unit]) {
+                    if (num_marines >= 5 && num_siege_tanks >= 1) {
                         AllOutRush();
-                        return; 
+                        return;
                     }
                 }
             }
-
-			// No Battlecruisers in combat
-            else {
-				// No Battlecruisers trained yet
-                if (num_battlecruisers == 0) {
-                    if (!starport->orders.empty()) {
-                        for (const auto& order : starport->orders) {
-                            if (order.ability_id == ABILITY_ID::TRAIN_BATTLECRUISER) {
-                                if (order.progress >= 0.5f) {
-                                    AllOutRush();
-                                }
-                                return;
+        }
+        // No Battlecruisers in combat
+        else {
+			// No Battlecruisers trained yet, or all destroyed
+            if (num_battlecruisers == 0) {
+                if (!starport->orders.empty()) {
+                    for (const auto& order : starport->orders) {
+                        if (order.ability_id == ABILITY_ID::TRAIN_BATTLECRUISER) {
+                            if (order.progress >= 0.5f) {
+                                AllOutRush();
                             }
+                            return;
                         }
                     }
                 }
-				// Battlecruisers are not in combat, and retreating
-                else {
-                    bool attack = true; 
-                    for (const auto& unit : Observation()->GetUnits(Unit::Alliance::Self)) {
-                        if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER && battlecruiser_retreating[unit]) {
-                            if (unit->health < 0.5f * unit->health_max) {
-                                attack = false;
-                                break; 
-                            }
+            }
+            // Battlecruisers are not in combat, and retreating
+            else {
+                bool attack = true;
+                for (const auto& unit : Observation()->GetUnits(Unit::Alliance::Self)) {
+                    if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER && battlecruiser_retreating[unit]) {
+                        if (unit->health < 0.5f * unit->health_max) {
+                            attack = false;
+                            break;
                         }
                     }
-                    // If all retreating Battlecruisers are healthy, execute the attack
-                    if (attack) {
-                        AllOutRush();
-                    }
+                }
+                // If all retreating Battlecruisers are healthy, execute the attack
+                if (attack) {
+                    AllOutRush();
                 }
             }
         }
@@ -65,7 +63,6 @@ void BasicSc2Bot::Offense() {
     else {
         // Check if our army is mostly dead
         Units marines = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_MARINE));
-
         // If army is severely depleted, rebuild before attacking again
         if (marines.size() < 5) {
             is_attacking = false;
@@ -108,7 +105,7 @@ void BasicSc2Bot::AllOutRush() {
         const Unit* closest_unit = nullptr;
         float min_distance = std::numeric_limits<float>::max();
 
-        // Search for any visible unit
+		// Search for any visible unit left on the map
         for (const auto& enemy_unit : observation->GetUnits(Unit::Alliance::Enemy)) {
             if (enemy_unit->display_type == Unit::DisplayType::Visible && enemy_unit->is_alive) {
                 float distance = Distance2D(enemy_unit->pos, start_location);
@@ -123,6 +120,7 @@ void BasicSc2Bot::AllOutRush() {
         if (closest_unit) {
             attack_target = closest_unit->pos;
         }
+		// No visible units left, search for snapshot units
         else {
             // Search for the closest snapshot unit
             for (const auto& enemy_unit : observation->GetUnits(Unit::Alliance::Enemy)) {
