@@ -10,6 +10,7 @@ void BasicSc2Bot::ManageEconomy() {
 	BuildExpansion();
 	ReassignWorkers();
 	UseMULE();
+    UseScan();
 }
 
 void BasicSc2Bot::TrainSCVs() {
