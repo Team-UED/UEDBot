@@ -88,8 +88,7 @@ void BasicSc2Bot::EarlyDefense() {
     if (!IsAnyBaseUnderAttack()) {
         return;
     }
-
-    // Get all our bases
+    
     Units our_bases = Observation()->GetUnits(Unit::Alliance::Self, IsTownHall());
 
     // Collect enemy units near our bases
