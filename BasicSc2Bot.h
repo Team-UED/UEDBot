@@ -41,6 +41,7 @@ public:
 	virtual void OnStep() final;
 	virtual void OnGameEnd() final;
 	virtual void OnUnitCreated(const Unit* unit) final;
+	virtual void OnUnitIdle(const Unit* unit) final;
 	virtual void OnBuildingConstructionComplete(const Unit* unit) final;
 	virtual void OnUpgradeCompleted(UpgradeID upgrade_id) final;
 	virtual void OnUnitDestroyed(const Unit* unit) final;
@@ -149,6 +150,31 @@ private:
 	const Unit* swap_a = nullptr;
 	const Unit* swap_b = nullptr;
 
+	// footprint_radius for building
+	std::map<UNIT_TYPEID, float> footprint_r =
+	{
+		{UNIT_TYPEID::TERRAN_COMMANDCENTER, 2.5f},
+		{UNIT_TYPEID::TERRAN_SUPPLYDEPOT, 1.0f},
+		{UNIT_TYPEID::TERRAN_SUPPLYDEPOTLOWERED, 1.0f},
+		{UNIT_TYPEID::TERRAN_REFINERY, 1.0f},
+		{UNIT_TYPEID::TERRAN_BARRACKS, 1.5f},
+		{UNIT_TYPEID::TERRAN_ENGINEERINGBAY, 1.5f},
+		{UNIT_TYPEID::TERRAN_MISSILETURRET, 1.0f},
+		{UNIT_TYPEID::TERRAN_BUNKER, 1.5f},
+		{UNIT_TYPEID::TERRAN_SENSORTOWER, 0.5f},
+		{UNIT_TYPEID::TERRAN_GHOSTACADEMY, 1.5f},
+		{UNIT_TYPEID::TERRAN_FACTORY, 1.5f},
+		{UNIT_TYPEID::TERRAN_STARPORT, 1.5f},
+		{UNIT_TYPEID::TERRAN_ARMORY, 1.5f},
+		{UNIT_TYPEID::TERRAN_FUSIONCORE, 1.5f},
+		{UNIT_TYPEID::TERRAN_TECHLAB, 3.5f},
+		{UNIT_TYPEID::TERRAN_REACTOR, 3.5f},
+		{UNIT_TYPEID::TERRAN_ORBITALCOMMAND, 2.5f},
+		{UNIT_TYPEID::TERRAN_PLANETARYFORTRESS, 2.5f},
+		{UNIT_TYPEID::TERRAN_AUTOTURRET, 0.5f},
+		{UNIT_TYPEID::TERRAN_SCV, 0.375f} // SCV is not a building but included for completeness
+	};
+
 
 	// =========================
 	// Unit Production and Upgrades
@@ -184,9 +210,6 @@ private:
 
 	// Manages defensive structures and units.
 	void Defense();
-
-	// Blocks the chokepoint with buildings for early defense.
-	//void BlockRamp();
 
 	// Defends against early rushes using Marines and SCVs if necessary.
 	void EarlyDefense();
@@ -329,6 +352,9 @@ private:
 
 	// Scouting methods to gather information about the enemy.
 
+	// checks if enough resources are available to build
+	bool CanBuild(const int32_t mineral, const int32_t gas = 0, const int32_t food = 0) const;
+
 	// Updates the game state (e.g., under attack, need expansion).
 	void UpdateGameState();
 
@@ -393,25 +419,58 @@ private:
 
 	Point2D GetRallyPoint();
 
+	void SetRallyPoint(const Unit* b, const Point2D& p);
+
 	const Unit* GetLeastSaturatedBase() const;
 
 	bool IsWorkerUnit(const Unit* unit);
 
 	Point2D GetNearestSafePosition(const Point2D& pos);
 
-	bool IsTrivialUnit(const Unit* unit);
+	bool IsTrivialUnit(const Unit* unit) const;
+
+	bool IsBuilding(const UnitOrder& order) const;
+
+	bool ALLBuildingsFilter(const Unit& unit) const;
 
 	Point2D GetChokepointPosition();
 
 	bool IsAnyBaseUnderAttack();
 
 	// =========================
-	// Ramp
+	// MapInfo (Ramp, build_map, etc)
 	// =========================
+
+	struct Point2DComparator {
+		bool operator()(const Point2D& lhs, const Point2D& rhs) const {
+			return lhs.x < rhs.x || (lhs.x == rhs.x && lhs.y < rhs.y);
+		}
+	};
+
+	enum class BaseLocation {
+		lefttop,
+		righttop,
+		leftbottom,
+		rightbottom
+	};
+	BaseLocation base_location;
+	BaseLocation GetBaseLocation() const;
+
+	bool IsBaseOnLeft() const;
+
+	bool IsBaseOnTop() const;
+
+	std::vector<Point2D> get_close_mineral_points(Point2D& unit_pos) const;
+
+	std::vector<Point2D> find_terret_location_btw(std::vector<Point2D>& mineral_patches, Point2D& townhall);
+
+	void update_build_map(const bool built, const Unit* destroyed_building = nullptr);
 
 	float cross_product(const Point2D& O, const Point2D& A, const Point2D& B) const;
 
 	Point2D Point2D_mean(const std::vector<Point2D>& points) const;
+
+	Point2D Point2D_mean(const std::map<Point2D, bool, Point2DComparator>& map_points) const;
 
 	std::vector<Point2D> convexHull(std::vector<Point2D>& points) const;
 
@@ -420,6 +479,8 @@ private:
 	Point2D towards(const Point2D& p1, const Point2D& p2, float distance) const;
 
 	int height_at(const Point2DI& p) const;
+
+	float height_at_float(const Point2DI& p) const;
 
 	void find_ramps_build_map(bool isRamp);
 
@@ -443,7 +504,14 @@ private:
 
 	Point2D barracks_correct_placement(const std::vector<Point2D>& ramp_points, const std::vector<Point2D>& corner_depots) const;
 
+	bool building_area33_check(const Point2D& b, const bool addon);
+
+	bool build33_after_check(const Unit* builder, const AbilityID& build_ability, const BasicSc2Bot::BaseLocation whereismybase, const bool addon);
+
+	bool depot_area_check(const Unit* builder, const AbilityID& build_ability, BasicSc2Bot::BaseLocation whereismybase);
+
 	void depot_control();
+
 	// =========================
 	// Member Variables
 	// =========================
@@ -479,8 +547,14 @@ private:
 	sc2::Point2D retreat_location;
 	std::vector<sc2::Point2D> enemy_start_locations;
 	std::vector<sc2::Point3D> expansion_locations;
-	std::vector<sc2::Point2D> structure_locations;
-	std::vector<std::vector<sc2::Point2D>> build_map;
+	std::vector<sc2::Point2D> main_mineral_convexHull;
+	std::vector<sc2::Point2D> main_base_terret_locations;
+
+	std::vector<std::map<Point2D, bool, Point2DComparator>> build_map;
+	std::vector<Point2D> build_map_minmax;
+
+	// convex hull of the main base
+	std::vector<Point2D> main_base_edges;
 
 	// Our bases.
 	Units bases;
@@ -559,7 +633,7 @@ private:
 	// Track if we need to scout the entire map
 	bool scout_entire_map = false;
 
-	/*bool chokepoint_blocked = false;*/
+	// buildings for ramps
 	std::vector<sc2::Unit*> ramp_depots = { nullptr, nullptr };
 	std::vector<sc2::Unit*> ramp_middle = { nullptr, nullptr };
 
@@ -591,6 +665,10 @@ private:
 
 	bool IsFriendlyStructure(const Unit& unit) const {
 		switch (unit.unit_type.ToType()) {
+		case UNIT_TYPEID::TERRAN_SUPPLYDEPOT:
+			return true;
+		case UNIT_TYPEID::TERRAN_SUPPLYDEPOTLOWERED:
+			return true;
 		case UNIT_TYPEID::TERRAN_COMMANDCENTER:
 			return true;
 		case UNIT_TYPEID::TERRAN_ORBITALCOMMAND:
@@ -614,6 +692,8 @@ private:
 		case UNIT_TYPEID::TERRAN_BUNKER:
 			return true;
 		case UNIT_TYPEID::TERRAN_TECHLAB:
+			return true;
+		case UNIT_TYPEID::TERRAN_REACTOR:
 			return true;
 		case UNIT_TYPEID::TERRAN_FACTORYTECHLAB:
 			return true;

@@ -32,7 +32,7 @@ void BasicSc2Bot::TrainSCVs() {
 	if (scvs.size() >= desired_scv_count) return;
 
 	Units dps = obs->GetUnits(Unit::Alliance::Self, [](const Unit& unit) {
-		return unit.unit_type == UNIT_TYPEID::TERRAN_SUPPLYDEPOT && !unit.build_progress < 0.5;
+		return unit.unit_type == UNIT_TYPEID::TERRAN_SUPPLYDEPOT && !(unit.build_progress < 0.5f);
 		});
 
 	// Ensure we have enough supply
@@ -96,7 +96,7 @@ void BasicSc2Bot::UseMULE() {
 
 bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_TYPEID unit_type) {
 	const ObservationInterface* obs = Observation();
-	if (obs->GetMinerals() < 100) {
+	if (!CanBuild(100)) {
 		return false; // Not enough minerals to build
 	}
 
@@ -106,15 +106,9 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
 	// Minimum distance from mineral
 	const float distance_from_minerals = 10.0f;
 
-	// Find Command Centers
-	Units command_centers = obs->GetUnits(Unit::Alliance::Self, [](const Unit& unit) {
-		return unit.unit_type == UNIT_TYPEID::TERRAN_COMMANDCENTER ||
-			unit.unit_type == UNIT_TYPEID::TERRAN_ORBITALCOMMAND ||
-			unit.unit_type == UNIT_TYPEID::TERRAN_PLANETARYFORTRESS;
-		});
-
 	// Find an SCV to build with
 	Units scvs = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SCV));
+
 	const Unit* builder = nullptr;
 
 	for (const auto& scv : scvs) {
@@ -128,88 +122,37 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
 		}
 
 		float min_distance_to_base = std::numeric_limits<float>::max();
-		for (const auto& command_center : command_centers) {
-			float distance_to_cc = sc2::Distance2D(scv->pos, command_center->pos);
+		float distance_to_cc;
+		for (const auto& cc : bases) {
+			if (ability_type_for_structure == ABILITY_ID::BUILD_SUPPLYDEPOT &&
+				cc != bases[0]) {
+				continue;
+			}
+			distance_to_cc = Distance2D(scv->pos, cc->pos);
 			if (distance_to_cc < min_distance_to_base) {
 				min_distance_to_base = distance_to_cc;
 			}
 		}
-
 		// Check if the SCV is within the base radius
 		if (min_distance_to_base > base_radius) {
 			continue;
 		}
-
-		bool is_constructing = false;
 		for (const auto& order : scv->orders) {
-			if (order.ability_id == ABILITY_ID::BUILD_SUPPLYDEPOT ||
-				order.ability_id == ABILITY_ID::BUILD_REFINERY ||
-				order.ability_id == ABILITY_ID::BUILD_BARRACKS ||
-				order.ability_id == ABILITY_ID::BUILD_COMMANDCENTER ||
-				order.ability_id == ABILITY_ID::BUILD_FACTORY ||
-				order.ability_id == ABILITY_ID::BUILD_STARPORT ||
-				order.ability_id == ABILITY_ID::BUILD_ENGINEERINGBAY ||
-				order.ability_id == ABILITY_ID::BUILD_ARMORY ||
-				order.ability_id == ABILITY_ID::BUILD_FUSIONCORE ||
-				order.ability_id == ABILITY_ID::BUILD_MISSILETURRET ||
-				order.ability_id == ABILITY_ID::BUILD_BUNKER
-				) {
-				is_constructing = true;
-				break;
+
+			if (!IsBuilding(order))
+			{
+				if (!builder)
+				{
+					builder = scv;
+					break;
+				}
 			}
 		}
-		if (!is_constructing) {
-			builder = scv;
+		if (builder) {
 			break;
 		}
 	}
-
-
 	if (builder) {
-		// Get main base location
-		const Unit* main_base = GetMainBase();
-		if (!main_base) {
-			return false;
-		}
-
-		// Define a build location offset from the main base
-		Point2D build_location = main_base->pos + Point2D(10.0f, 0.0f); // Adjust offset as needed
-
-		// Ensure build location is not too close to minerals and not too far from base
-		Units mineral_patches = obs->GetUnits(Unit::Alliance::Neutral, IsUnit(UNIT_TYPEID::NEUTRAL_MINERALFIELD));
-
-		auto is_valid_build_location = [&](const Point2D& location) {
-
-			if (!main_base) {
-				return false;
-			}
-
-			// Too far from the base
-			float distance_to_base = sc2::Distance2D(location, main_base->pos);
-			if (distance_to_base > base_radius) {
-				return false; // Too far from the base
-			}
-
-			// Too close to minerals
-			for (const auto& mineral_patch : mineral_patches) {
-				float distance_to_mineral = sc2::Distance2D(location, mineral_patch->pos);
-				if (distance_to_mineral < distance_from_minerals) {
-					return false;
-				}
-			}
-
-			// Too close to other buildings
-			for (const auto& structure_location : structure_locations) {
-				if (Distance2D(location, structure_location) < 5.0f) {
-					return false;
-				}
-			}
-
-			// Location is valid
-			return true;
-			};
-
-
 		if (ability_type_for_structure == ABILITY_ID::BUILD_SUPPLYDEPOT)
 		{
 			// check if ramp is blocked
@@ -227,12 +170,13 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
 					Actions()->UnitCommand(builder, ability_type_for_structure, mainBase_depot_points[i], true);
 					return true;
 				}
-
 				return false;
 			}
+
+			return depot_area_check(builder, ability_type_for_structure, base_location);
 		}
 
-		if (ability_type_for_structure == ABILITY_ID::BUILD_BARRACKS)
+		else if (ability_type_for_structure == ABILITY_ID::BUILD_BARRACKS)
 		{
 			// check if ramp is blocked
 			if (phase == 0)
@@ -245,91 +189,33 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
 				}
 				return false;
 			}
-		}
-
-		if (ability_type_for_structure == ABILITY_ID::BUILD_FACTORY)
-		{
-			// check if ramp is blocked
-			if (phase != 1)
+			else
 			{
-				Point2D temp1 = Point2D(mainBase_barrack_point.x, mainBase_barrack_point.y + 5.0f);
-				Point2D temp2 = Point2D(mainBase_barrack_point.x, mainBase_barrack_point.y - 5.0f);
-
-				Point2D temp = Query()->Placement(ABILITY_ID::BUILD_FACTORY, temp1) ? temp1 : temp2;
-
-
-				if (Query()->Placement(ABILITY_ID::BUILD_FACTORY, temp))
-				{
-					Actions()->UnitCommand(builder, ability_type_for_structure, temp);
-					return true;
-				}
-				return false;
+				return build33_after_check(builder, ability_type_for_structure, base_location, true);
 			}
 		}
 
-		if (ability_type_for_structure == ABILITY_ID::BUILD_STARPORT)
+		else if (ability_type_for_structure == ABILITY_ID::BUILD_FACTORY)
+		{
+			// check if ramp is blocked
+			if (phase != 1 || num_barracks)
+			{
+				return build33_after_check(builder, ability_type_for_structure, base_location, true);
+			}
+		}
+
+		else if (ability_type_for_structure == ABILITY_ID::BUILD_STARPORT)
 		{
 			// check if ramp is blocked
 			if (phase == 2)
 			{
-				Point2D temp1 = Point2D(mainBase_barrack_point.x, mainBase_barrack_point.y + 10.0f);
-				Point2D temp2 = Point2D(mainBase_barrack_point.x, mainBase_barrack_point.y - 10.0f);
-				Point2D temp3 = Point2D(mainBase_barrack_point.x - 7.0f, mainBase_barrack_point.y + 5.0f);
-				Point2D temp4 = Point2D(mainBase_barrack_point.x - 7.0f, mainBase_barrack_point.y - 5.0f);
-				Point2D temp5 = Point2D(mainBase_barrack_point.x + 7.0f, mainBase_barrack_point.y + 5.0f);
-				Point2D temp6 = Point2D(mainBase_barrack_point.x + 7.0f, mainBase_barrack_point.y - 5.0f);
-				Point2D temp;
-
-				if (Query()->Placement(ABILITY_ID::BUILD_STARPORT, temp1))
-				{
-					temp = temp1;
-				}
-				else if (Query()->Placement(ABILITY_ID::BUILD_STARPORT, temp2))
-				{
-					temp = temp2;
-				}
-				else if (Query()->Placement(ABILITY_ID::BUILD_STARPORT, temp3))
-				{
-					temp = temp3;
-				}
-				else if (Query()->Placement(ABILITY_ID::BUILD_STARPORT, temp4))
-				{
-					temp = temp4;
-				}
-				else if (Query()->Placement(ABILITY_ID::BUILD_STARPORT, temp5))
-				{
-					temp = temp5;
-				}
-				else if (Query()->Placement(ABILITY_ID::BUILD_STARPORT, temp6))
-				{
-					temp = temp6;
-				}
-
-				if (Query()->Placement(ABILITY_ID::BUILD_STARPORT, temp))
-				{
-					Actions()->UnitCommand(builder, ability_type_for_structure, temp);
-					return true;
-				}
-				return false;
+				return build33_after_check(builder, ability_type_for_structure, base_location, true);
 			}
 		}
-
-		// Check the initial build location
-		if (is_valid_build_location(build_location) && Query()->Placement(ability_type_for_structure, build_location)) {
-			Actions()->UnitCommand(builder, ability_type_for_structure, build_location);
-			return true;
-		}
-		else {
-			// Try to find a nearby valid location
-			for (float x = -15.0f; x <= 15.0f; x += 2.0f) {
-				for (float y = -15.0f; y <= 15.0f; y += 2.0f) {
-					Point2D test_location = main_base->pos + Point2D(x, y);
-					if (is_valid_build_location(test_location) && Query()->Placement(ability_type_for_structure, test_location)) {
-						Actions()->UnitCommand(builder, ability_type_for_structure, test_location);
-						return true;
-					}
-				}
-			}
+		else
+		{
+			// check far away from the ramp first around the edge of the base
+			return build33_after_check(builder, ability_type_for_structure, base_location, false);
 		}
 	}
 	return false;
@@ -342,7 +228,6 @@ bool BasicSc2Bot::TryBuildSupplyDepot() {
 
 	// Default surplus
 	int32_t supply_surplus = 1;
-	static bool ramp_dp_blocked = false;
 	// Set surplus by phase
 	if (phase == 2) {
 		supply_surplus = 6;
@@ -355,9 +240,8 @@ bool BasicSc2Bot::TryBuildSupplyDepot() {
 	Units barracks = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKS));
 	if (ramp_depots[0] && phase == 0 && !barracks.empty())
 	{
-		if (!ramp_depots[1] && !ramp_dp_blocked)
+		if (!ramp_depots[1])
 		{
-			ramp_dp_blocked = true;
 			return TryBuildStructure(ABILITY_ID::BUILD_SUPPLYDEPOT, UNIT_TYPEID::TERRAN_SCV);
 		}
 	}
@@ -365,22 +249,27 @@ bool BasicSc2Bot::TryBuildSupplyDepot() {
 	// Build a supply depot when supply used reaches the threshold
 	if (supply_used >= supply_cap - supply_surplus) {
 		// Check if a supply depot is already under construction
-		Units supply_depots_building = obs->GetUnits(Unit::Self, [](const Unit& unit) {
-			return unit.unit_type == UNIT_TYPEID::TERRAN_SUPPLYDEPOT && unit.build_progress < 1.0f;
-			});
-		Units supply_depots_building1 = obs->GetUnits(Unit::Self, [](const Unit& unit) {
-			return unit.unit_type == UNIT_TYPEID::TERRAN_SUPPLYDEPOT && !unit.tag;
+		Units supply_depots_building = obs->GetUnits(Unit::Self, [this](const Unit& unit) {
+			return unit.unit_type == UNIT_TYPEID::TERRAN_SUPPLYDEPOT &&
+				(!unit.tag ||
+					unit.build_progress < 1.0f ||
+					unit.display_type == 4);
 			});
 
-		if (!supply_depots_building1.empty())
+		if (phase != 3)
 		{
-			return false;
+			if (supply_depots_building.empty()) {
+				//std::cout << "Building Supply Depot" << std::endl;
+				return TryBuildStructure(ABILITY_ID::BUILD_SUPPLYDEPOT, UNIT_TYPEID::TERRAN_SCV);
+			}
+		}
+		else if (phase == 3)
+		{
+			if (supply_depots_building.size() < 2 && current_gameloop % 100 == 0) {
+				return TryBuildStructure(ABILITY_ID::BUILD_SUPPLYDEPOT, UNIT_TYPEID::TERRAN_SCV);
+			}
 		}
 
-		if (supply_depots_building.empty()) {
-			std::cout << "Building Supply Depot" << std::endl;
-			return TryBuildStructure(ABILITY_ID::BUILD_SUPPLYDEPOT, UNIT_TYPEID::TERRAN_SCV);
-		}
 	}
 	return false;
 }
@@ -551,16 +440,12 @@ void BasicSc2Bot::ReassignWorkers() {
 	}
 }
 
-
-
 void BasicSc2Bot::BuildRefineries() {
 
 	const ObservationInterface* obs = Observation();
-	Units bases = obs->GetUnits(Unit::Alliance::Self, IsTownHall());
+	Units cc = bases;
 
-
-
-	for (const auto& base : bases) {
+	for (const auto& base : cc) {
 		Units geysers = obs->GetUnits(Unit::Alliance::Neutral, [base](const Unit& unit) {
 			return IsGeyser()(unit) && Distance2D(unit.pos, base->pos) < 15.0f;
 			});
@@ -571,7 +456,7 @@ void BasicSc2Bot::BuildRefineries() {
 			Units barracks = obs->GetUnits(Unit::Alliance::Self, [](const Unit& unit) {
 				return unit.unit_type == UNIT_TYPEID::TERRAN_BARRACKS && unit.build_progress < 1.0f;
 				});
-			if (refineries.empty() && obs->GetMinerals() >= 75 && !barracks.empty()) {
+			if (refineries.empty() && obs->GetMinerals() >= 75 && (!barracks.empty() || phase)) {
 				Units scvs = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SCV));
 				const Unit* builder = nullptr;
 
