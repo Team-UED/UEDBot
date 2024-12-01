@@ -424,6 +424,12 @@ private:
 
 	bool IsTrivialUnit(const Unit* unit) const;
 
+	// returns how close my resource goal is to the current resources
+	std::vector<float> HowCloseToResourceGoal(const int32_t& m, const int32_t& g) const;
+
+	// returns how close current job is to being finished
+	float HowClosetoFinishCurrentJob(const Unit* b) const;
+
 	bool IsBuilding(const UnitOrder& order) const;
 
 	bool ALLBuildingsFilter(const Unit& unit) const;
