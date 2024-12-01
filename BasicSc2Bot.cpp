@@ -381,17 +381,18 @@ void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
 
 		if (unit->unit_type == UNIT_TYPEID::TERRAN_BARRACKS) {
 			Units barracks = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKS));
-			const Unit* b = barracks.front();
+			const Unit* b = !barracks.empty() ? barracks.front() : nullptr;
 			ramp_middle[0] = const_cast<sc2::Unit*>(unit);
-			if (obs->GetMinerals() >= 50 && obs->GetVespene() >= 25)
+			if (CanBuild(50, 25))
 			{
+				// it is always true because we make sure that we have enough resources to build the techlab
 				Actions()->UnitCommand(unit, ABILITY_ID::BUILD_TECHLAB_BARRACKS);
 			}
 
 		}
 		else if (unit->unit_type == UNIT_TYPEID::TERRAN_BARRACKSTECHLAB) {
 			Units techlab = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKSTECHLAB));
-			const Unit* t = techlab.front();
+			const Unit* t = !techlab.empty() ? techlab.front() : nullptr;
 			ramp_middle[1] = const_cast<sc2::Unit*>(t);
 			++phase;
 		}
@@ -403,13 +404,22 @@ void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
 		{
 			Units factories = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FACTORY));
 			Units barracks = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKS));
+			Units enemy_units = obs->GetUnits(Unit::Alliance::Enemy);
 
-			const Unit* b = barracks.front();
-			const Unit* f = factories.front();
-
-			//assert(b != nullptr && f != nullptr);
-			ramp_middle[0] = const_cast<sc2::Unit*>(f);
-			Swap(b, f, true);
+			bool enemy_nearby = false;
+			for (const auto& e : enemy_units) {
+				if (IsTrivialUnit(e)) continue;
+				if (Distance2D(e->pos, barracks.front()->pos) < 15) {
+					enemy_nearby = true;
+					break;
+				}
+			}
+			if (!enemy_nearby) {
+				const Unit* b = !barracks.empty() ? barracks.front() : nullptr;
+				const Unit* f = !factories.empty() ? factories.front() : nullptr;
+				ramp_middle[0] = const_cast<sc2::Unit*>(f);
+				Swap(b, f, true);
+			}
 			++phase;
 		}
 	}
@@ -417,13 +427,18 @@ void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
 	{
 		if (unit->unit_type == UNIT_TYPEID::TERRAN_STARPORT) {
 			++phase;
+
 			Units barracks = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKS));
 			Units starport = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_STARPORT));
-			const Unit* b = barracks.front();
+			Units factories = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FACTORY));
+			const Unit* switching_building = barracks.front();
 			const Unit* s = starport.front();
 
-			//assert(b != nullptr && s != nullptr);
-			Swap(b, s, true);
+			if (ramp_middle[0]->unit_type == UNIT_TYPEID::TERRAN_BARRACKS)
+			{
+				switching_building = factories.front();
+			}
+			Swap(switching_building, s, true);
 		}
 	}
 	else

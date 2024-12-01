@@ -15,6 +15,15 @@ bool BasicSc2Bot::CanBuild(const int32_t mineral, const int32_t gas, const int32
 		obs->GetFoodCap() - obs->GetFoodUsed() >= food;
 }
 
+std::vector<float> BasicSc2Bot::HowCloseToResourceGoal(const int32_t& m, const int32_t& g) const {
+	const ObservationInterface* obs = Observation();
+	return { obs->GetMinerals() / static_cast<float>(m), obs->GetVespene() / static_cast<float>(g) };
+}
+
+float BasicSc2Bot::HowClosetoFinishCurrentJob(const Unit* b) const {
+	return b->orders.empty() ? 0.0f : b->orders.front().progress;
+}
+
 bool BasicSc2Bot::NeedExpansion() const {
 	const ObservationInterface* observation = Observation();
 
@@ -120,7 +129,7 @@ Point2D BasicSc2Bot::GetSafePosition() {
 	return main_base
 		? main_base->pos
 		: Point2D(0,
-			0); 
+			0);
 }
 
 // Find the closest damaged unit for repair
@@ -171,7 +180,7 @@ const Unit* BasicSc2Bot::FindDamagedStructure() {
 				(priority == highest_priority && unit->health < lowest_health)) {
 				// Skip if the priority is too high (Units)
 				if (priority > 2) {
-					continue; 
+					continue;
 				}
 				highest_priority_target = unit;
 				highest_priority = priority;
@@ -509,9 +518,8 @@ int BasicSc2Bot::CalculateThreatLevel(const Unit* unit) {
 		}
 	}
 
-    return threat_level;
+	return threat_level;
 }
-
 
 const Unit* BasicSc2Bot::GetClosestThreat(const Unit* unit) {
 

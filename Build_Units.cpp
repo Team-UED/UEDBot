@@ -2,22 +2,29 @@
 
 using namespace sc2;
 
-void BasicSc2Bot::ManageProduction() {
-	TrainMarines();
-	TrainBattlecruisers();
-	TrainSiegeTanks();
-	UpgradeMarines();
-	UpgradeMechs();
+void BasicSc2Bot::ManageProduction()
+{
+	if (current_gameloop % 23 == 0)
+	{
+		TrainMarines();
+		TrainBattlecruisers();
+		TrainSiegeTanks();
+		UpgradeMarines();
+		UpgradeMechs();
+	}
+
 }
 
-void BasicSc2Bot::TrainMarines() {
+void BasicSc2Bot::TrainMarines()
+{
 	const ObservationInterface* obs = Observation();
 	Units barracks = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKS));
 	Units factories = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FACTORY));
 	Units starports = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_STARPORT));
 	Units reactor = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKSREACTOR));
 
-	if (barracks.empty() || phase == 0) {
+	if (barracks.empty() || phase == 0)
+	{
 		return;
 	}
 
@@ -36,14 +43,21 @@ void BasicSc2Bot::TrainMarines() {
 			return;
 		}
 	}
-	if (CanBuild(50) && !barracks.empty()) {
+	if (CanBuild(50) && !barracks.empty())
+	{
 
 		for (const auto& b : barracks) {
-			if (b->orders.empty() && !reactor.empty() && b->add_on_tag == reactor.front()->tag) {
-				Actions()->UnitCommand(b, ABILITY_ID::TRAIN_MARINE, true);
-				Actions()->UnitCommand(b, ABILITY_ID::TRAIN_MARINE, true);
+			if (b->orders.empty() && !reactor.empty() && b->add_on_tag == reactor.front()->tag)
+			{
+				if (CanBuild(200))
+				{
+					Actions()->UnitCommand(b, ABILITY_ID::TRAIN_MARINE, true);
+					Actions()->UnitCommand(b, ABILITY_ID::TRAIN_MARINE, true);
+				}
+
 			}
-			else if (b->orders.empty()) {
+			else if (b->orders.empty())
+			{
 				Actions()->UnitCommand(b, ABILITY_ID::TRAIN_MARINE);
 			}
 		}
@@ -85,7 +99,7 @@ void BasicSc2Bot::TrainBattlecruisers() {
 void BasicSc2Bot::TrainSiegeTanks() {
 	const ObservationInterface* obs = Observation();
 	Units factories = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FACTORY));
-
+	Units starport = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_STARPORT));
 	Units fusioncores = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FUSIONCORE));
 
 	// Can't train Siege Tanks without Factories
@@ -99,7 +113,7 @@ void BasicSc2Bot::TrainSiegeTanks() {
 
 			factory = factories.front();
 			// Maintain 1 : 4 Ratio of Marines and Siege Tanks
-			if (num_marines >= 4 * num_siege_tanks) {
+			if (ramp_middle[0]->unit_type != UNIT_TYPEID::TERRAN_BARRACKS) {
 				if (factory->add_on_tag != 0) {
 					if (factory->orders.empty()) {
 						Actions()->UnitCommand(factory, ABILITY_ID::TRAIN_SIEGETANK);
@@ -111,10 +125,24 @@ void BasicSc2Bot::TrainSiegeTanks() {
 		{
 			if (first_battlecruiser)
 			{
-				factory = factories.front();
-				if (factory->add_on_tag != 0) {
-					if (factory->orders.empty()) {
-						Actions()->UnitCommand(factory, ABILITY_ID::TRAIN_SIEGETANK);
+				std::vector<float> MineralGas = HowCloseToResourceGoal(400, 300);
+				float avg_resources = (MineralGas[0] + MineralGas[1]) / 2;
+				if (num_starports && HowClosetoFinishCurrentJob(starport.front()) < 0.7f || avg_resources < 0.6f)
+				{
+					factory = factories.front();
+					if (factory->add_on_tag != 0) {
+						if (factory->orders.empty()) {
+							Actions()->UnitCommand(factory, ABILITY_ID::TRAIN_SIEGETANK);
+						}
+					}
+				}
+				else if (!num_starports)
+				{
+					factory = factories.front();
+					if (factory->add_on_tag != 0) {
+						if (factory->orders.empty()) {
+							Actions()->UnitCommand(factory, ABILITY_ID::TRAIN_SIEGETANK);
+						}
 					}
 				}
 			}
@@ -145,14 +173,17 @@ void BasicSc2Bot::UpgradeMarines() {
 		if (ability_id == ABILITY_ID::INVALID) {
 			continue;
 		}
-    Units techlabs = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKSTECHLAB));
-	Units engineeringbays = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_ENGINEERINGBAY));
+		Units techlabs = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKSTECHLAB));
+		Units engineeringbays = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_ENGINEERINGBAY));
 
 		// Check if the Engineering Bay is busy or not
 		for (const auto& engineeringbay : engineeringbays) {
 			if (engineeringbay->orders.empty()) {
-				Actions()->UnitCommand(engineeringbay, ability_id);
-				return;
+				if (CanBuild(450, 350))
+				{
+					Actions()->UnitCommand(engineeringbay, ability_id);
+					return;
+				}
 			}
 		}
 	}
