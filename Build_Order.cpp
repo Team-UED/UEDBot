@@ -19,6 +19,7 @@ void BasicSc2Bot::ExecuteBuildOrder() {
 
 	if (current_gameloop % 46 == 0)
 	{
+		// Building one more battlecruiser might be more helpful??
 		BuildEngineeringBay();
 		BuildArmory();
 	}
