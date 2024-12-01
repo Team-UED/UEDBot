@@ -4,91 +4,12 @@
 void BasicSc2Bot::Defense() {
 	//BlockRamp();
 	EarlyDefense();
-	LateDefense();
-}
 
-// Blocks the chokepoint with buildings for early defense.
-//void BasicSc2Bot::BlockRamp() {
-//	// Check if we've already blocked the chokepoint
-//	for (size_t i = 0; i < ramp_depots.size(); ++i) {
-//		if (ramp_depots[i])
-//		{
-//			continue;
-//		}
-//	}
-//
-//	for (size_t i = 0; i < ramp_middle.size(); ++i) {
-//		if (ramp_middle[i])
-//		{
-//			continue; // Wait for the current depot to finish building
-//		}
-//	}
-//
-//
-//	//// Check for existing supply depots and their completion
-//	//Units existing_structures = Observation()->GetUnits(Unit::Alliance::Self);
-//	//for (const auto& structure : existing_structures) {
-//	//	if (structure->unit_type == UNIT_TYPEID::TERRAN_SUPPLYDEPOT ||
-//	//		structure->unit_type == UNIT_TYPEID::TERRAN_SUPPLYDEPOTLOWERED) {
-//	//		for (int i = 0; i < 2; ++i) {
-//	//			Point2D expected_pos = chokepoint + Point2D(i * 3.0f, 0.0f);
-//	//			if (Distance2D(structure->pos, expected_pos) < 0.5f &&
-//	//				structure->build_progress == 1.0f) {
-//	//				supply_depots_built[i] = true;
-//	//			}
-//	//		}
-//	//	}
-//	//}
-//
-//	//// Build Supply Depots to form a wall
-//	//for (int i = 0; i < 2; ++i) {
-//	//	if (!supply_depots_built[i] && Observation()->GetMinerals() >= 100) {
-//	//		Point2D depot_position = chokepoint + Point2D(i * 3.0f, 0.0f);
-//
-//	//		// Verify position is buildable
-//	//		if (Observation()->IsPathable(depot_position)) {
-//	//			if (TryBuildStructureAtLocation(ABILITY_ID::BUILD_SUPPLYDEPOT,
-//	//				UNIT_TYPEID::TERRAN_SCV,
-//	//				depot_position)) {
-//	//				supply_depots_built[i] = true;
-//	//				return; // Build one structure at a time
-//	//			}
-//	//		}
-//	//	}
-//	//}
-//
-//	//// Build a Barracks to complete the wall
-//	//if (supply_depots_built[0] && supply_depots_built[1] && !barracks_built &&
-//	//	Observation()->GetMinerals() >= 150) {
-//	//	Point2D barracks_position = chokepoint + Point2D(1.5f, -2.5f);
-//
-//	//	if (Observation()->IsPathable(barracks_position)) {
-//	//		if (TryBuildStructureAtLocation(ABILITY_ID::BUILD_BARRACKS,
-//	//			UNIT_TYPEID::TERRAN_SCV,
-//	//			barracks_position)) {
-//	//			barracks_built = true;
-//	//			return;
-//	//		}
-//	//	}
-//	//}
-//
-//	//// Verify all structures are completed before marking chokepoint as blocked
-//	//if (supply_depots_built[0] && supply_depots_built[1] && barracks_built) {
-//	//	bool all_complete = true;
-//	//	for (const auto& structure : existing_structures) {
-//	//		if ((structure->unit_type == UNIT_TYPEID::TERRAN_SUPPLYDEPOT ||
-//	//			structure->unit_type == UNIT_TYPEID::TERRAN_SUPPLYDEPOTLOWERED ||
-//	//			structure->unit_type == UNIT_TYPEID::TERRAN_BARRACKS) &&
-//	//			structure->build_progress < 1.0f) {
-//	//			all_complete = false;
-//	//			break;
-//	//		}
-//	//	}
-//	//	if (all_complete) {
-//	//		chokepoint_blocked = true;
-//	//	}
-//	//}
-//}
+	if (current_gameloop % 42 == 0)
+	{
+		LateDefense();
+	}
+}
 
 void BasicSc2Bot::EarlyDefense() {
 	if (!IsAnyBaseUnderAttack()) {
@@ -157,16 +78,30 @@ void BasicSc2Bot::LateDefense() {
 	// Build Missile Turrets near bases and important locations
 	Units missile_turrets = Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_MISSILETURRET));
 	// Limit the number of Missile Turrets
-	const int desired_turrets = 2 * bases.size();
+	//TODO: change
+	/*const int desired_turrets = 2 * bases.size();
 	if (missile_turrets.size() >= desired_turrets || !first_battlecruiser) {
 		return;
-	}
+	}*/
+
+	std::vector<Point2D> turret_locations;
+	std::vector<Point2D> mineral_convexhull = main_mineral_convexHull;
+	turret_locations.reserve(2);
 
 	for (const auto& base : bases) {
 		// Build a Missile Turret near the base
-		Point2D turret_position = base->pos + Point2D(5.0f, 0.0f); // Adjust as needed
-		if (TryBuildStructureAtLocation(ABILITY_ID::BUILD_MISSILETURRET, UNIT_TYPEID::TERRAN_SCV, turret_position)) {
-			return; // Build one turret at a time
+		//Point2D turret_position = base->pos + Point2D(5.0f, 0.0f); // Adjust as needed
+		Point2D base_pos = base->pos;
+		if (base_pos != start_location) {
+			mineral_convexhull = get_close_mineral_points(base_pos);
+		}
+		turret_locations = find_terret_location_btw(mineral_convexhull, base_pos);
+
+		for (const auto& t : turret_locations)
+		{
+			if (TryBuildStructureAtLocation(ABILITY_ID::BUILD_MISSILETURRET, UNIT_TYPEID::TERRAN_SCV, t)) {
+				return; // Build one turret at a time
+			}
 		}
 	}
 }

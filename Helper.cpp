@@ -9,6 +9,12 @@ const Unit* BasicSc2Bot::GetMainBase() const {
 	return nullptr;
 }
 
+bool BasicSc2Bot::CanBuild(const int32_t mineral, const int32_t gas, const int32_t food) const {
+	const ObservationInterface* obs = Observation();
+	return obs->GetMinerals() >= mineral && obs->GetVespene() >= gas &&
+		obs->GetFoodCap() - obs->GetFoodUsed() >= food;
+}
+
 bool BasicSc2Bot::NeedExpansion() const {
 	const ObservationInterface* observation = Observation();
 
@@ -42,7 +48,6 @@ bool BasicSc2Bot::NeedExpansion() const {
 	// Expand when we have enough SCVs to saturate our current bases
 	return num_scvs >= 0.95 * total_ideal_workers;
 }
-
 
 Point3D BasicSc2Bot::GetNextExpansion() const {
 	const ObservationInterface* observation = Observation();
@@ -161,7 +166,7 @@ bool BasicSc2Bot::IsWorkerUnit(const Unit* unit) {
 		unit->unit_type == UNIT_TYPEID::TERRAN_MULE;
 }
 
-bool BasicSc2Bot::IsTrivialUnit(const Unit* unit) {
+bool BasicSc2Bot::IsTrivialUnit(const Unit* unit) const {
 	return unit->unit_type == UNIT_TYPEID::ZERG_OVERLORD ||
 		unit->unit_type == UNIT_TYPEID::ZERG_OVERSEER ||
 		unit->unit_type == UNIT_TYPEID::ZERG_OVERSEERSIEGEMODE ||
@@ -170,6 +175,30 @@ bool BasicSc2Bot::IsTrivialUnit(const Unit* unit) {
 		unit->unit_type == UNIT_TYPEID::ZERG_CHANGELINGMARINESHIELD ||
 		unit->unit_type == UNIT_TYPEID::PROTOSS_OBSERVER ||
 		unit->unit_type == UNIT_TYPEID::PROTOSS_OBSERVERSIEGEMODE;
+}
+
+bool BasicSc2Bot::IsBuilding(const UnitOrder& order) const
+{
+	return order.ability_id == ABILITY_ID::BUILD_ARMORY ||
+		order.ability_id == ABILITY_ID::BUILD_BARRACKS ||
+		order.ability_id == ABILITY_ID::BUILD_BUNKER ||
+		order.ability_id == ABILITY_ID::BUILD_COMMANDCENTER ||
+		order.ability_id == ABILITY_ID::BUILD_ENGINEERINGBAY ||
+		order.ability_id == ABILITY_ID::BUILD_FACTORY ||
+		order.ability_id == ABILITY_ID::BUILD_FUSIONCORE ||
+		order.ability_id == ABILITY_ID::BUILD_GHOSTACADEMY ||
+		order.ability_id == ABILITY_ID::BUILD_MISSILETURRET ||
+		order.ability_id == ABILITY_ID::BUILD_REFINERY ||
+		order.ability_id == ABILITY_ID::BUILD_STARPORT ||
+		order.ability_id == ABILITY_ID::BUILD_SUPPLYDEPOT;
+}
+
+bool BasicSc2Bot::ALLBuildingsFilter(const Unit& unit) const
+{
+	return (!unit.tag ||
+		unit.tag ||
+		unit.build_progress < 1.0f ||
+		unit.display_type == 4);
 }
 
 // Modify IsMainBaseUnderAttack() to consider only combat units
@@ -220,27 +249,24 @@ const Unit* BasicSc2Bot::FindUnit(sc2::UnitTypeID unit_type) const {
 }
 
 bool BasicSc2Bot::TryBuildStructureAtLocation(ABILITY_ID ability_type_for_structure, UNIT_TYPEID unit_type, const Point2D& location) {
-	const ObservationInterface* observation = Observation();
 	const Unit* builder = FindUnit(unit_type);
-
 	if (!builder) return false;
-
 	if (Query()->Placement(ability_type_for_structure, location, builder)) {
 		Actions()->UnitCommand(builder, ability_type_for_structure, location);
 		return true;
 	}
-	else {
-		// Try alternate locations near the initial location
-		for (float x_offset = -5.0f; x_offset <= 5.0f; x_offset += 1.0f) {
-			for (float y_offset = -5.0f; y_offset <= 5.0f; y_offset += 1.0f) {
-				Point2D new_location = location + Point2D(x_offset, y_offset);
-				if (Query()->Placement(ability_type_for_structure, new_location, builder)) {
-					Actions()->UnitCommand(builder, ability_type_for_structure, new_location);
-					return true;
-				}
-			}
-		}
-	}
+	//else {
+	//	// Try alternate locations near the initial location
+	//	for (float x_offset = -5.0f; x_offset <= 5.0f; x_offset += 1.0f) {
+	//		for (float y_offset = -5.0f; y_offset <= 5.0f; y_offset += 1.0f) {
+	//			Point2D new_location = location + Point2D(x_offset, y_offset);
+	//			if (Query()->Placement(ability_type_for_structure, new_location, builder)) {
+	//				Actions()->UnitCommand(builder, ability_type_for_structure, new_location);
+	//				return true;
+	//			}
+	//		}
+	//	}
+	//}
 	return false;
 }
 
@@ -252,6 +278,12 @@ Point2D BasicSc2Bot::GetRallyPoint() {
 	}
 	// Fallback position
 	return Point2D(0.0f, 0.0f);
+}
+
+void BasicSc2Bot::SetRallyPoint(const Unit* b, const Point2D& p)
+{
+	Actions()->UnitCommand(b, ABILITY_ID::RALLY_BUILDING, p);
+	return;
 }
 
 const Unit* BasicSc2Bot::GetLeastSaturatedBase() const {

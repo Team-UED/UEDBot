@@ -11,14 +11,12 @@ void BasicSc2Bot::ManageProduction() {
 }
 
 void BasicSc2Bot::TrainMarines() {
+	const ObservationInterface* obs = Observation();
+	Units barracks = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKS));
+	Units factories = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FACTORY));
+	Units starports = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_STARPORT));
+	Units reactor = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKSREACTOR));
 
-
-
-	const ObservationInterface* observation = Observation();
-	Units barracks = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKS));
-	Units factories = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FACTORY));
-	Units starports = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_STARPORT));
-	Units fusioncores = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FUSIONCORE));
 	if (barracks.empty() || phase == 0) {
 		return;
 	}
@@ -28,7 +26,6 @@ void BasicSc2Bot::TrainMarines() {
 	{
 		if (factories.front()->build_progress > 0.5)
 		{
-			//Actions()->UnitCommand(barracks.front(), ABILITY_ID::CANCEL);
 			return;
 		}
 	}
@@ -39,107 +36,87 @@ void BasicSc2Bot::TrainMarines() {
 			return;
 		}
 	}
+	if (CanBuild(50) && !barracks.empty()) {
 
-	int current_minerals = observation->GetMinerals();
-
-	// Resource costs
-	const int marine_mineral_cost = 50;
-	const int factory_mineral_cost = 150;
-	const int battlecruiser_mineral_cost = 400;
-
-	// Determine if we should train Marines
-	bool train = false;
-
-	// Train with base cost in phase 3
-	if (phase == 3) {
-		if (current_minerals >= marine_mineral_cost) {
-			train = true;
-		}
-	}
-	else {
-		// Save minerals for Factory if none exists
-		if (factories.empty()) {
-			int required_minerals = marine_mineral_cost + factory_mineral_cost;
-			train = (current_minerals >= required_minerals);
-		}
-		// Save minerals for Battlecruiser if fusion core exists
-		else if (!fusioncores.empty()) {
-			int required_minerals = marine_mineral_cost + battlecruiser_mineral_cost;
-			train = (current_minerals >= required_minerals);
-		}
-		// Otherwise, train Marines if there are enough minerals
-		else {
-			train = (current_minerals >= marine_mineral_cost);
-		}
-	}
-
-	if (train && !barracks.empty()) {
-		const Unit* barrack = barracks.front();
-
-		if (barrack->orders.empty()) {
-			// Train a Marine (one at a time)
-			Actions()->UnitCommand(barrack, ABILITY_ID::TRAIN_MARINE);
+		for (const auto& b : barracks) {
+			if (b->orders.empty() && !reactor.empty() && b->add_on_tag == reactor.front()->tag) {
+				Actions()->UnitCommand(b, ABILITY_ID::TRAIN_MARINE, true);
+				Actions()->UnitCommand(b, ABILITY_ID::TRAIN_MARINE, true);
+			}
+			else if (b->orders.empty()) {
+				Actions()->UnitCommand(b, ABILITY_ID::TRAIN_MARINE, true);
+			}
 		}
 	}
 }
+
 
 void BasicSc2Bot::TrainBattlecruisers() {
 
 	// Find Starports to build a Battlecruiser
-	const ObservationInterface* observation = Observation();
-	Units starports = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_STARPORT));
+	const ObservationInterface* obs = Observation();
+	Units starports = obs->GetUnits(Unit::Alliance::Self, [](const Unit& unit) {
+		return unit.unit_type == UNIT_TYPEID::TERRAN_STARPORT && unit.tag;
+		});
+	Units fusioncore = obs->GetUnits(Unit::Alliance::Self, [](const Unit& unit) {
+		return unit.unit_type == UNIT_TYPEID::TERRAN_FUSIONCORE && unit.tag;
+		});
 
-	if (starports.empty()) {
+	if (starports.empty() || fusioncore.empty()) {
 		return;
 	}
+	const Unit* starport = starports.front();
+	if (starport->add_on_tag != 0) {
 
-	// Check if we have the resources
-	if (observation->GetMinerals() >= 400 &&
-		observation->GetVespene() >= 300 &&
-		(observation->GetFoodCap() - observation->GetFoodUsed() >= 6)) {
-
-		const Unit* starport = starports.front();
-
-		// Build a Battlecruiser if queue is empty, otherwise check if the train is in progress
-		if (starport->add_on_tag != 0) {
-			if (starport->orders.empty()) {
+		if (starport->orders.empty()) {
+			if (CanBuild(400, 300, 6)) {
 				Actions()->UnitCommand(starport, ABILITY_ID::TRAIN_BATTLECRUISER);
 			}
-			else {
-				if (starport->orders.front().ability_id == ABILITY_ID::TRAIN_BATTLECRUISER) {
-					if (first_battlecruiser == false) {
-						first_battlecruiser = true;
-						++phase;
-					}
-				}
-			}
+		}
+		else {
+			first_battlecruiser = true;
 		}
 	}
+	// Check if we have the resources
+
 }
 
 
 void BasicSc2Bot::TrainSiegeTanks() {
-	const ObservationInterface* observation = Observation();
-	Units factories = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FACTORY));
+	const ObservationInterface* obs = Observation();
+	Units factories = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FACTORY));
 
-	Units fusioncores = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FUSIONCORE));
+	Units fusioncores = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FUSIONCORE));
 
 	if (factories.empty()) {
 		return;
 	}
+	const Unit* factory;
+	if (CanBuild(150, 125, 3))
+	{
+		if (phase == 2) {
 
-	if (!fusioncores.empty()) {
-		if (observation->GetMinerals() >= 150 &&
-			observation->GetVespene() >= 125 &&
-			(observation->GetFoodCap() - observation->GetFoodUsed() >= 3)
-			) {
-
-			const Unit* factory = factories.front();
+			factory = factories.front();
 			// Maintain 1 : 4 Ratio of Marines and Siege Tanks
 			if (num_marines >= 4 * num_siege_tanks) {
 				if (factory->add_on_tag != 0) {
 					if (factory->orders.empty()) {
 						Actions()->UnitCommand(factory, ABILITY_ID::TRAIN_SIEGETANK);
+					}
+				}
+			}
+		}
+		else if (phase == 3)
+		{
+			if (first_battlecruiser)
+			{
+				factory = factories.front();
+				// Maintain 1 : 4 Ratio of Marines and Siege Tanks
+				if (num_marines >= 4 * num_siege_tanks) {
+					if (factory->add_on_tag != 0) {
+						if (factory->orders.empty()) {
+							Actions()->UnitCommand(factory, ABILITY_ID::TRAIN_SIEGETANK);
+						}
 					}
 				}
 			}
