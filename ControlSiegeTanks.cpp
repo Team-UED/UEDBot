@@ -2,6 +2,36 @@
 
 using namespace sc2;
 
+
+// ------------------ Helper Functions ------------------
+
+// Determine whether siege tank should transform to Siege Mode, or Unsiege
+bool BasicSc2Bot::SiegeTankInCombat(const Unit *unit) {
+	if (!unit) {
+		return false;
+	}
+    // Detect radius of the Siege Tank
+    const float enemy_detection_radius = 13.0f;
+
+    bool enemy_nearby = false;
+    // Check for nearby enemies within the detection radius
+    for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
+
+        // Skip trivial and worker units
+        if (IsTrivialUnit(enemy_unit) || IsWorkerUnit(enemy_unit)){
+            continue;
+        }
+
+        float distance_to_enemy = Distance2D(unit->pos, enemy_unit->pos);
+
+        if (distance_to_enemy <= enemy_detection_radius) {
+            enemy_nearby = true;
+            break;
+        }
+    }
+	return enemy_nearby;
+}
+
 // Main function to control Siege Tanks
 void BasicSc2Bot::ControlSiegeTanks() {
     SiegeMode();
@@ -9,10 +39,6 @@ void BasicSc2Bot::ControlSiegeTanks() {
 }
 
 void BasicSc2Bot::SiegeMode() {
-
-	// Detect radius of the Siege Tank
-    const float enemy_detection_radius = 13.0f;
-
     // Get all Siege Tanks
     const Units siege_tanks = Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SIEGETANK));
     const Units siege_tanks_sieged = Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SIEGETANKSIEGED));
@@ -22,42 +48,13 @@ void BasicSc2Bot::SiegeMode() {
     }
 
     for (const auto& tank : siege_tanks) {
-        bool enemy_nearby = false;
-        // Check for nearby enemies within the detection radius
-        for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
-
-            // Skip trivial and worker units
-            if (IsTrivialUnit(enemy_unit) || IsWorkerUnit(enemy_unit)) {
-                continue;
-            }
-
-            float distance_to_enemy = Distance2D(tank->pos, enemy_unit->pos);
-
-            if (distance_to_enemy <= enemy_detection_radius) {
-                enemy_nearby = true;
-                break;
-            }
-        }
-        // Determine if the tank should be in Siege Mode
-        if (enemy_nearby) {
+        if (SiegeTankInCombat(tank)) {
             Actions()->UnitCommand(tank, ABILITY_ID::MORPH_SIEGEMODE);
         }
     }
 
     for (const auto& tank : siege_tanks_sieged) {
-        bool enemy_nearby = false;
-        // Check for nearby enemies within the detection radius
-        for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
-
-            float distance_to_enemy = Distance2D(tank->pos, enemy_unit->pos);
-
-            if (distance_to_enemy <= enemy_detection_radius) {
-                enemy_nearby = true;
-                break;
-            }
-        }
-        // Determine if the tank should be in Siege Mode
-        if (!enemy_nearby) {
+        if (!SiegeTankInCombat(tank)) {
             Actions()->UnitCommand(tank, ABILITY_ID::MORPH_UNSIEGE);
         }
     }
@@ -135,5 +132,4 @@ void BasicSc2Bot::TargetSiegeTank() {
             Actions()->UnitCommand(siege_tank, ABILITY_ID::ATTACK, best_target);
         }
     }
- 
 }
