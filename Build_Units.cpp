@@ -148,6 +148,8 @@ void BasicSc2Bot::UpgradeMarines() {
 		if (ability_id == ABILITY_ID::INVALID) {
 			continue;
 		}
+    Units techlabs = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKSTECHLAB));
+	Units engineeringbays = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_ENGINEERINGBAY));
 
 		// Check if the Engineering Bay is busy or not
 		for (const auto& engineeringbay : engineeringbays) {
