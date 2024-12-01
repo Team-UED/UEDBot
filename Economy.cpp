@@ -137,7 +137,7 @@ void BasicSc2Bot::UseScan() {
 bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_TYPEID unit_type) {
     const ObservationInterface* observation = Observation();
     if (observation->GetMinerals() < 100) {
-        return false; // Not enough minerals to build
+        return false; 
     }
 
     // Max distance from base center
@@ -205,9 +205,7 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
         }
     }
 
-
     if (builder) {
-        // Get main base location
         const Unit* main_base = GetMainBase();
         if (!main_base) {
             return false;
@@ -228,7 +226,7 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
             // Too far from the base
             float distance_to_base = sc2::Distance2D(location, main_base->pos);
             if (distance_to_base > base_radius) {
-                return false; // Too far from the base
+                return false; 
             }
 
             // Too close to minerals
@@ -469,7 +467,6 @@ void BasicSc2Bot::ReassignWorkers() {
     }
 }
 
-// Build refineries near bases
 void BasicSc2Bot::BuildRefineries() {
     Units bases = Observation()->GetUnits(Unit::Alliance::Self, IsTownHall());
 

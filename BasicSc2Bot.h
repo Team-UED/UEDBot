@@ -111,9 +111,6 @@ private:
     // Builds a Armory to upgrate units.
     void BuildArmory();
 
-    // Builds a second base (Command Center).
-    void BuildSecondBase();
-
 	// Builds an Engineering bay
 	void BuildEngineeringBay();
 
