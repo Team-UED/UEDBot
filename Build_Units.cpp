@@ -112,12 +112,9 @@ void BasicSc2Bot::TrainSiegeTanks() {
 			if (first_battlecruiser)
 			{
 				factory = factories.front();
-				// Maintain 1 : 4 Ratio of Marines and Siege Tanks
-				if (num_marines >= 4 * num_siege_tanks) {
-					if (factory->add_on_tag != 0) {
-						if (factory->orders.empty()) {
-							Actions()->UnitCommand(factory, ABILITY_ID::TRAIN_SIEGETANK);
-						}
+				if (factory->add_on_tag != 0) {
+					if (factory->orders.empty()) {
+						Actions()->UnitCommand(factory, ABILITY_ID::TRAIN_SIEGETANK);
 					}
 				}
 			}

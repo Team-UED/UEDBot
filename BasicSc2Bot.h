@@ -225,7 +225,7 @@ private:
 	void AllOutRush();
 
 	// =========================
-	// Unit Control
+	// Unit Control (SCV)
 	// =========================
 
 	// Controls all units (SCVs, Marines, Battlecruisers).
@@ -258,6 +258,10 @@ private:
 	// Updates SCV scouting status
 	void UpdateSCVScouting();
 
+	// =========================
+	// Unit Control (Battlecruiser)
+	// =========================
+
 	// Controls Battlecruisers (abilities, targeting, positioning).
 	void ControlBattlecruisers();
 
@@ -276,6 +280,10 @@ private:
 	// Check if retreating is complete
 	void RetreatCheck();
 
+	// =========================
+	// Unit Control (Siege Tank)
+	// =========================
+
 	// Controls Siege Tanks (abilities, targeting, positioning).
 	void ControlSiegeTanks();
 
@@ -285,11 +293,29 @@ private:
 	// Controls SiegeTanks to target enemy units
 	void TargetSiegeTank();
 
+	bool SiegeTankInCombat(const Unit* unit);
+
+	// =========================
+	// Unit Control (Marine)
+	// =========================
+
 	// Controls Marines with micro (kiting, focus fire).
 	void ControlMarines();
 
 	// Controls Marines to target enemy units
 	void TargetMarines();
+
+	// Checks if the ramp is intact
+	bool IsRampIntact();
+
+	// Checks if marine is near ramp
+	bool IsNearRamp(const Unit* unit);
+
+	// Get closest target to the unit
+	const Unit* GetClosestTarget(const Unit* unit);
+
+	// Kite a marine
+	void KiteMarine(const Unit* marine, const Unit* target, bool advance, float distance);
 
 	// SCV that is building
 	const sc2::Unit* scv_building;
