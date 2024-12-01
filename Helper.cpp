@@ -34,7 +34,7 @@ bool BasicSc2Bot::NeedExpansion() const {
 		return true; // Need to rebuild if all bases are lost
 	}
 
-	const size_t max_bases = 3; // Adjust this value as desired
+	const size_t max_bases = 3;
 	if (bases.size() >= max_bases) {
 		return false; // Do not expand if we've reached the maximum number of bases
 	}
@@ -120,7 +120,7 @@ Point2D BasicSc2Bot::GetSafePosition() {
 	return main_base
 		? main_base->pos
 		: Point2D(0,
-			0); // Return base position or default position (0, 0)
+			0); 
 }
 
 // Find the closest damaged unit for repair
@@ -394,14 +394,6 @@ Point2D BasicSc2Bot::GetChokepointPosition() {
 	float closest_distance = std::numeric_limits<float>::max();
 	Point2D chokepoint_position = Point2D(0.0f, 0.0f);
 
-	/* for (const auto& chokepoint : chokepoints) {
-		 float distance = Distance2D(main_base->pos, chokepoint);
-		 if (distance < closest_distance) {
-			 closest_distance = distance;
-			 chokepoint_position = chokepoint;
-		 }
-	 }*/
-
 	return chokepoint_position;
 }
 
@@ -417,7 +409,6 @@ bool BasicSc2Bot::IsAnyBaseUnderAttack() {
 }
 
 void BasicSc2Bot::MoveToEnemy(const Units& marines, const Units& siege_tanks) {
-	// Get all enemy units
 	Units enemy_units = Observation()->GetUnits(Unit::Alliance::Enemy);
 
 	// Find the closest enemy unit to the first marine
