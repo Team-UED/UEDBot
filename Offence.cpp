@@ -85,7 +85,7 @@ void BasicSc2Bot::AllOutRush() {
 		return;
 	}
 
-    // Determine attack target (Default target)
+    // Determine attack target 
     Point2D attack_target = enemy_start_location;
 
     // Check for enemy presence at the attack target
