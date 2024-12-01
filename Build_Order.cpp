@@ -6,7 +6,7 @@ using namespace sc2;
 
 void BasicSc2Bot::ExecuteBuildOrder() {
 
-
+	// what do I do if some buildings are destroyed?
 	BuildBarracks();
 	BuildFactory();
 	BuildOrbitalCommand();
@@ -14,8 +14,6 @@ void BasicSc2Bot::ExecuteBuildOrder() {
 	BuildStarport();
 	Swap(swap_a, swap_b, false);
 	BuildFusionCore();
-
-	// checking if swapping is in progress
 
 	if (current_gameloop % 46 == 0)
 	{
