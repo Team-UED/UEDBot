@@ -101,7 +101,7 @@ private:
 	// Phase 1 -> ~ until first factory is built and swapped
 	// Phase 2 -> ~ until star port and swapped + first battlecruiser is built
 	// Phase 3 -> ~ rest of the game
-	int phase = 0;
+	size_t phase;
 
 	// =========================
 	// Build Order Execution
@@ -119,8 +119,8 @@ private:
 	// Builds a Starport as the third production structure.
 	void BuildStarport();
 
-	// Builds a Tech Lab addon and swaps it with the Starport.
-	void BuildTechLabAddon();
+	// Builds a Addon
+	void BuildAddon();
 
 	// Builds a Fusion Core to enable Battlecruiser production.
 	void BuildFusionCore();
@@ -192,8 +192,8 @@ private:
 	// Trains Siege Tanks for later defense.
 	void TrainSiegeTanks();
 
-    // Upgrades Marines
-    void UpgradeMarines();
+	// Upgrades Marines
+	void UpgradeMarines();
 
 	// Upgrades Mechs(vehicles and ships)
 	void UpgradeMechs();
@@ -268,16 +268,16 @@ private:
 	void TargetBattlecruisers();
 
 	// Calculate the Kite Vector for a unit
-	Point2D GetKiteVector(const Unit* unit, const Unit* target);	
+	Point2D GetKiteVector(const Unit* unit, const Unit* target);
 
 	// Controls Battlecruisers to retreat
 	void Retreat(const Unit* unit);
 
 	// Check if retreating is complete
-    void RetreatCheck();
+	void RetreatCheck();
 
-    // Controls Siege Tanks (abilities, targeting, positioning).
-    void ControlSiegeTanks();
+	// Controls Siege Tanks (abilities, targeting, positioning).
+	void ControlSiegeTanks();
 
 	// Controls Siege Tanks (temp)
 	void SiegeMode();
@@ -294,7 +294,7 @@ private:
 	// SCV that is building
 	const sc2::Unit* scv_building;
 	// SCV that is scouting
-    const sc2::Unit* scv_scout;
+	const sc2::Unit* scv_scout;
 
 	// Flag to check if SCV is scouting
 	bool is_scouting;
@@ -308,8 +308,8 @@ private:
 	// Track visited enemy base locations
 	int current_scout_location_index;
 
-    // Track visted map locations
-    int current_scout_index = 0;
+	// Track visted map locations
+	int current_scout_index = 0;
 
 	// Track location of scouting SCV
 	sc2::Point2D scout_location;
@@ -342,9 +342,9 @@ private:
 	// Moving location
 	std::unordered_map<const Unit*, Point2D> unit_moving_location;
 
-    // =========================
-    // Helper Methods
-    // =========================
+	// =========================
+	// Helper Methods
+	// =========================
 
 
 	// checks if enough resources are available to build
@@ -429,6 +429,8 @@ private:
 
 	bool IsBaseOnTop() const;
 
+	bool InDepotArea(const Point2D& p, const BasicSc2Bot::BaseLocation whereismybase);
+
 	std::vector<Point2D> get_close_mineral_points(Point2D& unit_pos) const;
 
 	std::vector<Point2D> find_terret_location_btw(std::vector<Point2D>& mineral_patches, Point2D& townhall);
@@ -465,15 +467,13 @@ private:
 
 	std::vector<Point2D> corner_depots(const std::vector<Point2D>& points) const;
 
-	void build_supply_depot(const Point2D& location) const; // test
-
 	void find_right_ramp(const Point2D& location);
 
 	bool barracks_can_fit_addon(const Point2D& barrack_point) const;
 
 	Point2D barracks_correct_placement(const std::vector<Point2D>& ramp_points, const std::vector<Point2D>& corner_depots) const;
 
-	bool building_area33_check(const Point2D& b, const bool addon);
+	bool area33_check(const Point2D& b, const bool addon);
 
 	bool build33_after_check(const Unit* builder, const AbilityID& build_ability, const BasicSc2Bot::BaseLocation whereismybase, const bool addon);
 
@@ -481,7 +481,7 @@ private:
 
 	void depot_control();
 
-    void MoveToEnemy(const Units &marines, const Units &siege_tanks);
+	void MoveToEnemy(const Units& marines, const Units& siege_tanks);
 
 	// Count units in combat
 	int UnitsInCombat(UNIT_TYPEID unit_type);
@@ -733,15 +733,15 @@ private:
 		UNIT_TYPEID::ZERG_BROODLING
 	};
 
-    // Maps UPGRADE_ID to ABILITY_ID
-    ABILITY_ID GetAbilityForUpgrade(UPGRADE_ID upgrade_id) {
-        switch (upgrade_id) {
-        case UPGRADE_ID::TERRANVEHICLEANDSHIPARMORSLEVEL1:
-            return ABILITY_ID::RESEARCH_TERRANVEHICLEANDSHIPPLATINGLEVEL1;
-        case UPGRADE_ID::TERRANVEHICLEANDSHIPARMORSLEVEL2:
-            return ABILITY_ID::RESEARCH_TERRANVEHICLEANDSHIPPLATINGLEVEL2;
-        case UPGRADE_ID::TERRANVEHICLEANDSHIPARMORSLEVEL3:
-            return ABILITY_ID::RESEARCH_TERRANVEHICLEANDSHIPPLATINGLEVEL3;
+	// Maps UPGRADE_ID to ABILITY_ID
+	ABILITY_ID GetAbilityForUpgrade(UPGRADE_ID upgrade_id) {
+		switch (upgrade_id) {
+		case UPGRADE_ID::TERRANVEHICLEANDSHIPARMORSLEVEL1:
+			return ABILITY_ID::RESEARCH_TERRANVEHICLEANDSHIPPLATINGLEVEL1;
+		case UPGRADE_ID::TERRANVEHICLEANDSHIPARMORSLEVEL2:
+			return ABILITY_ID::RESEARCH_TERRANVEHICLEANDSHIPPLATINGLEVEL2;
+		case UPGRADE_ID::TERRANVEHICLEANDSHIPARMORSLEVEL3:
+			return ABILITY_ID::RESEARCH_TERRANVEHICLEANDSHIPPLATINGLEVEL3;
 		case UPGRADE_ID::TERRANINFANTRYWEAPONSLEVEL1:
 			return ABILITY_ID::RESEARCH_TERRANINFANTRYWEAPONSLEVEL1;
 		case UPGRADE_ID::TERRANINFANTRYARMORSLEVEL1:
@@ -754,13 +754,13 @@ private:
 			return ABILITY_ID::RESEARCH_TERRANINFANTRYWEAPONSLEVEL3;
 		case UPGRADE_ID::TERRANINFANTRYARMORSLEVEL3:
 			return ABILITY_ID::RESEARCH_TERRANINFANTRYARMORLEVEL3;
-        default:
-            return ABILITY_ID::INVALID;
-        }
-    }
-    
+		default:
+			return ABILITY_ID::INVALID;
+		}
+	}
+
 	// Set of completed upgrades
-    std::set<UpgradeID> completed_upgrades;
+	std::set<UpgradeID> completed_upgrades;
 
 	// Order of upgrades for Armory
 	std::vector<UPGRADE_ID> armory_upgrade_order = {

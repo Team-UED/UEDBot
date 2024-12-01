@@ -10,7 +10,7 @@ void BasicSc2Bot::ExecuteBuildOrder() {
 	BuildBarracks();
 	BuildFactory();
 	BuildOrbitalCommand();
-	BuildTechLabAddon();
+	BuildAddon();
 	BuildStarport();
 	Swap(swap_a, swap_b, false);
 	BuildFusionCore();
@@ -51,7 +51,7 @@ void BasicSc2Bot::BuildBarracks() {
 	}
 	else if (phase == 3 && !num_battlecruisers)
 	{
-		if (barracks.size() < 2 && CanBuild(150) && current_gameloop % 46 == 0) {
+		if (barracks.size() < 2 && CanBuild(500) && current_gameloop % 46 == 0) {
 			TryBuildStructure(ABILITY_ID::BUILD_BARRACKS, UNIT_TYPEID::TERRAN_SCV);
 		}
 	}
@@ -157,7 +157,7 @@ void BasicSc2Bot::BuildStarport() {
 }
 
 // Build Tech lab if we have a Factory and enough resources
-void BasicSc2Bot::BuildTechLabAddon() {
+void BasicSc2Bot::BuildAddon() {
 	if (!swap_in_progress) {
 		const ObservationInterface* obs = Observation();
 		// Get Barracks
@@ -178,6 +178,9 @@ void BasicSc2Bot::BuildTechLabAddon() {
 				!unit.add_on_tag;
 			});
 
+		Units barracks_techlab = obs->GetUnits(Unit::Alliance::Self, [](const Unit& unit) {
+			return unit.unit_type == UNIT_TYPEID::TERRAN_BARRACKSTECHLAB; });
+
 		// use 3 bits to represent buildings without any addons
 		char addon_bits = 0;
 		addon_bits |= (!barracks.empty() ? 1 : 0);
@@ -190,15 +193,20 @@ void BasicSc2Bot::BuildTechLabAddon() {
 			// enough resources
 			if (CanBuild(50, 25))
 			{
+				const Unit* building = nullptr;
 				for (size_t i = 0; i < 3; ++i)
 				{
 					if (addon_bits & 1)
 					{
+						ABILITY_ID build_order = ABILITY_ID::BUILD_TECHLAB;
 						// Get the first building without an addon
-						const Unit* building = nullptr;
 						switch (i)
 						{
 						case 0:
+							if (barracks_techlab.size() && CanBuild(50, 50))
+							{
+								build_order = ABILITY_ID::BUILD_REACTOR;
+							}
 							building = barracks.front();
 							break;
 						case 1:
@@ -209,7 +217,7 @@ void BasicSc2Bot::BuildTechLabAddon() {
 							break;
 						}
 						// Build a Tech Lab
-						Actions()->UnitCommand(building, ABILITY_ID::BUILD_TECHLAB);
+						Actions()->UnitCommand(building, build_order);
 						break;
 					}
 					addon_bits >>= 1;
@@ -255,7 +263,7 @@ void BasicSc2Bot::BuildArmory() {
 		});
 
 	// TODO: when should I build amory?
-	if (armories.empty() && CanBuild(400 + 150, 300 + 50)) {
+	if (armories.empty() && CanBuild(150, 50)) {
 		TryBuildStructure(ABILITY_ID::BUILD_ARMORY, UNIT_TYPEID::TERRAN_SCV);
 	}
 }

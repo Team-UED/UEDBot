@@ -10,7 +10,7 @@ void BasicSc2Bot::ManageEconomy() {
 	BuildExpansion();
 	ReassignWorkers();
 	UseMULE();
-    UseScan();
+	UseScan();
 }
 
 void BasicSc2Bot::TrainSCVs() {
@@ -70,22 +70,22 @@ void BasicSc2Bot::UseMULE() {
 		return;
 	}
 
-    float energy_cost = 0.0f;
+	float energy_cost = 0.0f;
 
-	if(!first_battlecruiser){
-        energy_cost = 50.0f;
-    }
-    else {
-        energy_cost = 100.0f;
-    }
+	if (!first_battlecruiser) {
+		energy_cost = 50.0f;
+	}
+	else {
+		energy_cost = 100.0f;
+	}
 
-    // Loop Orbital Command to check if it has enough energy
-    for (const auto& orbital : orbital_commands) {
-        if (orbital->energy >= energy_cost) { 
-            // Find the nearest mineral patch to the Orbital Command
-            Units mineral_patches = observation->GetUnits(Unit::Alliance::Neutral, IsMineralPatch());
-            const Unit* closest_mineral = nullptr;
-            float min_distance = std::numeric_limits<float>::max();
+	// Loop Orbital Command to check if it has enough energy
+	for (const auto& orbital : orbital_commands) {
+		if (orbital->energy >= energy_cost) {
+			// Find the nearest mineral patch to the Orbital Command
+			Units mineral_patches = observation->GetUnits(Unit::Alliance::Neutral, IsMineralPatch());
+			const Unit* closest_mineral = nullptr;
+			float min_distance = std::numeric_limits<float>::max();
 
 			for (const auto& mineral : mineral_patches) {
 				float distance = sc2::Distance2D(orbital->pos, mineral->pos);
@@ -95,47 +95,47 @@ void BasicSc2Bot::UseMULE() {
 				}
 			}
 
-            // use MULE on nearest mineral patch
-            if (closest_mineral) {
-                Actions()->UnitCommand(orbital, ABILITY_ID::EFFECT_CALLDOWNMULE, closest_mineral);
-                return;
-            }
-        }
-    }
+			// use MULE on nearest mineral patch
+			if (closest_mineral) {
+				Actions()->UnitCommand(orbital, ABILITY_ID::EFFECT_CALLDOWNMULE, closest_mineral);
+				return;
+			}
+		}
+	}
 }
 
 void BasicSc2Bot::UseScan() {
-    const ObservationInterface* observation = Observation();
+	const ObservationInterface* observation = Observation();
 
-    // Find all Orbital Commands
-    Units orbital_commands = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_ORBITALCOMMAND));
+	// Find all Orbital Commands
+	Units orbital_commands = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_ORBITALCOMMAND));
 
-    // No Orbital Commands found
-    if (orbital_commands.empty()) {
-        return;
-    }
+	// No Orbital Commands found
+	if (orbital_commands.empty()) {
+		return;
+	}
 
-    Units enemies = observation->GetUnits(Unit::Alliance::Enemy);
+	Units enemies = observation->GetUnits(Unit::Alliance::Enemy);
 
-    const Unit* cloacked_enemy = nullptr;
+	const Unit* cloacked_enemy = nullptr;
 
-    for (const auto& enemy : enemies) {
-        if (enemy->cloak == 1) {
-            cloacked_enemy = enemy;
-        }
-    }
+	for (const auto& enemy : enemies) {
+		if (enemy->cloak == 1) {
+			cloacked_enemy = enemy;
+		}
+	}
 
-    float energy_cost = 50.0f;
+	float energy_cost = 50.0f;
 
-    if (cloacked_enemy) {
-        // Loop Orbital Command to check if it has enough energy
-        for (const auto& orbital : orbital_commands) {
-            if (orbital->energy >= energy_cost) {
-                Actions()->UnitCommand(orbital, ABILITY_ID::EFFECT_SCAN,cloacked_enemy->pos);
-            }
-        }
+	if (cloacked_enemy) {
+		// Loop Orbital Command to check if it has enough energy
+		for (const auto& orbital : orbital_commands) {
+			if (orbital->energy >= energy_cost) {
+				Actions()->UnitCommand(orbital, ABILITY_ID::EFFECT_SCAN, cloacked_enemy->pos);
+			}
+		}
 
-    }
+	}
 }
 
 bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_TYPEID unit_type) {
@@ -309,7 +309,7 @@ bool BasicSc2Bot::TryBuildSupplyDepot() {
 		}
 		else if (phase == 3)
 		{
-			if (supply_depots_building.size() < 2 && current_gameloop % 100 == 0) {
+			if (supply_depots_building.size() < 2 && current_gameloop % 50 == 0) {
 				return TryBuildStructure(ABILITY_ID::BUILD_SUPPLYDEPOT, UNIT_TYPEID::TERRAN_SCV);
 			}
 		}
@@ -575,24 +575,24 @@ void BasicSc2Bot::BuildExpansion() {
 	Units scvs = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SCV));
 	const Unit* builder = nullptr;
 
-    // Find an idle SCV to build the expansion
-    for (const auto& scv : scvs) {
-        // Skip SCVs that are in the scvs_repairing set
-        if (scvs_repairing.find(scv->tag) != scvs_repairing.end()) {
-            continue;
-        }
+	// Find an idle SCV to build the expansion
+	for (const auto& scv : scvs) {
+		// Skip SCVs that are in the scvs_repairing set
+		if (scvs_repairing.find(scv->tag) != scvs_repairing.end()) {
+			continue;
+		}
 
-        // Check if the SCV is idle (has no orders)
-        if (scv->orders.empty()) {
-            builder = scv; 
-            break;
-        }
-    }
+		// Check if the SCV is idle (has no orders)
+		if (scv->orders.empty()) {
+			builder = scv;
+			break;
+		}
+	}
 
 
-    if (builder) {
-        if (Query()->Placement(ABILITY_ID::BUILD_COMMANDCENTER, next_expansion)) {
-            Actions()->UnitCommand(builder, ABILITY_ID::BUILD_COMMANDCENTER, next_expansion);
-        }
-    }
+	if (builder) {
+		if (Query()->Placement(ABILITY_ID::BUILD_COMMANDCENTER, next_expansion)) {
+			Actions()->UnitCommand(builder, ABILITY_ID::BUILD_COMMANDCENTER, next_expansion);
+		}
+	}
 }
