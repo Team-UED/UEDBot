@@ -108,11 +108,19 @@ void BasicSc2Bot::TargetSiegeTank() {
 
 
 			// 3. Priority: Enemies close to one-shot
-            // Tank damage is 40
-            float health_difference = std::abs((enemy_unit->health + enemy_unit->shield) - 40.0f);
+			// Tank damage is 40(Light) or 70(Armored) in Siege Mode
+            float health_difference = 0.0f;
+
+            if (std::find(heavy_armor_units.begin(), heavy_armor_units.end(), enemy_unit->unit_type) != heavy_armor_units.end()) {
+                health_difference = std::abs((enemy_unit->health + enemy_unit->shield) - 70.0f);
+            }
+            else {
+                health_difference = std::abs((enemy_unit->health + enemy_unit->shield) - 40.0f);
+            }
+
             score += 200.0f / (health_difference + 1.0f);
 
-            // 4. The Rest (Prefer closer targets)
+            // 4. The Rest (Prioritize closer targets)
             score += 1.0f / (Distance2D(siege_tank->pos, enemy_unit->pos) + 1.0f); 
 
             // Update best target based on score
