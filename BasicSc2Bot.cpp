@@ -9,6 +9,7 @@ BasicSc2Bot::BasicSc2Bot()
 	num_barracks(0),
 	num_factories(0),
 	num_starports(0),
+	phase(0),
 	is_under_attack(false),
 	is_attacking(false),
 	need_expansion(false),
@@ -241,7 +242,7 @@ void BasicSc2Bot::OnGameStart() {
 			nearest_corner_ally = corner;
 		}
 	}
-	
+
 	// Mark 6 scvs to repair
 	for (const auto& unit : Observation()->GetUnits(Unit::Alliance::Self)) {
 		if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV) {
@@ -281,7 +282,7 @@ void BasicSc2Bot::OnGameEnd() {
 
 void BasicSc2Bot::OnStep() {
 	current_gameloop = Observation()->GetGameLoop();
-	BasicSc2Bot::Debugging();
+	//BasicSc2Bot::Debugging();
 	BasicSc2Bot::depot_control();
 	BasicSc2Bot::ManageEconomy();
 	BasicSc2Bot::ExecuteBuildOrder();

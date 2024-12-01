@@ -238,14 +238,18 @@ void BasicSc2Bot::update_build_map(const bool built, const Unit* destroyed_build
 
 // ------------------ Helper Functions ------------------
 
+
 // 3x3 + addon area check
-bool BasicSc2Bot::building_area33_check(const Point2D& b, const bool addon)
+bool BasicSc2Bot::area33_check(const Point2D& b, const bool addon)
 {
 	auto& base_build_map = build_map[0];
 	Point2D offset(0.5, 0.5);
 	Point2D b_offset = b - offset;
 	Point2D grid_point;
 	float distance_to_base = Distance2D(b, start_location);
+
+	Point2D left_limit = main_mineral_convexHull.front();
+	Point2D right_limit = main_mineral_convexHull.back();
 
 	if (!addon && (distance_to_base < 10.0f || distance_to_base > 15.0f)) {
 		return false;
@@ -276,18 +280,28 @@ bool BasicSc2Bot::building_area33_check(const Point2D& b, const bool addon)
 	return true;
 }
 
+// build 3x3 + addon
 bool BasicSc2Bot::build33_after_check(const Unit* builder, const AbilityID& build_ability, const BasicSc2Bot::BaseLocation whereismybase, const bool addon)
 {
+	Point2D left_limit = main_mineral_convexHull.front();
+	Point2D right_limit = main_mineral_convexHull.back();
+	float distance_to_left = Distance2D(left_limit, start_location);
+	float distance_to_right = Distance2D(right_limit, start_location);
+
 	switch (whereismybase)
 	{
-
 	case BaseLocation::lefttop:
 		// I need to check to the top and to the left and to the bottom
 		for (float j = mainBase_barrack_point.y + 5.0f; j < build_map_minmax[1].y; j += 5.0f) {
 			for (float i = mainBase_barrack_point.x - 5.0f; i > build_map_minmax[0].x; i -= 5.0f) {
 				// Travel to the bottom
 				for (float k = j; k > build_map_minmax[0].y; k -= 5.0f) {
-					if (building_area33_check(Point2D(i, k), addon)) {
+					if (addon && InDepotArea(Point2D(i, k), whereismybase))
+					{
+						continue;
+					}
+					if (area33_check(Point2D(i, k), addon))
+					{
 						Actions()->UnitCommand(builder, build_ability, Point2D(i, k));
 						std::cout << "j was " << j << " going down to " << k << std::endl;
 						std::cout << "X : " << i << " Y : " << k << std::endl;
@@ -298,11 +312,19 @@ bool BasicSc2Bot::build33_after_check(const Unit* builder, const AbilityID& buil
 		}
 		break;
 	case BaseLocation::righttop:
-		for (float j = mainBase_barrack_point.y + 5.0f; j < build_map_minmax[1].y; j += 5.0f) {
-			for (float i = mainBase_barrack_point.x; i > build_map_minmax[0].x; i -= 5.0f) {
+		for (float j = mainBase_barrack_point.y + 5.0f; j < build_map_minmax[1].y; j += 5.0f)
+		{
+			for (float i = mainBase_barrack_point.x; i > build_map_minmax[0].x; i -= 5.0f)
+			{
 				// Travel to the bottom
-				for (float k = j; k > build_map_minmax[0].y; k -= 5.0f) {
-					if (building_area33_check(Point2D(i, k), addon)) {
+				for (float k = j; k > build_map_minmax[0].y; k -= 5.0f)
+				{
+					if (addon && InDepotArea(Point2D(i, k), whereismybase))
+					{
+						continue;
+					}
+					if (area33_check(Point2D(i, k), addon))
+					{
 						Actions()->UnitCommand(builder, build_ability, Point2D(i, k));
 						std::cout << "j was " << j << " going down to " << k << std::endl;
 						std::cout << "X : " << i << " Y : " << k << std::endl;
@@ -317,7 +339,11 @@ bool BasicSc2Bot::build33_after_check(const Unit* builder, const AbilityID& buil
 			for (float i = mainBase_barrack_point.x; i < build_map_minmax[1].x; i += 5.0f) {
 				// Travel to the bottom
 				for (float k = j; k > build_map_minmax[0].y; k -= 5.0f) {
-					if (building_area33_check(Point2D(i, k), addon)) {
+					if (addon && InDepotArea(Point2D(i, k), whereismybase))
+					{
+						continue;
+					}
+					if (area33_check(Point2D(i, k), addon)) {
 						Actions()->UnitCommand(builder, build_ability, Point2D(i, k));
 						std::cout << "j was " << j << " going down to " << k << std::endl;
 						std::cout << "X : " << i << " Y : " << k << std::endl;
@@ -332,7 +358,11 @@ bool BasicSc2Bot::build33_after_check(const Unit* builder, const AbilityID& buil
 			for (float i = mainBase_barrack_point.x; i < build_map_minmax[1].x; i += 5.0f) {
 				// Travel to the bottom
 				for (float k = j; k > build_map_minmax[0].y; k -= 5.0f) {
-					if (building_area33_check(Point2D(i, k), addon)) {
+					if (addon && InDepotArea(Point2D(i, k), whereismybase))
+					{
+						continue;
+					}
+					if (area33_check(Point2D(i, k), addon)) {
 						Actions()->UnitCommand(builder, build_ability, Point2D(i, k));
 						std::cout << "j was " << j << " going down to " << k << std::endl;
 						std::cout << "X : " << i << " Y : " << k << std::endl;
@@ -443,6 +473,41 @@ bool BasicSc2Bot::depot_area_check(const Unit* builder, const AbilityID& build_a
 	return false;
 }
 
+bool BasicSc2Bot::InDepotArea(const Point2D& p, const BasicSc2Bot::BaseLocation whereismybase)
+{
+	Point2D left_limit = main_mineral_convexHull.front();
+	Point2D right_limit = main_mineral_convexHull.back();
+
+	switch (whereismybase)
+	{
+	case BaseLocation::lefttop:
+		return p.x < right_limit.x &&
+			p.x >= build_map_minmax[0].x &&
+			p.y < build_map_minmax[1].y &&
+			p.y >= left_limit.y;
+		break;
+	case BaseLocation::righttop:
+		return p.x < build_map_minmax[1].x &&
+			p.x >= left_limit.x &&
+			p.y < build_map_minmax[1].y &&
+			p.y >= right_limit.y;
+
+		break;
+	case BaseLocation::leftbottom:
+		return p.x < right_limit.x &&
+			p.x >= build_map_minmax[0].x &&
+			p.y < left_limit.y &&
+			p.y >= build_map_minmax[0].y;
+		break;
+	case BaseLocation::rightbottom:
+		return p.x < build_map_minmax[1].x &&
+			p.x >= left_limit.x &&
+			p.y < right_limit.y &&
+			p.y >= build_map_minmax[0].y;
+		break;
+	}
+}
+
 bool BasicSc2Bot::IsBaseOnLeft() const
 {
 	return start_location.x < (playable_max.x / 2);
@@ -452,6 +517,7 @@ bool BasicSc2Bot::IsBaseOnTop() const
 {
 	return start_location.y > (playable_max.y / 2);
 }
+
 BasicSc2Bot::BaseLocation BasicSc2Bot::GetBaseLocation() const {
 	bool is_left = IsBaseOnLeft();
 	bool is_top = IsBaseOnTop();
