@@ -57,7 +57,7 @@ void BasicSc2Bot::BuildBarracks() {
 			TryBuildStructure(ABILITY_ID::BUILD_BARRACKS, UNIT_TYPEID::TERRAN_SCV);
 		}
 	}
-	else if (phase == 3 && !num_battlecruisers)
+	else if (phase == 3 && first_battlecruiser)
 	{
 		if (barracks.size() < 2 && CanBuild(600) && current_gameloop % 46 == 0) {
 			TryBuildStructure(ABILITY_ID::BUILD_BARRACKS, UNIT_TYPEID::TERRAN_SCV);
@@ -79,7 +79,7 @@ void BasicSc2Bot::BuildEngineeringBay() {
 		});
 
 	// Can't build Engineering bay without Barracks
-	if (barracks.empty() || !first_battlecruiser || bases.size() != 2) {
+	if (barracks.empty() || !first_battlecruiser) {
 		return;
 	}
 
@@ -88,7 +88,7 @@ void BasicSc2Bot::BuildEngineeringBay() {
 		return unit.unit_type == UNIT_TYPEID::TERRAN_ENGINEERINGBAY && ALLBuildingsFilter(unit);
 		});
 
-	if (engineeringbays.empty() && !starports.empty() && CanBuild(500 + 150)) {
+	if (engineeringbays.empty() && !starports.empty() && CanBuild(400 + 125)) {
 		TryBuildStructure(ABILITY_ID::BUILD_ENGINEERINGBAY, UNIT_TYPEID::TERRAN_SCV);
 	}
 }
@@ -288,8 +288,7 @@ void BasicSc2Bot::BuildArmory() {
 		return unit.unit_type == UNIT_TYPEID::TERRAN_ARMORY && ALLBuildingsFilter(unit);
 		});
 
-	// TODO: when should I build amory?
-	if (armories.empty() && CanBuild(600, 350)) {
+	if (armories.empty() && CanBuild(400 + 150, 300 + 50)) {
 		TryBuildStructure(ABILITY_ID::BUILD_ARMORY, UNIT_TYPEID::TERRAN_SCV);
 	}
 }

@@ -176,7 +176,7 @@ void BasicSc2Bot::UpgradeMarines() {
 				ABILITY_ID upgrade = ABILITY_ID::RESEARCH_COMBATSHIELD;
 				// Check if the Tech Lab is busy or not
 				for (const auto& techlab : techlabs) {
-					if (techlab->orders.empty() && CanBuild(100, 400)) {
+					if (techlab->orders.empty() && CanBuild(100, 450)) {
 						Actions()->UnitCommand(techlab, upgrade);
 						return;
 					}
