@@ -80,10 +80,15 @@ private:
 	// Builds refineries early and assigns SCVs to gather gas.
 	void BuildRefineries();
 
-	void TryBuildRefinery(const Unit* geyser);
-
 	// Assigns idle workers to mineral patches or gas.
 	void AssignWorkers();
+
+	// Assigns extra idle workers to gather gas.
+	void HarvestIdleWorkers(const Unit* unit);
+
+	const Unit* FindNearestMineralPatch();
+
+	const Unit* FindRefinery();
 
 	// Expands to a new base when needed.
 	void BuildExpansion();

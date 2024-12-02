@@ -337,20 +337,8 @@ void BasicSc2Bot::UpdateRepairingSCVs() {
 				// Check if the repair target is fully repaired
                 const Unit* target = Observation()->GetUnit(order.target_unit_tag);
                 if (target && target->health == target->health_max) {
-
-                    // Find all refineries
-					Units refineries = Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_REFINERY));
-                    
                     // Find a refinery with fewer than 3 workers
-                    const Unit* target_refinery = nullptr;
-                    if (!refineries.empty()) {
-                        for (const auto& refinery : refineries) {
-                            if (refinery->assigned_harvesters < refinery->ideal_harvesters) {
-                                target_refinery = refinery;
-                                break;
-                            }
-                        }
-                    }
+                    const Unit* target_refinery = FindRefinery();
 
                     // Assign the SCV to the refinery if found
                     if (target_refinery) {
@@ -359,18 +347,7 @@ void BasicSc2Bot::UpdateRepairingSCVs() {
                     }
 
                     // Otherwise, find the closest mineral patch
-                    Units mineral_patches = Observation()->GetUnits(Unit::Alliance::Neutral, IsUnit(UNIT_TYPEID::NEUTRAL_MINERALFIELD));
-                    const Unit* closest_mineral = nullptr;
-                    float min_distance = std::numeric_limits<float>::max();
-
-                    for (const auto& mineral : mineral_patches) {
-                        float distance = sc2::Distance2D(start_location, mineral->pos);
-                        if (distance < min_distance) {
-                            min_distance = distance;
-                            closest_mineral = mineral;
-                        }
-                    }
-
+                    const Unit* closest_mineral = FindNearestMineralPatch();
                     // Assign the SCV to harvest minerals if a mineral patch is found
                     if (closest_mineral) {
                         Actions()->UnitCommand(scv, ABILITY_ID::HARVEST_GATHER, closest_mineral);
