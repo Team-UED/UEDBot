@@ -289,7 +289,7 @@ void BasicSc2Bot::TargetBattlecruisers() {
                 if (threat != threat_levels.end()) {
                     if (std::find(turret_types.begin(), turret_types.end(), enemy_unit->unit_type) != turret_types.end()) {
                         // Avoid turrets when conditions apply
-                        if (num_turrets > 2 * num_battlecruisers_in_combat || total_threat - (3 * num_turrets) != 0) {
+                        if (num_turrets >= 2 * num_battlecruisers_in_combat || total_threat - (3 * num_turrets) != 0) {
                             continue;
                         }
                     }
