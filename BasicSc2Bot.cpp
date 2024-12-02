@@ -332,11 +332,13 @@ void BasicSc2Bot::OnUnitIdle(const Unit* unit)
 			break;
 		}
 	case UNIT_TYPEID::TERRAN_MARINE:
-		if (Distance2D(unit->pos, rally_barrack) >= 3.0f) {
+		if (Distance2D(unit->pos, rally_barrack) >= 3.0f &&
+			Distance2D(unit->pos, enemy_start_location) >= 30.0f) {
 			Actions()->UnitCommand(unit, ABILITY_ID::MOVE_MOVE, rally_barrack);
 		}
 	case UNIT_TYPEID::TERRAN_SIEGETANK:
-		if (Distance2D(unit->pos, rally_barrack) >= 3.0f) {
+		if (Distance2D(unit->pos, rally_barrack) >= 3.0f &&
+			Distance2D(unit->pos, enemy_start_location) >= 30.0f) {
 			Actions()->UnitCommand(unit, ABILITY_ID::MOVE_MOVE, rally_factory);
 		}
 	}
