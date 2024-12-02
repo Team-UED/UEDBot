@@ -235,6 +235,12 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
 			}
 			else
 			{
+				// ramp is blocked?
+				if (!ramp_middle[0])
+				{
+					Actions()->UnitCommand(scv_building, ability_type_for_structure, mainBase_barrack_point, true);
+					return true;
+				}
 				return build33_after_check(builder, ability_type_for_structure, base_location, true);
 			}
 		}
@@ -242,9 +248,14 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
 		else if (ability_type_for_structure == ABILITY_ID::BUILD_FACTORY)
 		{
 			// check if ramp is blocked
-			if (phase != 1 || num_barracks)
+			if (phase < 2)
 			{
 				return build33_after_check(builder, ability_type_for_structure, base_location, true);
+			}
+			else if (!ramp_middle[0])
+			{
+				Actions()->UnitCommand(scv_building, ability_type_for_structure, mainBase_barrack_point, true);
+				return true;
 			}
 		}
 
@@ -287,6 +298,17 @@ bool BasicSc2Bot::TryBuildSupplyDepot() {
 		if (!ramp_depots[1])
 		{
 			return TryBuildStructure(ABILITY_ID::BUILD_SUPPLYDEPOT, UNIT_TYPEID::TERRAN_SCV);
+		}
+	}
+
+	if (phase > 1)
+	{
+		for (const auto& d : ramp_depots)
+		{
+			if (!d)
+			{
+				return TryBuildStructure(ABILITY_ID::BUILD_SUPPLYDEPOT, UNIT_TYPEID::TERRAN_SCV);
+			}
 		}
 	}
 
@@ -539,7 +561,7 @@ void BasicSc2Bot::BuildExpansion() {
 	}
 
 	// Check if we have enough resources to expand
-	if (observation->GetMinerals() < 400) {
+	if (!CanBuild(450)) {
 		return;
 	}
 

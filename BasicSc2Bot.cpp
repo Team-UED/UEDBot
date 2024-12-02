@@ -19,6 +19,7 @@ BasicSc2Bot::BasicSc2Bot()
 	last_scout_time(0),
 	enemy_strategy(EnemyStrategy::Unknown),
 	swap_in_progress(false),
+	ramp_mid_destroyed(nullptr),
 	first_battlecruiser(false),
 	is_scouting(false),
 	scout_complete(false),
@@ -116,6 +117,17 @@ void EchoAction(const sc2::RawActions& actions, sc2::DebugInterface* debug, cons
 	}
 
 	debug->DebugTextOut(last_action_text_);
+}
+
+std::vector<uint32_t> BasicSc2Bot::GetRealTime() const {
+	const ObservationInterface* obs = Observation();
+	uint32_t game_loop = obs->GetGameLoop();
+	float real_time_seconds = game_loop / 22.4f;
+
+	uint32_t minutes = static_cast<int>(real_time_seconds) / 60;
+	uint32_t seconds = static_cast<int>(real_time_seconds) % 60;
+
+	return { minutes, seconds };
 }
 
 void BasicSc2Bot::Debugging()
@@ -323,9 +335,14 @@ void BasicSc2Bot::OnUnitCreated(const Unit* unit) {
 			scvs_repairing.insert(unit->tag);
 		}
 	}
+
+	std::vector<uint32_t> minsec = GetRealTime();
+
 	// Battlecruiser created
 	if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER) {
 		num_battlecruisers++;
+		std::cout << "Battlecruiser created at " << minsec[0] << ":" << minsec[1] << std::endl;
+		std::cout << "Marines: " << num_marines << " Tanks: " << num_siege_tanks << " Battlecruisers: " << num_battlecruisers << std::endl;
 	}
 	// Marine created
 	if (unit->unit_type == UNIT_TYPEID::TERRAN_MARINE) {
@@ -334,6 +351,8 @@ void BasicSc2Bot::OnUnitCreated(const Unit* unit) {
 	// Siege Tank created
 	if (unit->unit_type == UNIT_TYPEID::TERRAN_SIEGETANK) {
 		num_siege_tanks++;
+		std::cout << "Tank created at " << minsec[0] << ":" << minsec[1] << std::endl;
+		std::cout << "Marines: " << num_marines << " Tanks: " << num_siege_tanks << " Battlecruisers: " << num_battlecruisers << std::endl;
 	}
 
 }
@@ -377,12 +396,17 @@ void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
 		}
 	}
 
+	if (Point2D(unit->pos) == mainBase_barrack_point)
+	{
+		ramp_middle[0] = const_cast<sc2::Unit*>(unit);
+	}
+
 	if (phase == 0) {
 
 		if (unit->unit_type == UNIT_TYPEID::TERRAN_BARRACKS) {
 			Units barracks = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKS));
-			const Unit* b = !barracks.empty() ? barracks.front() : nullptr;
-			ramp_middle[0] = const_cast<sc2::Unit*>(unit);
+			/*const Unit* b = !barracks.empty() ? barracks.front() : nullptr;
+			ramp_middle[0] = const_cast<sc2::Unit*>(unit);*/
 			if (CanBuild(50, 25))
 			{
 				// it is always true because we make sure that we have enough resources to build the techlab
@@ -427,8 +451,7 @@ void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
 	{
 		if (unit->unit_type == UNIT_TYPEID::TERRAN_STARPORT) {
 			++phase;
-
-			Units barracks = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKS));
+			/*Units barracks = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKS));
 			Units starport = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_STARPORT));
 			Units factories = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FACTORY));
 			const Unit* switching_building = barracks.front();
@@ -437,27 +460,10 @@ void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
 			if (ramp_middle[0]->unit_type == UNIT_TYPEID::TERRAN_BARRACKS)
 			{
 				switching_building = factories.front();
-			}
-			Swap(switching_building, s, true);
+			}*/
+			//Swap(switching_building, s, true);
 		}
 	}
-	else
-	{
-		if (unit->unit_type == UNIT_TYPEID::TERRAN_BARRACKS)
-		{
-			Units barracks = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKS));
-
-			for (const auto& b : barracks)
-			{
-				if (b->add_on_tag == 0)
-				{
-					Actions()->UnitCommand(b, ABILITY_ID::BUILD_REACTOR);
-					break;
-				}
-			}
-		}
-	}
-
 }
 
 void BasicSc2Bot::OnUpgradeCompleted(UpgradeID upgrade_id) {
@@ -479,10 +485,14 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) {
 			ramp_depots[1] = nullptr;
 		}
 
-		for (size_t i = 0; i < ramp_middle.size(); ++i) {
-			if (unit == ramp_middle[i]) {
-				ramp_middle[i] = nullptr;
-			}
+		if (Point2D(unit->pos) == mainBase_barrack_point)
+		{
+			ramp_mid_destroyed = unit;
+			ramp_middle[0] = nullptr;
+		}
+		else if (unit == ramp_middle[1])
+		{
+			ramp_middle[1] = nullptr;
 		}
 
 		if (unit)

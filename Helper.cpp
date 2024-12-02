@@ -21,7 +21,7 @@ std::vector<float> BasicSc2Bot::HowCloseToResourceGoal(const int32_t& m, const i
 }
 
 float BasicSc2Bot::HowClosetoFinishCurrentJob(const Unit* b) const {
-	return b->orders.empty() ? 0.0f : b->orders.front().progress;
+	return b->orders.empty() ? -1.0f : b->orders.front().progress;
 }
 
 bool BasicSc2Bot::NeedExpansion() const {
