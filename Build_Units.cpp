@@ -4,15 +4,11 @@ using namespace sc2;
 
 void BasicSc2Bot::ManageProduction()
 {
-	if (current_gameloop % 23 == 0)
-	{
-		TrainMarines();
-		TrainBattlecruisers();
-		TrainSiegeTanks();
-		UpgradeMarines();
-		UpgradeMechs();
-	}
-
+	TrainMarines();
+	TrainBattlecruisers();
+	TrainSiegeTanks();
+	UpgradeMarines();
+	UpgradeMechs();
 }
 
 void BasicSc2Bot::TrainMarines()
@@ -20,7 +16,7 @@ void BasicSc2Bot::TrainMarines()
 	const ObservationInterface* obs = Observation();
 	Units barracks = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKS));
 	Units factories = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FACTORY));
-	Units starports = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_STARPORT));
+	Units starport = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_STARPORT));
 	Units reactor = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKSREACTOR));
 
 	if (barracks.empty() || phase == 0)
@@ -36,25 +32,23 @@ void BasicSc2Bot::TrainMarines()
 			return;
 		}
 	}
-	else if (phase == 2 && !starports.empty())
+	else if (phase == 2 && !starport.empty())
 	{
-		if (starports.front()->build_progress > 0.5)
+		if (starport.front()->build_progress > 0.5)
 		{
 			return;
 		}
 	}
 	if (CanBuild(50) && !barracks.empty())
 	{
-
 		for (const auto& b : barracks) {
 			if (b->orders.empty() && !reactor.empty() && b->add_on_tag == reactor.front()->tag)
 			{
-				if (CanBuild(200))
+				if (CanBuild(550))
 				{
 					Actions()->UnitCommand(b, ABILITY_ID::TRAIN_MARINE, true);
 					Actions()->UnitCommand(b, ABILITY_ID::TRAIN_MARINE, true);
 				}
-
 			}
 			else if (b->orders.empty())
 			{
@@ -63,7 +57,6 @@ void BasicSc2Bot::TrainMarines()
 		}
 	}
 }
-
 
 void BasicSc2Bot::TrainBattlecruisers() {
 
@@ -110,15 +103,10 @@ void BasicSc2Bot::TrainSiegeTanks() {
 	if (CanBuild(150, 125, 3))
 	{
 		if (phase == 2) {
-
 			factory = factories.front();
 			// Maintain 1 : 4 Ratio of Marines and Siege Tanks
-			if (ramp_middle[0]->unit_type != UNIT_TYPEID::TERRAN_BARRACKS) {
-				if (factory->add_on_tag != 0) {
-					if (factory->orders.empty()) {
-						Actions()->UnitCommand(factory, ABILITY_ID::TRAIN_SIEGETANK);
-					}
-				}
+			if (factory->add_on_tag != 0 && factory->orders.empty()) {
+				Actions()->UnitCommand(factory, ABILITY_ID::TRAIN_SIEGETANK);
 			}
 		}
 		else if (phase == 3)
@@ -127,22 +115,28 @@ void BasicSc2Bot::TrainSiegeTanks() {
 			{
 				std::vector<float> MineralGas = HowCloseToResourceGoal(400, 300);
 				float avg_resources = (MineralGas[0] + MineralGas[1]) / 2;
-				if (num_starports && HowClosetoFinishCurrentJob(starport.front()) < 0.7f || avg_resources < 0.6f)
+				float how_close = !starport.empty() ? HowClosetoFinishCurrentJob(starport.front()) : 0.0f;
+				factory = factories.front();
+				if (num_starports && ((0.0f < how_close && how_close < 0.4f) && avg_resources > 0.8f))
 				{
-					factory = factories.front();
-					if (factory->add_on_tag != 0) {
-						if (factory->orders.empty()) {
-							Actions()->UnitCommand(factory, ABILITY_ID::TRAIN_SIEGETANK);
-						}
+					if (factory->add_on_tag != 0 && factory->orders.empty())
+					{
+						Actions()->UnitCommand(factory, ABILITY_ID::TRAIN_SIEGETANK);
+					}
+				}
+				else if (num_starports && avg_resources > 1.5f)
+				{
+
+					if (factory->add_on_tag != 0 && factory->orders.empty())
+					{
+						Actions()->UnitCommand(factory, ABILITY_ID::TRAIN_SIEGETANK);
 					}
 				}
 				else if (!num_starports)
 				{
-					factory = factories.front();
-					if (factory->add_on_tag != 0) {
-						if (factory->orders.empty()) {
-							Actions()->UnitCommand(factory, ABILITY_ID::TRAIN_SIEGETANK);
-						}
+					if (factory->add_on_tag != 0 && factory->orders.empty())
+					{
+						Actions()->UnitCommand(factory, ABILITY_ID::TRAIN_SIEGETANK);
 					}
 				}
 			}
@@ -176,28 +170,25 @@ void BasicSc2Bot::UpgradeMarines() {
 		Units techlabs = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKSTECHLAB));
 		Units engineeringbays = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_ENGINEERINGBAY));
 
-		// Check if the Engineering Bay is busy or not
-		for (const auto& engineeringbay : engineeringbays) {
-			if (engineeringbay->orders.empty()) {
-				if (CanBuild(450, 350))
-				{
-					Actions()->UnitCommand(engineeringbay, ability_id);
-					return;
+		// Upgrade from Tech Lab(Combat Shield)
+		if (!techlabs.empty()) {
+			if (completed_upgrades.find(UPGRADE_ID::COMBATSHIELD) == completed_upgrades.end()) {
+				ABILITY_ID upgrade = ABILITY_ID::RESEARCH_COMBATSHIELD;
+				// Check if the Tech Lab is busy or not
+				for (const auto& techlab : techlabs) {
+					if (techlab->orders.empty() && CanBuild(100, 400)) {
+						Actions()->UnitCommand(techlab, upgrade);
+						return;
+					}
 				}
 			}
 		}
-	}
 
-	// Upgrade from Tech Lab(Combat Shield)
-	if (!techlabs.empty()) {
-		if (completed_upgrades.find(UPGRADE_ID::COMBATSHIELD) == completed_upgrades.end()) {
-			ABILITY_ID upgrade = ABILITY_ID::RESEARCH_COMBATSHIELD;
-			// Check if the Tech Lab is busy or not
-			for (const auto& techlab : techlabs) {
-				if (techlab->orders.empty()) {
-					Actions()->UnitCommand(techlab, upgrade);
-					return;
-				}
+		// Check if the Engineering Bay is busy or not
+		for (const auto& engineeringbay : engineeringbays) {
+			if (engineeringbay->orders.empty() && CanBuild(500, 400)) {
+				Actions()->UnitCommand(engineeringbay, ability_id);
+				return;
 			}
 		}
 	}
@@ -229,7 +220,7 @@ void BasicSc2Bot::UpgradeMechs() {
 
 		// Check if the Armory is busy or not
 		for (const auto& armory : armories) {
-			if (armory->orders.empty()) {
+			if (armory->orders.empty() && CanBuild(500, 500)) {
 				Actions()->UnitCommand(armory, ability_id);
 				return;
 			}

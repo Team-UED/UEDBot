@@ -293,7 +293,7 @@ bool BasicSc2Bot::build33_after_check(const Unit* builder, const AbilityID& buil
 	case BaseLocation::lefttop:
 		// I need to check to the top and to the left and to the bottom
 		for (float j = mainBase_barrack_point.y + 5.0f; j < build_map_minmax[1].y; j += 5.0f) {
-			for (float i = mainBase_barrack_point.x - 5.0f; i > build_map_minmax[0].x; i -= 5.0f) {
+			for (float i = mainBase_barrack_point.x - 6.0f; i > build_map_minmax[0].x; i -= 6.0f) {
 				// Travel to the bottom
 				for (float k = j; k > build_map_minmax[0].y; k -= 5.0f) {
 					if (addon && InDepotArea(Point2D(i, k), whereismybase))
@@ -303,8 +303,6 @@ bool BasicSc2Bot::build33_after_check(const Unit* builder, const AbilityID& buil
 					if (area33_check(Point2D(i, k), addon))
 					{
 						Actions()->UnitCommand(builder, build_ability, Point2D(i, k));
-						std::cout << "j was " << j << " going down to " << k << std::endl;
-						std::cout << "X : " << i << " Y : " << k << std::endl;
 						return true;
 					}
 				}
@@ -314,7 +312,7 @@ bool BasicSc2Bot::build33_after_check(const Unit* builder, const AbilityID& buil
 	case BaseLocation::righttop:
 		for (float j = mainBase_barrack_point.y + 5.0f; j < build_map_minmax[1].y; j += 5.0f)
 		{
-			for (float i = mainBase_barrack_point.x; i > build_map_minmax[0].x; i -= 5.0f)
+			for (float i = mainBase_barrack_point.x; i > build_map_minmax[0].x; i -= 6.0f)
 			{
 				// Travel to the bottom
 				for (float k = j; k > build_map_minmax[0].y; k -= 5.0f)
@@ -326,8 +324,6 @@ bool BasicSc2Bot::build33_after_check(const Unit* builder, const AbilityID& buil
 					if (area33_check(Point2D(i, k), addon))
 					{
 						Actions()->UnitCommand(builder, build_ability, Point2D(i, k));
-						std::cout << "j was " << j << " going down to " << k << std::endl;
-						std::cout << "X : " << i << " Y : " << k << std::endl;
 						return true;
 					}
 				}
@@ -336,7 +332,7 @@ bool BasicSc2Bot::build33_after_check(const Unit* builder, const AbilityID& buil
 		break;
 	case BaseLocation::leftbottom:
 		for (float j = mainBase_barrack_point.y - 5.0f; j < build_map_minmax[1].y; j += 5.0f) {
-			for (float i = mainBase_barrack_point.x; i < build_map_minmax[1].x; i += 5.0f) {
+			for (float i = mainBase_barrack_point.x; i < build_map_minmax[1].x; i += 6.0f) {
 				// Travel to the bottom
 				for (float k = j; k > build_map_minmax[0].y; k -= 5.0f) {
 					if (addon && InDepotArea(Point2D(i, k), whereismybase))
@@ -345,8 +341,6 @@ bool BasicSc2Bot::build33_after_check(const Unit* builder, const AbilityID& buil
 					}
 					if (area33_check(Point2D(i, k), addon)) {
 						Actions()->UnitCommand(builder, build_ability, Point2D(i, k));
-						std::cout << "j was " << j << " going down to " << k << std::endl;
-						std::cout << "X : " << i << " Y : " << k << std::endl;
 						return true;
 					}
 				}
@@ -355,7 +349,7 @@ bool BasicSc2Bot::build33_after_check(const Unit* builder, const AbilityID& buil
 		break;
 	case BaseLocation::rightbottom:
 		for (float j = mainBase_barrack_point.y - 5.0f; j < build_map_minmax[1].y; j += 5.0f) {
-			for (float i = mainBase_barrack_point.x; i < build_map_minmax[1].x; i += 5.0f) {
+			for (float i = mainBase_barrack_point.x; i < build_map_minmax[1].x; i += 6.0f) {
 				// Travel to the bottom
 				for (float k = j; k > build_map_minmax[0].y; k -= 5.0f) {
 					if (addon && InDepotArea(Point2D(i, k), whereismybase))
@@ -364,8 +358,6 @@ bool BasicSc2Bot::build33_after_check(const Unit* builder, const AbilityID& buil
 					}
 					if (area33_check(Point2D(i, k), addon)) {
 						Actions()->UnitCommand(builder, build_ability, Point2D(i, k));
-						std::cout << "j was " << j << " going down to " << k << std::endl;
-						std::cout << "X : " << i << " Y : " << k << std::endl;
 						return true;
 					}
 				}
@@ -894,6 +886,7 @@ void BasicSc2Bot::depot_control() {
 		}
 		//! make sure if ramp_depots[1] becomes ramp_depots[0] when ramp_depots[0] is destroyed, 
 		else if (!ramp_depots[1] && ramp_depots[0] != first_unit) {
+			std::swap(ramp_depots[0], ramp_depots[1]);
 			ramp_depots[1] = first_unit;
 		}
 	}
