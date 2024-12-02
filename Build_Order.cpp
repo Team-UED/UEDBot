@@ -259,7 +259,7 @@ void BasicSc2Bot::BuildFusionCore() {
 	const ObservationInterface* obs = Observation();
 
 	// Can't build fusion core without Starports
-	if (!num_starports || !num_fusioncores) {
+	if (!num_starports || num_fusioncores) {
 		return;
 	}
 

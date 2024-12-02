@@ -29,6 +29,10 @@ void BasicSc2Bot::SCVScoutEnemySpawn() {
 	}
 
 	if (is_scouting) {
+		if (!scv_scout) {
+			is_scouting = false;
+			return;
+		}
 		// Get scouting SCV
 		scv_scout = observation->GetUnit(scv_scout->tag);
 
@@ -57,8 +61,8 @@ void BasicSc2Bot::SCVScoutEnemySpawn() {
 						// Set the enemy start location and stop scouting
 						enemy_start_location = structure->pos;
 
-                        // Find the nearest corner to the enemy base
-                        float min_corner_distance = std::numeric_limits<float>::max();
+						// Find the nearest corner to the enemy base
+						float min_corner_distance = std::numeric_limits<float>::max();
 
 						for (const auto& corner : map_corners) {
 							float corner_distance = DistanceSquared2D(enemy_start_location, corner);
@@ -75,8 +79,8 @@ void BasicSc2Bot::SCVScoutEnemySpawn() {
 							}
 						}
 
-                        // Find the closest mineral patch to the start location
-                        const Unit* closest_mineral = FindNearestMineralPatch();
+						// Find the closest mineral patch to the start location
+						const Unit* closest_mineral = FindNearestMineralPatch();
 
 						// harvest mineral if a mineral patch is found
 						if (closest_mineral && scv_scout) {
@@ -323,10 +327,10 @@ void BasicSc2Bot::UpdateRepairingSCVs() {
 			if (order.ability_id == ABILITY_ID::EFFECT_REPAIR ||
 				order.ability_id == ABILITY_ID::EFFECT_REPAIR_SCV) {
 				// Check if the repair target is fully repaired
-                const Unit* target = Observation()->GetUnit(order.target_unit_tag);
-                if (target && target->health == target->health_max) {
-                    // Find a refinery with fewer than 3 workers
-                    const Unit* target_refinery = FindRefinery();
+				const Unit* target = Observation()->GetUnit(order.target_unit_tag);
+				if (target && target->health == target->health_max) {
+					// Find a refinery with fewer than 3 workers
+					const Unit* target_refinery = FindRefinery();
 
 					// Assign the SCV to the refinery if found
 					if (target_refinery) {
@@ -334,16 +338,16 @@ void BasicSc2Bot::UpdateRepairingSCVs() {
 						continue;
 					}
 
-                    // Otherwise, find the closest mineral patch
-                    const Unit* closest_mineral = FindNearestMineralPatch();
-                    // Assign the SCV to harvest minerals if a mineral patch is found
-                    if (closest_mineral) {
-                        Actions()->UnitCommand(scv, ABILITY_ID::HARVEST_GATHER, closest_mineral);
-                    }
-                }
-            }
-        }
-    }
+					// Otherwise, find the closest mineral patch
+					const Unit* closest_mineral = FindNearestMineralPatch();
+					// Assign the SCV to harvest minerals if a mineral patch is found
+					if (closest_mineral) {
+						Actions()->UnitCommand(scv, ABILITY_ID::HARVEST_GATHER, closest_mineral);
+					}
+				}
+			}
+		}
+	}
 }
 
 
