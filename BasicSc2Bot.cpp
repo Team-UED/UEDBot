@@ -9,6 +9,8 @@ BasicSc2Bot::BasicSc2Bot()
 	num_barracks(0),
 	num_factories(0),
 	num_starports(0),
+	num_fusioncores(0),
+	start_counter(0),
 	phase(0),
 	is_under_attack(false),
 	is_attacking(false),
@@ -29,7 +31,7 @@ BasicSc2Bot::BasicSc2Bot()
 	nearest_corner_enemy(0.0f, 0.0f),
 	rally_barrack(0.0f, 0.0f),
 	rally_factory(0.0f, 0.0f),
-	rally_starport(0.0f, 0.0f){
+	rally_starport(0.0f, 0.0f) {
 
 	build_order = {
 		ABILITY_ID::BUILD_SUPPLYDEPOT,
@@ -297,14 +299,18 @@ void BasicSc2Bot::OnGameEnd() {
 
 void BasicSc2Bot::OnStep() {
 	current_gameloop = Observation()->GetGameLoop();
+	++start_counter;
 	//BasicSc2Bot::Debugging();
-	BasicSc2Bot::depot_control();
-	BasicSc2Bot::ManageEconomy();
-	BasicSc2Bot::ExecuteBuildOrder();
-	BasicSc2Bot::ManageProduction();
-	BasicSc2Bot::ControlUnits();
-	BasicSc2Bot::Defense();
-	BasicSc2Bot::Offense();
+
+	if (start_counter > start_delay) {
+		BasicSc2Bot::depot_control();
+		BasicSc2Bot::ManageEconomy();
+		BasicSc2Bot::ExecuteBuildOrder();
+		BasicSc2Bot::ManageProduction();
+		BasicSc2Bot::ControlUnits();
+		BasicSc2Bot::Defense();
+		BasicSc2Bot::Offense();
+	}
 }
 
 void BasicSc2Bot::OnUnitIdle(const Unit* unit)
@@ -345,9 +351,6 @@ void BasicSc2Bot::OnUnitIdle(const Unit* unit)
 		break;
 	}
 }
-	
-
-
 
 void BasicSc2Bot::OnUnitCreated(const Unit* unit) {
 
@@ -533,14 +536,14 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) {
 				{
 					--num_barracks;
 				}
-				else 
+				else
 				{
 					rally_barrack = Point2D(0.0f, 0.0f);
 				}
 			}
 			else if (unit->unit_type == UNIT_TYPEID::TERRAN_FACTORY)
 			{
-				
+
 				if (num_factories)
 				{
 					--num_factories;
@@ -552,7 +555,7 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) {
 			}
 			else if (unit->unit_type == UNIT_TYPEID::TERRAN_STARPORT)
 			{
-				
+
 				if (num_factories)
 				{
 					--num_starports;

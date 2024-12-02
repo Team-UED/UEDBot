@@ -498,6 +498,7 @@ bool BasicSc2Bot::InDepotArea(const Point2D& p, const BasicSc2Bot::BaseLocation 
 			p.y >= build_map_minmax[0].y;
 		break;
 	}
+	return false;
 }
 
 bool BasicSc2Bot::IsBaseOnLeft() const
