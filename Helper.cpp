@@ -148,6 +148,7 @@ const Unit* BasicSc2Bot::FindDamagedStructure() {
 
 			// Assign priorities (lower number = higher priority)
 			if (unit->unit_type == UNIT_TYPEID::TERRAN_SUPPLYDEPOT ||
+				unit->unit_type == UNIT_TYPEID::TERRAN_SUPPLYDEPOTLOWERED ||
 				unit->unit_type == UNIT_TYPEID::TERRAN_BARRACKS ||
 				unit->unit_type == UNIT_TYPEID::TERRAN_FACTORY ||
 				unit->unit_type == UNIT_TYPEID::TERRAN_BARRACKSTECHLAB ||

@@ -337,7 +337,7 @@ void BasicSc2Bot::AssignWorkers() {
 
 	// Assign each idle SCV to the nearest mineral patch associated with our bases
 	for (const auto& scv : idle_scvs) {
-		if (scv == scv_scout) {
+		if (scv == scv_scout || scvs_repairing.find(scv->tag) != scvs_repairing.end()) {
 			continue;
 		}
 
