@@ -59,11 +59,9 @@ private:
 	uint32_t current_gameloop;
 	uint32_t last_gameloop;
 
-	uint32_t start_counter;
-	const uint32_t start_delay = 44;
+	uint32_t step_counter;
 
-	// test
-	void CancelTraining();
+	void on_start();
 
 	// =========================
 	// Economy Management

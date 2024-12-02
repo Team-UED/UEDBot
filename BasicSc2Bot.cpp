@@ -10,7 +10,7 @@ BasicSc2Bot::BasicSc2Bot()
 	num_factories(0),
 	num_starports(0),
 	num_fusioncores(0),
-	start_counter(0),
+	step_counter(0),
 	phase(0),
 	is_under_attack(false),
 	is_attacking(false),
@@ -331,10 +331,9 @@ void BasicSc2Bot::OnStep() {
 		on_start();
 	}
 	current_gameloop = Observation()->GetGameLoop();
-	++start_counter;
 	//BasicSc2Bot::Debugging();
 
-	if (start_counter > start_delay) {
+	if (step_counter > 10) {
 		BasicSc2Bot::depot_control();
 		BasicSc2Bot::ManageEconomy();
 		BasicSc2Bot::ExecuteBuildOrder();
