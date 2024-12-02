@@ -309,7 +309,6 @@ void BasicSc2Bot::OnStep() {
 
 void BasicSc2Bot::OnUnitIdle(const Unit* unit)
 {
-
 	switch (unit->unit_type.ToType())
 	{
 	case UNIT_TYPEID::TERRAN_BARRACKS:
@@ -341,6 +340,9 @@ void BasicSc2Bot::OnUnitIdle(const Unit* unit)
 			Distance2D(unit->pos, enemy_start_location) >= 30.0f) {
 			Actions()->UnitCommand(unit, ABILITY_ID::MOVE_MOVE, rally_factory);
 		}
+	case UNIT_TYPEID::TERRAN_SCV:
+		HarvestIdleWorkers(unit);
+		break;
 	}
 }
 	
