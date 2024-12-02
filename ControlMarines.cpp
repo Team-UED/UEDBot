@@ -54,7 +54,7 @@ bool BasicSc2Bot::IsNearRamp(const Unit* unit) {
 // Get closest target to the unit
 const Unit* BasicSc2Bot::GetClosestTarget(const Unit* unit) {
     if (!unit) {
-        return false;
+        return nullptr;
     }
 
     const Unit* target = nullptr;

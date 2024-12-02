@@ -227,7 +227,8 @@ void BasicSc2Bot::on_start() {
 	find_right_ramp(start_location);
 	find_ramps_build_map(false);
 	update_build_map(true);
-	main_mineral_convexHull = convexHull(get_close_mineral_points(start_location));
+	auto mineral_points = get_close_mineral_points(start_location);
+	main_mineral_convexHull = convexHull(mineral_points);
 
 	// Initialize base
 	Units command_centers = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_COMMANDCENTER));
@@ -422,23 +423,20 @@ void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
 	const ObservationInterface* obs = Observation();
 	update_build_map(true);
 
-	switch (unit->unit_type.ToType())
-	{
-	case UNIT_TYPEID::TERRAN_BARRACKS:
+	auto unit_type = unit->unit_type.ToType();
+
+	if (unit_type == UNIT_TYPEID::TERRAN_BARRACKS) {
 		++num_barracks;
-		break;
-	case UNIT_TYPEID::TERRAN_FACTORY:
+	} else if (unit_type == UNIT_TYPEID::TERRAN_FACTORY) {
 		++num_factories;
-		break;
-	case UNIT_TYPEID::TERRAN_STARPORT:
+	} else if (unit_type == UNIT_TYPEID::TERRAN_STARPORT) {
 		++num_starports;
-		break;
-	case UNIT_TYPEID::TERRAN_FUSIONCORE:
+	} else if (unit_type == UNIT_TYPEID::TERRAN_FUSIONCORE) {
 		++num_fusioncores;
-		break;
-	case UNIT_TYPEID::TERRAN_COMMANDCENTER:
+	} else if (unit_type == UNIT_TYPEID::TERRAN_COMMANDCENTER) {
 		bases.emplace_back(unit);
 	}
+	
 
 	if (unit->unit_type == UNIT_TYPEID::TERRAN_REFINERY) {
 		const ObservationInterface* observation = Observation();
