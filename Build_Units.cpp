@@ -81,11 +81,15 @@ void BasicSc2Bot::TrainBattlecruisers() {
 			}
 		}
 		else {
-			first_battlecruiser = true;
+			for (const auto& order : starport->orders) {
+				if (order.ability_id == ABILITY_ID::TRAIN_BATTLECRUISER) {
+					if (order.progress >= 0.0f) {
+						first_battlecruiser = true;
+					}
+				}
+			}
 		}
 	}
-	// Check if we have the resources
-
 }
 
 
