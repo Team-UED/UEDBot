@@ -552,6 +552,7 @@ private:
 	size_t num_barracks;
 	size_t num_factories;
 	size_t num_starports;
+	size_t num_fusioncores;
 
 	// Map information.
 	sc2::Point2D start_location;
