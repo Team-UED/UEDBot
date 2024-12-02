@@ -29,13 +29,22 @@ void BasicSc2Bot::BuildBarracks() {
 
 	// Get Supply Depots
 	Units dps = obs->GetUnits(Unit::Alliance::Self, [this](const Unit& unit) {
-		return unit.unit_type == UNIT_TYPEID::TERRAN_SUPPLYDEPOT && ALLBuildingsFilter(unit);
+		return (unit.unit_type == UNIT_TYPEID::TERRAN_SUPPLYDEPOT ||
+			unit.unit_type == UNIT_TYPEID::TERRAN_SUPPLYDEPOTLOWERED) &&
+			ALLBuildingsFilter(unit);
 		});
 
 	// Can't built Barracks without Supply Depots
 	if (dps.empty()) {
 		return;
 	}
+
+	if (ramp_mid_destroyed != nullptr && ramp_mid_destroyed->unit_type == UNIT_TYPEID::TERRAN_BARRACKS && CanBuild(150)) {
+		TryBuildStructure(ABILITY_ID::BUILD_BARRACKS, UNIT_TYPEID::TERRAN_SCV);
+		ramp_mid_destroyed = nullptr;
+		return;
+	}
+
 
 	// Build only 1 Barrack
 	Units barracks = obs->GetUnits(Unit::Alliance::Self, [this](const Unit& unit) {
@@ -48,9 +57,9 @@ void BasicSc2Bot::BuildBarracks() {
 			TryBuildStructure(ABILITY_ID::BUILD_BARRACKS, UNIT_TYPEID::TERRAN_SCV);
 		}
 	}
-	else if (phase == 3 && !num_battlecruisers)
+	else if (phase == 3 && first_battlecruiser)
 	{
-		if (barracks.size() < 2 && CanBuild(500) && current_gameloop % 46 == 0) {
+		if (barracks.size() < 2 && CanBuild(600) && current_gameloop % 46 == 0) {
 			TryBuildStructure(ABILITY_ID::BUILD_BARRACKS, UNIT_TYPEID::TERRAN_SCV);
 		}
 	}
@@ -125,6 +134,13 @@ void BasicSc2Bot::BuildFactory() {
 	if (!num_barracks) {
 		return;
 	}
+
+	if (ramp_mid_destroyed != nullptr && ramp_mid_destroyed->unit_type == UNIT_TYPEID::TERRAN_FACTORY && CanBuild(150, 100)) {
+		TryBuildStructure(ABILITY_ID::BUILD_FACTORY, UNIT_TYPEID::TERRAN_SCV);
+		ramp_mid_destroyed = nullptr;
+		return;
+	}
+
 	// Build only 1 Factory
 	Units factories = observation->GetUnits(Unit::Alliance::Self, [this](const Unit& unit) {
 		return unit.unit_type == UNIT_TYPEID::TERRAN_FACTORY ||
@@ -161,19 +177,22 @@ void BasicSc2Bot::BuildAddon() {
 		const ObservationInterface* obs = Observation();
 		// Get Barracks
 		Units barracks = obs->GetUnits(Unit::Alliance::Self, [](const Unit& unit) {
-			return unit.unit_type == UNIT_TYPEID::TERRAN_BARRACKS && !unit.is_flying &&
+			return unit.unit_type == UNIT_TYPEID::TERRAN_BARRACKS &&
+				!unit.is_flying &&
 				!unit.add_on_tag;
 			});
 
 		// Get Factories
 		Units factories = obs->GetUnits(Unit::Alliance::Self, [](const Unit& unit) {
-			return unit.unit_type == UNIT_TYPEID::TERRAN_FACTORY && !unit.is_flying &&
+			return unit.unit_type == UNIT_TYPEID::TERRAN_FACTORY &&
+				!unit.is_flying &&
 				!unit.add_on_tag;
 			});
 
 		// Get Starports
 		Units starports = obs->GetUnits(Unit::Alliance::Self, [](const Unit& unit) {
-			return unit.unit_type == UNIT_TYPEID::TERRAN_STARPORT && !unit.is_flying &&
+			return unit.unit_type == UNIT_TYPEID::TERRAN_STARPORT &&
+				!unit.is_flying &&
 				!unit.add_on_tag;
 			});
 
@@ -202,10 +221,6 @@ void BasicSc2Bot::BuildAddon() {
 						switch (i)
 						{
 						case 0:
-							if (barracks_techlab.size() && CanBuild(50, 50))
-							{
-								build_order = ABILITY_ID::BUILD_REACTOR;
-							}
 							building = barracks.front();
 							break;
 						case 1:
@@ -215,7 +230,19 @@ void BasicSc2Bot::BuildAddon() {
 							building = starports.front();
 							break;
 						}
-						// Build a Tech Lab
+						// second barracks
+						if (!barracks.empty() && barracks_techlab.size())
+						{
+							if (CanBuild(450, 350))
+							{
+								build_order = ABILITY_ID::BUILD_REACTOR;
+							}
+							else
+							{
+								break;
+							}
+						}
+						// Build addon
 						Actions()->UnitCommand(building, build_order);
 						break;
 					}
@@ -261,8 +288,7 @@ void BasicSc2Bot::BuildArmory() {
 		return unit.unit_type == UNIT_TYPEID::TERRAN_ARMORY && ALLBuildingsFilter(unit);
 		});
 
-	// TODO: when should I build amory?
-	if (armories.empty() && CanBuild(150, 50)) {
+	if (armories.empty() && CanBuild(400 + 150, 300 + 50)) {
 		TryBuildStructure(ABILITY_ID::BUILD_ARMORY, UNIT_TYPEID::TERRAN_SCV);
 	}
 }
