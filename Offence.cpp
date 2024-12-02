@@ -3,90 +3,87 @@
 void BasicSc2Bot::Offense() {
 
     const ObservationInterface* observation = Observation();
-    if (num_marines >= 1) {
-        CleanUp();
-    }
 
-  //  // Check if we should start attacking
-  //  if (!is_attacking) {
+   // Check if we should start attacking
+    if (!is_attacking) {
 
-  //      Units starports = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_STARPORT));
-  //      
-  //      if (starports.empty()) {
-  //          return;
-  //      }
+        Units starports = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_STARPORT));
+        
+        if (starports.empty()) {
+            return;
+        }
 
-		//const Unit* starport = starports.front();
+		const Unit* starport = starports.front();
 
-		//// Default timing for first attack When battlecruiser production is at 40%
-  //      float timing = 0.4f;
+		// Default timing for first attack When battlecruiser production is at 40%
+        float timing = 0.4f;
 
-		//// Attack timing for the case where the enemy is not in diagonal opposite (Production at 60%)
-  //      if ((nearest_corner_enemy.x == nearest_corner_ally.x) ||
-  //          (nearest_corner_enemy.y == nearest_corner_ally.y)) {
-  //          timing = 0.60f;
-  //      }
+		// Attack timing for the case where the enemy is not in diagonal opposite (Production at 60%)
+        if ((nearest_corner_enemy.x == nearest_corner_ally.x) ||
+            (nearest_corner_enemy.y == nearest_corner_ally.y)) {
+            timing = 0.60f;
+        }
 
-		//// Check if we have enough army to attack
-  //      // At least one battlecruisers is currently in combat and not retreating
-  //      if (UnitsInCombat((UNIT_TYPEID::TERRAN_BATTLECRUISER)) > 0) {
-  //          for (const auto& unit : Observation()->GetUnits(Unit::Alliance::Self)) {
-  //              if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER && !battlecruiser_retreating[unit]) {
-  //                  if (num_marines >= 8 - UnitsInCombat(UNIT_TYPEID::TERRAN_MARINE) && 
-  //                      num_siege_tanks >= 1 - UnitsInCombat(UNIT_TYPEID::TERRAN_SIEGETANKSIEGED)) {
-  //                      if (need_clean_up) {
-  //                          CleanUp();
-  //                      } else {
-  //                          // Continue attacking
-  //                          AllOutRush();
-  //                      }
-  //                      return;
-  //                  }
-  //              }
-  //          }
-  //      }
-  //      // No Battlecruisers in combat
-  //      else {
-		//	// No Battlecruisers trained yet, or all destroyed
-  //          if (num_battlecruisers == 0) {
-  //              if (!starport->orders.empty()) {
-  //                  for (const auto& order : starport->orders) {
-  //                      if (order.ability_id == ABILITY_ID::TRAIN_BATTLECRUISER) {
-  //                          if (order.progress >= timing) {
-  //                              if (need_clean_up) {
-  //                                  CleanUp();
-  //                              } else {
-  //                                  // Continue attacking
-  //                                  AllOutRush();
-  //                              }
-  //                          }
-  //                          return;
-  //                      }
-  //                  }
-  //              }
-  //          }
-  //          // Battlecruisers are not in combat, and retreating
-  //          else {
-  //              bool attack = true;
-  //              for (const auto& unit : Observation()->GetUnits(Unit::Alliance::Self)) {
-  //                  if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER && battlecruiser_retreating[unit]) {
-  //                      if (unit->health < 0.4f * unit->health_max) {
-  //                          attack = false;
-  //                          break;
-  //                      }
-  //                  }
-  //              }
-  //              // If all retreating Battlecruisers are healthy, execute the attack
-  //              if (attack) {
-  //                  if (need_clean_up) {
-  //                      CleanUp();
-  //                  } else {
-  //                      // Continue attacking
-  //                      AllOutRush();
-  //                  }
-  //              }
-  //          }
-  //      }
+		// Check if we have enough army to attack
+        // At least one battlecruisers is currently in combat and not retreating
+        if (UnitsInCombat((UNIT_TYPEID::TERRAN_BATTLECRUISER)) > 0) {
+            for (const auto& unit : Observation()->GetUnits(Unit::Alliance::Self)) {
+                if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER && !battlecruiser_retreating[unit]) {
+                    if (num_marines >= 8 - UnitsInCombat(UNIT_TYPEID::TERRAN_MARINE) && 
+                        num_siege_tanks >= 1 - UnitsInCombat(UNIT_TYPEID::TERRAN_SIEGETANKSIEGED)) {
+                        if (need_clean_up) {
+                            CleanUp();
+                        } else {
+                            // Continue attacking
+                            AllOutRush();
+                        }
+                        return;
+                    }
+                }
+            }
+        }
+        // No Battlecruisers in combat
+        else {
+			// No Battlecruisers trained yet, or all destroyed
+            if (num_battlecruisers == 0) {
+                if (!starport->orders.empty()) {
+                    for (const auto& order : starport->orders) {
+                        if (order.ability_id == ABILITY_ID::TRAIN_BATTLECRUISER) {
+                            if (order.progress >= timing) {
+                                if (need_clean_up) {
+                                    CleanUp();
+                                } else {
+                                    // Continue attacking
+                                    AllOutRush();
+                                }
+                            }
+                            return;
+                        }
+                    }
+                }
+            }
+            // Battlecruisers are not in combat, and retreating
+            else {
+                bool attack = true;
+                for (const auto& unit : Observation()->GetUnits(Unit::Alliance::Self)) {
+                    if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER && battlecruiser_retreating[unit]) {
+                        if (unit->health < 0.4f * unit->health_max) {
+                            attack = false;
+                            break;
+                        }
+                    }
+                }
+                // If all retreating Battlecruisers are healthy, execute the attack
+                if (attack) {
+                    if (need_clean_up) {
+                        CleanUp();
+                    } else {
+                        // Continue attacking
+                        AllOutRush();
+                    }
+                }
+            }
+        }
     }
     else {
         // Check if our army is mostly dead
@@ -212,7 +209,15 @@ void BasicSc2Bot::AllOutRush() {
 }
 
 
-bool BasicSc2Bot::CleanUp() {
+void BasicSc2Bot::CleanUp() {
+    const ObservationInterface *observation = Observation();
+
+    // Get all our combat units
+    Units marines = observation->GetUnits(Unit::Alliance::Self,
+                                          IsUnit(UNIT_TYPEID::TERRAN_MARINE));
+    Units siege_tanks = observation->GetUnits(
+        Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SIEGETANK));
+
     Point2D attack_target = enemy_start_location;
     // sort scout locations by distance to the start location
     std::sort(scout_points.begin(), scout_points.end(),
@@ -235,7 +240,7 @@ bool BasicSc2Bot::CleanUp() {
                                    attack_target);
 
             if (marine->orders.empty() ||
-                sc2::Distance2D(marine->pos, current_target) <= 5.0f) {
+                sc2::Distance2D(marine->pos, attack_target) <= 5.0f) {
                 current_scout_index++;
             }
         }
@@ -245,8 +250,9 @@ bool BasicSc2Bot::CleanUp() {
             Distance2D(tank->pos, attack_target) > 5.0f) {
             Actions()->UnitCommand(tank, ABILITY_ID::MOVE_MOVE, attack_target);
             if (tank->orders.empty() ||
-                sc2::Distance2D(tank->pos, current_target) <= 5.0f) {
+                sc2::Distance2D(tank->pos, attack_target) <= 5.0f) {
                 current_scout_index++;
             }
         }
     }
+}
