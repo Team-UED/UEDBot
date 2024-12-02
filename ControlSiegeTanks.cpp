@@ -32,12 +32,15 @@ bool BasicSc2Bot::SiegeTankInCombat(const Unit *unit) {
 	return enemy_nearby;
 }
 
+// ------------------ Main Functions ------------------
+
 // Main function to control Siege Tanks
 void BasicSc2Bot::ControlSiegeTanks() {
     SiegeMode();
 	TargetSiegeTank();
 }
 
+// Transform Siege Tanks to Siege Mode or Unsiege
 void BasicSc2Bot::SiegeMode() {
     // Get all Siege Tanks
     const Units siege_tanks = Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SIEGETANK));
@@ -60,6 +63,7 @@ void BasicSc2Bot::SiegeMode() {
     }
 }
 
+// Target mechanics for Siege Tanks
 void BasicSc2Bot::TargetSiegeTank() {
 
     // Get all Siege Tanks

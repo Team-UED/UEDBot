@@ -416,6 +416,12 @@ private:
 
 	void SetRallyPoint(const Unit* b, const Point2D& p);
 
+	Point2D rally_barrack;
+
+	Point2D rally_factory;
+
+	Point2D rally_starport;
+
 	const Unit* GetLeastSaturatedBase() const;
 
 	bool IsWorkerUnit(const Unit* unit);

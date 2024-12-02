@@ -96,6 +96,7 @@ void BasicSc2Bot::KiteMarine(const Unit* marine, const Unit* target, bool advanc
 
 // ------------------ Main Functions ------------------
 
+// Main function to control Marines
 void BasicSc2Bot::ControlMarines() {
 	TargetMarines();
 }
