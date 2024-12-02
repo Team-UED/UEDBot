@@ -372,6 +372,9 @@ void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
 	case UNIT_TYPEID::TERRAN_STARPORT:
 		++num_starports;
 		break;
+	case UNIT_TYPEID::TERRAN_FUSIONCORE:
+		++num_fusioncores;
+		break;
 	case UNIT_TYPEID::TERRAN_COMMANDCENTER:
 		bases.emplace_back(unit);
 	}
@@ -500,19 +503,27 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) {
 
 			if (unit->unit_type == UNIT_TYPEID::TERRAN_BARRACKS)
 			{
-				--num_barracks;
+				if (!num_barracks) {
+					--num_barracks;
+				}
 			}
 			else if (unit->unit_type == UNIT_TYPEID::TERRAN_FACTORY)
 			{
-				--num_factories;
+				if (!num_factories) {
+					--num_factories;
+				}
 			}
 			else if (unit->unit_type == UNIT_TYPEID::TERRAN_STARPORT)
 			{
-				--num_starports;
+				if (!num_starports) {
+					--num_starports;
+				}
 			}
 			else if (unit->unit_type == UNIT_TYPEID::TERRAN_FUSIONCORE)
 			{
-				//TryBuildStructureAtLocation(ability_ID::BUILD)
+				if (!num_fusioncores) {
+					--num_fusioncores;
+				}
 			}
 			else if (unit->unit_type == UNIT_TYPEID::TERRAN_COMMANDCENTER ||
 				unit->unit_type == UNIT_TYPEID::TERRAN_ORBITALCOMMAND)

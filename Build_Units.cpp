@@ -132,7 +132,7 @@ void BasicSc2Bot::TrainSiegeTanks() {
 						Actions()->UnitCommand(factory, ABILITY_ID::TRAIN_SIEGETANK);
 					}
 				}
-				else if (!num_starports)
+				else if (!num_starports || !num_fusioncores)
 				{
 					if (factory->add_on_tag != 0 && factory->orders.empty())
 					{
