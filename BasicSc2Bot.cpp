@@ -198,8 +198,7 @@ void BasicSc2Bot::Debugging()
 	debug->SendDebug();
 }
 
-void BasicSc2Bot::OnGameStart() {
-
+void BasicSc2Bot::on_start() {
 	// Initialize start locations, expansion locations, chokepoints, etc.
 	const ObservationInterface* obs = Observation();
 	start_location = obs->GetStartLocation();
@@ -271,6 +270,30 @@ void BasicSc2Bot::OnGameStart() {
 			}
 		}
 	}
+
+	// Get map dimensions
+	unsigned int width = game_info.width;
+	unsigned int height = game_info.height;
+
+	// Generate grid points across the entire map for scouting
+	scout_points.clear(); // Clear previous scout points if any
+	const unsigned int step_size =
+		20; // Step size for grid points (adjust for thoroughness)
+	for (unsigned int x = 0; x < width; x += step_size) {
+		for (unsigned int y = 0; y < height; y += step_size) {
+			Point2D grid_point(static_cast<float>(x), static_cast<float>(y));
+			if (Observation()->IsPathable(grid_point)) {
+				scout_points.push_back(grid_point);
+			}
+		}
+	}
+
+	// Start scouting from the beginning
+	current_scout_index = 0;
+}
+
+void BasicSc2Bot::OnGameStart() {
+	// 
 }
 
 void BasicSc2Bot::OnGameEnd() {
@@ -298,6 +321,15 @@ void BasicSc2Bot::OnGameEnd() {
 }
 
 void BasicSc2Bot::OnStep() {
+	++step_counter;
+	// Wait for 10 frames
+	if (step_counter < 10) {
+		return;
+	}
+	// On 10th frame, redo our init
+	if (step_counter == 10) {
+		on_start();
+	}
 	current_gameloop = Observation()->GetGameLoop();
 	++start_counter;
 	//BasicSc2Bot::Debugging();
