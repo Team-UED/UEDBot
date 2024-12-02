@@ -232,6 +232,19 @@ void BasicSc2Bot::CleanUp() {
     }
     attack_target = scout_points[current_scout_index];
 
+    // Check for enemy units or structures near the attack target, including
+    // snapshots
+    for (const auto &enemy_unit :
+         observation->GetUnits(Unit::Alliance::Enemy)) {
+        if ((enemy_unit->display_type == Unit::DisplayType::Visible ||
+             enemy_unit->display_type == Unit::DisplayType::Snapshot) &&
+            enemy_unit->is_alive &&
+            Distance2D(enemy_unit->pos, attack_target) < 25.0f) {
+            need_clean_up = false;
+            break;
+        }
+    }
+
     // Move units to the target location
     for (const auto &marine : marines) {
         if (marine->orders.empty() &&
