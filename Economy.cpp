@@ -611,7 +611,6 @@ void BasicSc2Bot::BuildExpansion() {
 		}
 	}
 
-
 	if (builder) {
 		if (Query()->Placement(ABILITY_ID::BUILD_COMMANDCENTER, next_expansion)) {
 			Actions()->UnitCommand(builder, ABILITY_ID::BUILD_COMMANDCENTER, next_expansion);
