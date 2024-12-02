@@ -3,6 +3,141 @@
 
 using namespace sc2;
 
+// ------------------ Helper Functions ------------------
+
+// Retreat function for Battlecruisers
+void BasicSc2Bot::Retreat(const Unit* unit) {
+
+    if (unit == nullptr) {
+        return;
+    }
+
+    battlecruiser_retreat_location[unit] = retreat_location;
+    battlecruiser_retreating[unit] = true;
+    Actions()->UnitCommand(unit, ABILITY_ID::MOVE_MOVE, retreat_location);
+}
+
+// Calculate the threat level for the Battlecruisers
+int BasicSc2Bot::CalculateThreatLevel(const Unit* unit) {
+	if (!unit) {
+		return 0;
+	}
+
+	int threat_level = 0;
+
+	// Detect radius for Battlecruisers
+	const float defense_check_radius = 14.0f;
+
+	for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
+		auto threat = threat_levels.find(enemy_unit->unit_type);
+
+		if (threat != threat_levels.end()) {
+			float distance = Distance2D(unit->pos, enemy_unit->pos);
+
+			if (distance < defense_check_radius) {
+				threat_level += threat->second;
+			}
+		}
+	}
+
+	return threat_level;
+}
+
+// Get the closest threat to the Battlecruisers
+const Unit* BasicSc2Bot::GetClosestThreat(const Unit* unit) {
+
+	if (!unit) {
+		return nullptr;
+	}
+
+	const Unit* target = nullptr;
+
+	constexpr float max_distance = std::numeric_limits<float>::max();
+	float min_distance = max_distance;
+	float min_hp = std::numeric_limits<float>::max();
+
+	for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
+		// Ensure the enemy unit is alive
+		if (!enemy_unit->is_alive) {
+			continue;
+		}
+		auto threat = threat_levels.find(enemy_unit->unit_type);
+
+		if (threat != threat_levels.end()) {
+			float distance = Distance2D(unit->pos, enemy_unit->pos);
+			if (distance < min_distance || (distance == min_distance && enemy_unit->health < min_hp)) {
+				min_distance = distance;
+				min_hp = enemy_unit->health;
+				target = enemy_unit;
+			}
+		}
+	}
+
+	return target;
+}
+
+// Calculate the kite vector for the Battlecruisers
+Point2D BasicSc2Bot::GetKiteVector(const Unit* unit, const Unit* target) {
+
+	if (!unit || !target) {
+		return Point2D(0.0f, 0.0f);
+	}
+
+	Point2D nearest_corner;
+	float min_corner_distance = std::numeric_limits<float>::max();;
+
+	// Find nearest corner to the enemy start location
+	for (const auto& corner : map_corners) {
+		float corner_distance = DistanceSquared2D(unit->pos, corner);
+		if (corner_distance < min_corner_distance) {
+			min_corner_distance = corner_distance;
+			nearest_corner = corner;
+		}
+	}
+
+	// Calculate the direction away from the target 
+	Point2D kite_direction = unit->pos - target->pos;
+
+
+	// Normalize the kite direction vector
+	float kite_length = std::sqrt(kite_direction.x * kite_direction.x + kite_direction.y * kite_direction.y);
+	if (kite_length > 0) {
+		kite_direction /= kite_length;
+	}
+
+	// Define the kiting distance (range of Battlecruiser)
+	float kiting_distance = 8.0f;
+
+	// Calculate the avoidance direction from the enemy vertex
+	Point2D avoidance_direction = unit->pos - nearest_corner;
+	float avoidance_length = std::sqrt(avoidance_direction.x * avoidance_direction.x + avoidance_direction.y * avoidance_direction.y);
+	if (avoidance_length > 0) {
+		avoidance_direction /= avoidance_length;
+	}
+
+	// Define weights for combining directions
+	// Weight for kiting direction
+	float kite_weight = 0.3f;
+	// Weight for avoiding enemy vertex
+	float avoidance_weight = 0.7f;
+
+	// Combine directions to get the final direction
+	Point2D final_direction = (kite_direction * kite_weight) + (avoidance_direction * avoidance_weight);
+
+	// Normalize the final direction
+	float final_length = std::sqrt(final_direction.x * final_direction.x + final_direction.y * final_direction.y);
+	if (final_length > 0) {
+		final_direction /= final_length;
+	}
+
+	// Calculate the final kite position
+	Point2D kite_position = unit->pos + final_direction * kiting_distance;
+
+	return kite_position;
+}
+
+// ------------------ Main Functions ------------------
+
 // Main function to control Battlecruisers
 void BasicSc2Bot::ControlBattlecruisers() {
 	Jump();
@@ -10,7 +145,7 @@ void BasicSc2Bot::ControlBattlecruisers() {
 	RetreatCheck();
 }
 
-// Use Tactical Jump into enemy base
+// Use Tactical Jump to attack the enemy base
 void BasicSc2Bot::Jump() {
 
 	// Check if the main base is under attack; don't use Tactical Jump in that case
@@ -39,7 +174,7 @@ void BasicSc2Bot::Jump() {
 }
 
 
-/// Target enemy units based on threat levels
+// Target mechanics for Battlecruisers
 void BasicSc2Bot::TargetBattlecruisers() {
 
 	// Maximum distance to consider for targetting
@@ -228,17 +363,6 @@ void BasicSc2Bot::TargetBattlecruisers() {
 			}
 		}
 	}
-}
-
-void BasicSc2Bot::Retreat(const Unit* unit) {
-
-	if (unit == nullptr) {
-		return;
-	}
-
-	battlecruiser_retreat_location[unit] = retreat_location;
-	battlecruiser_retreating[unit] = true;
-	Actions()->UnitCommand(unit, ABILITY_ID::MOVE_MOVE, retreat_location);
 }
 
 void BasicSc2Bot::RetreatCheck() {
