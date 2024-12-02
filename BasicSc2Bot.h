@@ -233,6 +233,11 @@ private:
 	// Executes an all-out rush with all available units.
 	void AllOutRush();
 
+	// Searches the map for enemy units and attacks them.
+	void CleanUp();
+
+	bool need_clean_up = false;
+
 	// =========================
 	// Unit Control (SCV)
 	// =========================
