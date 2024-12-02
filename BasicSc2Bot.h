@@ -60,7 +60,7 @@ private:
 	uint32_t last_gameloop;
 
 	uint32_t start_counter;
-	const uint32_t start_delay = 23;
+	const uint32_t start_delay = 44;
 
 	// test
 	void CancelTraining();
