@@ -496,4 +496,3 @@ int BasicSc2Bot::UnitsInCombat(UNIT_TYPEID unit_type) {
 
 	return num_unit;
 }
-}
