@@ -15,12 +15,22 @@ void BasicSc2Bot::Offense() {
 
 		const Unit* starport = starports.front();
 
+		// Default timing for first attack When battlecruiser production is at 40%
+        float timing = 0.4f;
+
+		// Attack timing for the case where the enemy is not in diagonal opposite (Production at 60%)
+        if ((nearest_corner_enemy.x == nearest_corner_ally.x) ||
+            (nearest_corner_enemy.y == nearest_corner_ally.y)) {
+            timing = 0.60f;
+        }
+
 		// Check if we have enough army to attack
         // At least one battlecruisers is currently in combat and not retreating
         if (UnitsInCombat((UNIT_TYPEID::TERRAN_BATTLECRUISER)) > 0) {
             for (const auto& unit : Observation()->GetUnits(Unit::Alliance::Self)) {
                 if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER && !battlecruiser_retreating[unit]) {
-                    if (num_marines >= 8 && num_siege_tanks >= 1) {
+                    if (num_marines >= 8 - UnitsInCombat(UNIT_TYPEID::TERRAN_MARINE) && 
+                        num_siege_tanks >= 1 - UnitsInCombat(UNIT_TYPEID::TERRAN_SIEGETANKSIEGED)) {
                         AllOutRush();
                         return;
                     }
@@ -34,7 +44,7 @@ void BasicSc2Bot::Offense() {
                 if (!starport->orders.empty()) {
                     for (const auto& order : starport->orders) {
                         if (order.ability_id == ABILITY_ID::TRAIN_BATTLECRUISER) {
-                            if (order.progress >= 0.5f) {
+                            if (order.progress >= timing) {
                                 AllOutRush();
                             }
                             return;
@@ -47,7 +57,7 @@ void BasicSc2Bot::Offense() {
                 bool attack = true;
                 for (const auto& unit : Observation()->GetUnits(Unit::Alliance::Self)) {
                     if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER && battlecruiser_retreating[unit]) {
-                        if (unit->health < 0.5f * unit->health_max) {
+                        if (unit->health < 0.4f * unit->health_max) {
                             attack = false;
                             break;
                         }
