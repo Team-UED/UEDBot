@@ -292,7 +292,13 @@ void BasicSc2Bot::OnGameEnd() {
 	gameResults[Loss] = " Loses";
 	gameResults[Tie] = " Tied";
 	gameResults[Undecided] = " Undecided";
-
+	
+	// Print the results of the game
+	for (auto& playerResult : observation->GetResults()) {
+		std::cout << playerTypes[((*(players[playerResult.player_id])).player_type)]
+			<< gameResults[playerResult.result]
+			<< std::endl;
+	}
 }
 
 void BasicSc2Bot::OnStep() {
@@ -368,8 +374,8 @@ void BasicSc2Bot::OnUnitCreated(const Unit* unit) {
 	// Battlecruiser created
 	if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER) {
 		num_battlecruisers++;
-		std::cout << "Battlecruiser created at " << minsec[0] << ":" << minsec[1] << std::endl;
-		std::cout << "Marines: " << num_marines << " Tanks: " << num_siege_tanks << " Battlecruisers: " << num_battlecruisers << std::endl;
+		//std::cout << "Battlecruiser created at " << minsec[0] << ":" << minsec[1] << std::endl;
+		//std::cout << "Marines: " << num_marines << " Tanks: " << num_siege_tanks << " Battlecruisers: " << num_battlecruisers << std::endl;
 	}
 	// Marine created
 	if (unit->unit_type == UNIT_TYPEID::TERRAN_MARINE) {
@@ -378,8 +384,8 @@ void BasicSc2Bot::OnUnitCreated(const Unit* unit) {
 	// Siege Tank created
 	if (unit->unit_type == UNIT_TYPEID::TERRAN_SIEGETANK) {
 		num_siege_tanks++;
-		std::cout << "Tank created at " << minsec[0] << ":" << minsec[1] << std::endl;
-		std::cout << "Marines: " << num_marines << " Tanks: " << num_siege_tanks << " Battlecruisers: " << num_battlecruisers << std::endl;
+		//std::cout << "Tank created at " << minsec[0] << ":" << minsec[1] << std::endl;
+		//std::cout << "Marines: " << num_marines << " Tanks: " << num_siege_tanks << " Battlecruisers: " << num_battlecruisers << std::endl;
 	}
 
 }
