@@ -63,9 +63,16 @@ void BasicSc2Bot::Offense() {
     else {
         // Check if our army is mostly dead
         Units marines = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_MARINE));
-        // If army is severely depleted, rebuild before attacking again
-        if (marines.size() < 5) {
+		Units siege_tanks = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SIEGETANK));
+        // If army is severely depleted, retreat and rebuild before attacking again
+        if (num_marines < 5) {
             is_attacking = false;
+            for (const auto& marine : marines) {
+                Actions()->UnitCommand(marine, ABILITY_ID::MOVE_MOVE, rally_barrack);
+            }
+            for (const auto& tank : siege_tanks) {
+                Actions()->UnitCommand(tank, ABILITY_ID::MOVE_MOVE, rally_factory);
+            }
         }
         else {
             AllOutRush();
@@ -79,6 +86,7 @@ void BasicSc2Bot::AllOutRush() {
     // Get all our combat units
     Units marines = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_MARINE));
     Units siege_tanks = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SIEGETANK));
+	Units battlecruisers = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BATTLECRUISER));
 
 	// Check if we have any units to attack with
 	if (marines.empty() && siege_tanks.empty()) {
@@ -153,6 +161,14 @@ void BasicSc2Bot::AllOutRush() {
     for (const auto& tank : siege_tanks) {
         if (tank->orders.empty() && Distance2D(tank->pos, attack_target) > 5.0f) {
             Actions()->UnitCommand(tank, ABILITY_ID::MOVE_MOVE, attack_target);
+        }
+    }
+
+    if (enemy_base_destroyed && !battlecruisers.empty()) {
+        for (const auto& battlecruiser : battlecruisers) {
+            if (battlecruiser->orders.empty() && Distance2D(battlecruiser->pos, attack_target) > 5.0f) {
+                Actions()->UnitCommand(battlecruiser, ABILITY_ID::MOVE_MOVE, attack_target);
+            }
         }
     }
 

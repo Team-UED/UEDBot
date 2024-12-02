@@ -57,7 +57,6 @@ void BasicSc2Bot::SCVScoutEnemySpawn() {
                         // Set the enemy start location and stop scouting
                         enemy_start_location = structure->pos;
 
-
                         // Find the nearest corner to the enemy base
                         float min_corner_distance = std::numeric_limits<float>::max();
 
@@ -76,20 +75,8 @@ void BasicSc2Bot::SCVScoutEnemySpawn() {
                             }
                         }
 
-                        const ObservationInterface* observation = Observation();
-                        sc2::Units mineral_patches = observation->GetUnits(Unit::Alliance::Neutral, IsUnit(UNIT_TYPEID::NEUTRAL_MINERALFIELD));
-
                         // Find the closest mineral patch to the start location
-                        const sc2::Unit* closest_mineral = nullptr;
-                        float min_distance = std::numeric_limits<float>::max();
-
-                        for (const auto& mineral : mineral_patches) {
-                            float distance = sc2::Distance2D(start_location, mineral->pos);
-                            if (distance < min_distance) {
-                                min_distance = distance;
-                                closest_mineral = mineral;
-                            }
-                        }
+                        const Unit* closest_mineral = FindNearestMineralPatch();
 
                         // harvest mineral if a mineral patch is found
                         if (closest_mineral && scv_scout) {
