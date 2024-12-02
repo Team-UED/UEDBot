@@ -1,7 +1,7 @@
 #include "BasicSc2Bot.h"
 
 void BasicSc2Bot::ControlUnits() {
-    ControlSCVs();
+	ControlSCVs();
 	ControlBattlecruisers();
 	ControlSiegeTanks();
 	ControlMarines();
