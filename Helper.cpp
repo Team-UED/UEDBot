@@ -157,6 +157,7 @@ const Unit* BasicSc2Bot::FindDamagedStructure() {
 
 			// Assign priorities (lower number = higher priority)
 			if (unit->unit_type == UNIT_TYPEID::TERRAN_SUPPLYDEPOT ||
+				unit->unit_type == UNIT_TYPEID::TERRAN_SUPPLYDEPOTLOWERED ||
 				unit->unit_type == UNIT_TYPEID::TERRAN_BARRACKS ||
 				unit->unit_type == UNIT_TYPEID::TERRAN_FACTORY ||
 				unit->unit_type == UNIT_TYPEID::TERRAN_BARRACKSTECHLAB ||
@@ -496,118 +497,62 @@ int BasicSc2Bot::UnitsInCombat(UNIT_TYPEID unit_type) {
 	return num_unit;
 }
 
-int BasicSc2Bot::CalculateThreatLevel(const Unit* unit) {
-	if (!unit) {
-		return 0;
+const Unit* BasicSc2Bot::FindNearestMineralPatch() {
+	// Find closest mineral patches
+	Units mineral_patches = Observation()->GetUnits(Unit::Alliance::Neutral, IsUnit(UNIT_TYPEID::NEUTRAL_MINERALFIELD));
+	const Unit* closest_mineral = nullptr;
+	float min_distance = std::numeric_limits<float>::max();
+
+	for (const auto& mineral : mineral_patches) {
+		float distance = sc2::Distance2D(start_location, mineral->pos);
+		if (distance < min_distance) {
+			min_distance = distance;
+			closest_mineral = mineral;
+		}
 	}
 
-	int threat_level = 0;
+	return closest_mineral;
+};
 
-	// Detect radius for Battlecruisers
-	const float defense_check_radius = 14.0f;
+const Unit* BasicSc2Bot::FindRefinery() {
+	// Find all refineries
+	Units refineries = Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_REFINERY));
 
-	for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
-		auto threat = threat_levels.find(enemy_unit->unit_type);
+	// Find a refinery with fewer than 3 workers
+	const Unit* target_refinery = nullptr;
 
-		if (threat != threat_levels.end()) {
-			float distance = Distance2D(unit->pos, enemy_unit->pos);
-
-			if (distance < defense_check_radius) {
-				threat_level += threat->second;
+	if (!refineries.empty()) {
+		for (const auto& refinery : refineries) {
+			if (refinery->assigned_harvesters < refinery->ideal_harvesters) {
+				target_refinery = refinery;
+				break;
 			}
 		}
 	}
 
-	return threat_level;
-}
+	return target_refinery;
+};
 
-const Unit* BasicSc2Bot::GetClosestThreat(const Unit* unit) {
+void BasicSc2Bot::HarvestIdleWorkers(const Unit* unit) {
 
 	if (!unit) {
-		return nullptr;
+		return;
 	}
 
-	const Unit* target = nullptr;
+	// Find a refinery with fewer than 3 workers
+	const Unit* target_refinery = FindRefinery();
 
-	constexpr float max_distance = std::numeric_limits<float>::max();
-	float min_distance = max_distance;
-	float min_hp = std::numeric_limits<float>::max();
-
-	for (const auto& enemy_unit : Observation()->GetUnits(Unit::Alliance::Enemy)) {
-		// Ensure the enemy unit is alive
-		if (!enemy_unit->is_alive) {
-			continue;
-		}
-		auto threat = threat_levels.find(enemy_unit->unit_type);
-
-		if (threat != threat_levels.end()) {
-			float distance = Distance2D(unit->pos, enemy_unit->pos);
-			if (distance < min_distance || (distance == min_distance && enemy_unit->health < min_hp)) {
-				min_distance = distance;
-				min_hp = enemy_unit->health;
-				target = enemy_unit;
-			}
-		}
+	// Assign the SCV to the refinery if found
+	if (target_refinery) {
+		Actions()->UnitCommand(unit, ABILITY_ID::HARVEST_GATHER, target_refinery);
+		return;
 	}
 
-	return target;
-}
-
-Point2D BasicSc2Bot::GetKiteVector(const Unit* unit, const Unit* target) {
-
-	if (!unit || !target) {
-		return Point2D(0.0f, 0.0f);
+	// Otherwise, find the closest mineral patch
+	const Unit* closest_mineral = FindNearestMineralPatch();
+	// Assign the SCV to harvest minerals if a mineral patch is found
+	if (closest_mineral) {
+		Actions()->UnitCommand(unit, ABILITY_ID::HARVEST_GATHER, closest_mineral);
+		return;
 	}
-
-	Point2D nearest_corner;
-	float min_corner_distance = std::numeric_limits<float>::max();;
-
-	// Find nearest corner to the enemy start location
-	for (const auto& corner : map_corners) {
-		float corner_distance = DistanceSquared2D(unit->pos, corner);
-		if (corner_distance < min_corner_distance) {
-			min_corner_distance = corner_distance;
-			nearest_corner = corner;
-		}
-	}
-
-	// Calculate the direction away from the target 
-	Point2D kite_direction = unit->pos - target->pos;
-
-
-	// Normalize the kite direction vector
-	float kite_length = std::sqrt(kite_direction.x * kite_direction.x + kite_direction.y * kite_direction.y);
-	if (kite_length > 0) {
-		kite_direction /= kite_length;
-	}
-
-	// Define the kiting distance (range of Battlecruiser)
-	float kiting_distance = 8.0f;
-
-	// Calculate the avoidance direction from the enemy vertex
-	Point2D avoidance_direction = unit->pos - nearest_corner;
-	float avoidance_length = std::sqrt(avoidance_direction.x * avoidance_direction.x + avoidance_direction.y * avoidance_direction.y);
-	if (avoidance_length > 0) {
-		avoidance_direction /= avoidance_length;
-	}
-
-	// Define weights for combining directions
-	// Weight for kiting direction
-	float kite_weight = 0.3f;
-	// Weight for avoiding enemy vertex
-	float avoidance_weight = 0.7f;
-
-	// Combine directions to get the final direction
-	Point2D final_direction = (kite_direction * kite_weight) + (avoidance_direction * avoidance_weight);
-
-	// Normalize the final direction
-	float final_length = std::sqrt(final_direction.x * final_direction.x + final_direction.y * final_direction.y);
-	if (final_length > 0) {
-		final_direction /= final_length;
-	}
-
-	// Calculate the final kite position
-	Point2D kite_position = unit->pos + final_direction * kiting_distance;
-
-	return kite_position;
 }

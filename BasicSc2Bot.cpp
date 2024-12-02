@@ -26,7 +26,10 @@ BasicSc2Bot::BasicSc2Bot()
 	current_scout_location_index(0),
 	scv_scout(nullptr),
 	nearest_corner_ally(0.0f, 0.0f),
-	nearest_corner_enemy(0.0f, 0.0f) {
+	nearest_corner_enemy(0.0f, 0.0f),
+	rally_barrack(0.0f, 0.0f),
+	rally_factory(0.0f, 0.0f),
+	rally_starport(0.0f, 0.0f){
 
 	build_order = {
 		ABILITY_ID::BUILD_SUPPLYDEPOT,
@@ -309,18 +312,42 @@ void BasicSc2Bot::OnUnitIdle(const Unit* unit)
 	switch (unit->unit_type.ToType())
 	{
 	case UNIT_TYPEID::TERRAN_BARRACKS:
-		SetRallyPoint(unit, towards(mainBase_barrack_point, start_location, 3.5f));
-		break;
-
+		if (rally_barrack == Point2D(0.0f, 0.0f)) {
+			rally_barrack = towards(mainBase_barrack_point, start_location, 3.5f);
+			SetRallyPoint(unit, rally_barrack);
+			break;
+		}
 	case UNIT_TYPEID::TERRAN_FACTORY:
-		SetRallyPoint(unit, towards(mainBase_barrack_point, start_location, 6.0f));
-		break;
+		if (rally_factory == Point2D(0.0f, 0.0f)) {
+			rally_factory = towards(mainBase_barrack_point, start_location, 6.0f);
+			SetRallyPoint(unit, rally_factory);
+			break;
+		}
 
 	case UNIT_TYPEID::TERRAN_STARPORT:
-		SetRallyPoint(unit, towards(mainBase_barrack_point, start_location, 8.0f));
+		if (rally_starport == Point2D(0.0f, 0.0f)) {
+			rally_starport = towards(mainBase_barrack_point, start_location, 8.0f);
+			SetRallyPoint(unit, rally_starport);
+			break;
+		}
+	case UNIT_TYPEID::TERRAN_MARINE:
+		if (Distance2D(unit->pos, rally_barrack) >= 3.0f &&
+			Distance2D(unit->pos, enemy_start_location) >= 30.0f) {
+			Actions()->UnitCommand(unit, ABILITY_ID::MOVE_MOVE, rally_barrack);
+		}
+	case UNIT_TYPEID::TERRAN_SIEGETANK:
+		if (Distance2D(unit->pos, rally_barrack) >= 3.0f &&
+			Distance2D(unit->pos, enemy_start_location) >= 30.0f) {
+			Actions()->UnitCommand(unit, ABILITY_ID::MOVE_MOVE, rally_factory);
+		}
+	case UNIT_TYPEID::TERRAN_SCV:
+		HarvestIdleWorkers(unit);
 		break;
 	}
 }
+	
+
+
 
 void BasicSc2Bot::OnUnitCreated(const Unit* unit) {
 
@@ -500,28 +527,44 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) {
 
 		if (unit)
 		{
-
 			if (unit->unit_type == UNIT_TYPEID::TERRAN_BARRACKS)
 			{
-				if (!num_barracks) {
+				if (num_barracks)
+				{
 					--num_barracks;
+				}
+				else 
+				{
+					rally_barrack = Point2D(0.0f, 0.0f);
 				}
 			}
 			else if (unit->unit_type == UNIT_TYPEID::TERRAN_FACTORY)
 			{
-				if (!num_factories) {
+				
+				if (num_factories)
+				{
 					--num_factories;
+				}
+				else
+				{
+					rally_factory = Point2D(0.0f, 0.0f);
 				}
 			}
 			else if (unit->unit_type == UNIT_TYPEID::TERRAN_STARPORT)
 			{
-				if (!num_starports) {
+				
+				if (num_factories)
+				{
 					--num_starports;
+				}
+				else
+				{
+					rally_starport = Point2D(0.0f, 0.0f);
 				}
 			}
 			else if (unit->unit_type == UNIT_TYPEID::TERRAN_FUSIONCORE)
 			{
-				if (!num_fusioncores) {
+				if (num_fusioncores) {
 					--num_fusioncores;
 				}
 			}
