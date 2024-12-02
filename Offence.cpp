@@ -4,7 +4,7 @@ void BasicSc2Bot::Offense() {
 
     const ObservationInterface* observation = Observation();
 
-    // Check if we should start attacking
+   // Check if we should start attacking
     if (!is_attacking) {
 
         Units starports = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_STARPORT));
@@ -31,7 +31,12 @@ void BasicSc2Bot::Offense() {
                 if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER && !battlecruiser_retreating[unit]) {
                     if (num_marines >= 8 - UnitsInCombat(UNIT_TYPEID::TERRAN_MARINE) && 
                         num_siege_tanks >= 1 - UnitsInCombat(UNIT_TYPEID::TERRAN_SIEGETANKSIEGED)) {
-                        AllOutRush();
+                        if (need_clean_up) {
+                            CleanUp();
+                        } else {
+                            // Continue attacking
+                            AllOutRush();
+                        }
                         return;
                     }
                 }
@@ -45,7 +50,12 @@ void BasicSc2Bot::Offense() {
                     for (const auto& order : starport->orders) {
                         if (order.ability_id == ABILITY_ID::TRAIN_BATTLECRUISER) {
                             if (order.progress >= timing) {
-                                AllOutRush();
+                                if (need_clean_up) {
+                                    CleanUp();
+                                } else {
+                                    // Continue attacking
+                                    AllOutRush();
+                                }
                             }
                             return;
                         }
@@ -65,7 +75,12 @@ void BasicSc2Bot::Offense() {
                 }
                 // If all retreating Battlecruisers are healthy, execute the attack
                 if (attack) {
-                    AllOutRush();
+                    if (need_clean_up) {
+                        CleanUp();
+                    } else {
+                        // Continue attacking
+                        AllOutRush();
+                    }
                 }
             }
         }
@@ -85,7 +100,12 @@ void BasicSc2Bot::Offense() {
             }
         }
         else {
-            AllOutRush();
+            if (need_clean_up) {
+                CleanUp();
+            } else {
+                // Continue attacking
+                AllOutRush();
+            }
         }
     }
 }
@@ -156,6 +176,7 @@ void BasicSc2Bot::AllOutRush() {
             }
             // When there are no snapshot units
             else {
+                need_clean_up = true;
                 return;
             }
         }
@@ -184,5 +205,54 @@ void BasicSc2Bot::AllOutRush() {
 
     if (!is_attacking) {
         is_attacking = true;
+    }
+}
+
+
+void BasicSc2Bot::CleanUp() {
+    const ObservationInterface *observation = Observation();
+
+    // Get all our combat units
+    Units marines = observation->GetUnits(Unit::Alliance::Self,
+                                          IsUnit(UNIT_TYPEID::TERRAN_MARINE));
+    Units siege_tanks = observation->GetUnits(
+        Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SIEGETANK));
+
+    Point2D attack_target = enemy_start_location;
+    // sort scout locations by distance to the start location
+    std::sort(scout_points.begin(), scout_points.end(),
+              [this](const Point2D &a, const Point2D &b) {
+                  return Distance2D(a, enemy_start_location) <
+                         Distance2D(b, enemy_start_location);
+              });
+
+    // set the attack target
+    if (current_scout_index >= scout_points.size()) {
+        current_scout_index = 0;
+    }
+    attack_target = scout_points[current_scout_index];
+
+    // Move units to the target location
+    for (const auto &marine : marines) {
+        if (marine->orders.empty() &&
+            Distance2D(marine->pos, attack_target) > 5.0f) {
+            Actions()->UnitCommand(marine, ABILITY_ID::MOVE_MOVE,
+                                   attack_target);
+
+            if (marine->orders.empty() ||
+                sc2::Distance2D(marine->pos, attack_target) <= 5.0f) {
+                current_scout_index++;
+            }
+        }
+    }
+    for (const auto &tank : siege_tanks) {
+        if (tank->orders.empty() &&
+            Distance2D(tank->pos, attack_target) > 5.0f) {
+            Actions()->UnitCommand(tank, ABILITY_ID::MOVE_MOVE, attack_target);
+            if (tank->orders.empty() ||
+                sc2::Distance2D(tank->pos, attack_target) <= 5.0f) {
+                current_scout_index++;
+            }
+        }
     }
 }
