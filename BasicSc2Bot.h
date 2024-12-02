@@ -52,6 +52,7 @@ private:
 	// Debugging
 	// =========================
 	void Debugging();
+	std::vector<uint32_t> GetRealTime() const;
 	void DrawBoxesOnMap(sc2::DebugInterface* debug, int map_width, int map_height);
 	void DrawBoxAtLocation(sc2::DebugInterface* debug, const sc2::Point3D& location, float size, const sc2::Color& color = sc2::Colors::Red) const;
 
@@ -430,6 +431,12 @@ private:
 
 	bool IsTrivialUnit(const Unit* unit) const;
 
+	// returns how close my resource goal is to the current resources
+	std::vector<float> HowCloseToResourceGoal(const int32_t& m, const int32_t& g) const;
+
+	// returns how close current job is to being finished
+	float HowClosetoFinishCurrentJob(const Unit* b) const;
+
 	bool IsBuilding(const UnitOrder& order) const;
 
 	bool ALLBuildingsFilter(const Unit& unit) const;
@@ -636,6 +643,7 @@ private:
 	// buildings for ramps
 	std::vector<sc2::Unit*> ramp_depots = { nullptr, nullptr };
 	std::vector<sc2::Unit*> ramp_middle = { nullptr, nullptr };
+	const Unit* ramp_mid_destroyed;
 
 	// Map of threat levels for specific anti-air units
 	const std::unordered_map<sc2::UNIT_TYPEID, int> threat_levels = {

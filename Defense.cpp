@@ -11,11 +11,11 @@ void BasicSc2Bot::Defense() {
 }
 
 void BasicSc2Bot::EarlyDefense() {
-    if (!IsAnyBaseUnderAttack()) {
-        return;
-    }
-    
-    Units our_bases = Observation()->GetUnits(Unit::Alliance::Self, IsTownHall());
+	if (!IsAnyBaseUnderAttack()) {
+		return;
+	}
+
+	Units our_bases = Observation()->GetUnits(Unit::Alliance::Self, IsTownHall());
 
 	// Collect enemy units near our bases
 	Units enemy_units;
@@ -76,12 +76,6 @@ void BasicSc2Bot::LateDefense() {
 
 	// Build Missile Turrets near bases and important locations
 	Units missile_turrets = Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_MISSILETURRET));
-	// Limit the number of Missile Turrets
-	//TODO: change
-	/*const int desired_turrets = 2 * bases.size();
-	if (missile_turrets.size() >= desired_turrets || !first_battlecruiser) {
-		return;
-	}*/
 
 	std::vector<Point2D> turret_locations;
 	std::vector<Point2D> mineral_convexhull = main_mineral_convexHull;
@@ -98,8 +92,9 @@ void BasicSc2Bot::LateDefense() {
 
 		for (const auto& t : turret_locations)
 		{
-			if (TryBuildStructureAtLocation(ABILITY_ID::BUILD_MISSILETURRET, UNIT_TYPEID::TERRAN_SCV, t)) {
-				return; // Build one turret at a time
+			if (CanBuild(100) && TryBuildStructureAtLocation(ABILITY_ID::BUILD_MISSILETURRET, UNIT_TYPEID::TERRAN_SCV, t))
+			{
+				return;
 			}
 		}
 	}
