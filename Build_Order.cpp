@@ -256,15 +256,15 @@ void BasicSc2Bot::BuildAddon() {
 
 // Build Fusion Core if we have a Starport and enough resources
 void BasicSc2Bot::BuildFusionCore() {
-	const ObservationInterface* observation = Observation();
+	const ObservationInterface* obs = Observation();
 
 	// Can't build fusion core without Starports
-	if (!num_starports) {
+	if (!num_starports || !num_fusioncores) {
 		return;
 	}
 
 	// Build only 1 Fusion core
-	Units fusioncore = observation->GetUnits(Unit::Alliance::Self, [this](const Unit& unit) {
+	Units fusioncore = obs->GetUnits(Unit::Alliance::Self, [this](const Unit& unit) {
 		return unit.unit_type == UNIT_TYPEID::TERRAN_FUSIONCORE && ALLBuildingsFilter(unit);
 		});
 

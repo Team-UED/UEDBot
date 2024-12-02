@@ -222,54 +222,132 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
 
 		else if (ability_type_for_structure == ABILITY_ID::BUILD_BARRACKS)
 		{
-			// check if ramp is blocked
-			if (phase == 0)
-			{
-				if (Query()->Placement(ABILITY_ID::BUILD_BARRACKS, mainBase_barrack_point))
-				{
+			Units barracks = obs->GetUnits(Unit::Alliance::Self, [this](const Unit& unit) {
+				return unit.unit_type == UNIT_TYPEID::TERRAN_BARRACKS && ALLBuildingsFilter(unit);
+				});
 
-					Actions()->UnitCommand(scv_building, ability_type_for_structure, mainBase_barrack_point, true);
-					return true;
-				}
-				return false;
-			}
-			else
+			if (barracks.size() < 2)
 			{
-				// ramp is blocked?
-				if (!ramp_middle[0])
+				// check if ramp is blocked
+				if (phase == 0)
 				{
-					Actions()->UnitCommand(scv_building, ability_type_for_structure, mainBase_barrack_point, true);
-					return true;
+					if (Query()->Placement(ABILITY_ID::BUILD_BARRACKS, mainBase_barrack_point))
+					{
+
+						Actions()->UnitCommand(scv_building, ability_type_for_structure, mainBase_barrack_point, true);
+						return true;
+					}
+					return false;
 				}
-				return build33_after_check(builder, ability_type_for_structure, base_location, true);
+				else
+				{
+					// ramp is blocked?
+					if (!ramp_middle[0])
+					{
+						Actions()->UnitCommand(scv_building, ability_type_for_structure, mainBase_barrack_point, true);
+						return true;
+					}
+					// this barrack is not a ramp building but it was destroyed possibly
+					else
+					{
+						// if addons are still there, build around the addons
+						Units addons_t = obs->GetUnits(Unit::Alliance::Self, [](const Unit& unit) {
+							return unit.unit_type == UNIT_TYPEID::TERRAN_TECHLAB; });
+						Units addons_r = obs->GetUnits(Unit::Alliance::Self, [](const Unit& unit) {
+							return unit.unit_type == UNIT_TYPEID::TERRAN_REACTOR; });
+						addons_t.insert(addons_t.end(), addons_r.begin(), addons_r.end());
+
+						const Unit* tl;
+						if (!addons_t.empty())
+						{
+							tl = addons_t.front();
+							Point2D tl_p = Point2D(tl->pos);
+							tl_p = Point2D(tl_p.x - 2.5f, tl_p.y + 0.5f);
+							if (Query()->Placement(ability_type_for_structure, tl_p)) {
+								Actions()->UnitCommand(builder, ability_type_for_structure, tl_p);
+								return true;
+							}
+						}
+					}
+					return build33_after_check(builder, ability_type_for_structure, base_location, true);
+				}
 			}
 		}
 
 		else if (ability_type_for_structure == ABILITY_ID::BUILD_FACTORY)
 		{
-			// check if ramp is blocked
-			if (phase < 2)
+			Units factory = obs->GetUnits(Unit::Alliance::Self, [this](const Unit& unit) {
+				return unit.unit_type == UNIT_TYPEID::TERRAN_FACTORY && ALLBuildingsFilter(unit);
+				});
+			if (factory.empty())
 			{
+				// check if ramp is blocked
+				if (phase < 2)
+				{
+					return build33_after_check(builder, ability_type_for_structure, base_location, true);
+				}
+				else if (!ramp_middle[0])
+				{
+					Actions()->UnitCommand(scv_building, ability_type_for_structure, mainBase_barrack_point, true);
+					return true;
+				}
+				// this factory is not a ramp building but it was destroyed possibly
+				else
+				{
+					Units addons_t = obs->GetUnits(Unit::Alliance::Self, [](const Unit& unit) {
+						return unit.unit_type == UNIT_TYPEID::TERRAN_TECHLAB; });
+					const Unit* tl;
+					if (!addons_t.empty())
+					{
+						tl = addons_t.front();
+						Point2D tl_p = Point2D(tl->pos);
+						tl_p = Point2D(tl_p.x - 2.5f, tl_p.y + 0.5f);
+						if (Query()->Placement(ability_type_for_structure, tl_p)) {
+							Actions()->UnitCommand(builder, ability_type_for_structure, tl_p);
+							return true;
+						}
+					}
+				}
 				return build33_after_check(builder, ability_type_for_structure, base_location, true);
 			}
-			else if (!ramp_middle[0])
-			{
-				Actions()->UnitCommand(scv_building, ability_type_for_structure, mainBase_barrack_point, true);
-				return true;
-			}
 		}
-
 		else if (ability_type_for_structure == ABILITY_ID::BUILD_STARPORT)
 		{
-			// check if ramp is blocked
-			if (phase == 2)
+			Units starport = obs->GetUnits(Unit::Alliance::Self, [this](const Unit& unit) {
+				return unit.unit_type == UNIT_TYPEID::TERRAN_STARPORT && ALLBuildingsFilter(unit);
+				});
+			if (starport.empty())
 			{
+				// check if ramp is blocked
+				if (phase == 2)
+				{
+					return build33_after_check(builder, ability_type_for_structure, base_location, true);
+				}
+
+				// after phase 2, this means possibly starport is destroyed
+				else
+				{
+					Units addons_t = obs->GetUnits(Unit::Alliance::Self, [](const Unit& unit) {
+						return unit.unit_type == UNIT_TYPEID::TERRAN_TECHLAB; });
+					const Unit* tl;
+					if (!addons_t.empty())
+					{
+						tl = addons_t.front();
+						Point2D tl_p = Point2D(tl->pos);
+						tl_p = Point2D(tl_p.x - 2.5f, tl_p.y + 0.5f);
+						if (Query()->Placement(ability_type_for_structure, tl_p)) {
+							Actions()->UnitCommand(builder, ability_type_for_structure, tl_p);
+							return true;
+						}
+					}
+				}
 				return build33_after_check(builder, ability_type_for_structure, base_location, true);
 			}
 		}
 		else
 		{
 			// check far away from the ramp first around the edge of the base
+			// for 3x3 buildings
 			return build33_after_check(builder, ability_type_for_structure, base_location, false);
 		}
 	}
@@ -615,5 +693,6 @@ void BasicSc2Bot::BuildExpansion() {
 		if (Query()->Placement(ABILITY_ID::BUILD_COMMANDCENTER, next_expansion)) {
 			Actions()->UnitCommand(builder, ABILITY_ID::BUILD_COMMANDCENTER, next_expansion);
 		}
+		return;
 	}
 }
