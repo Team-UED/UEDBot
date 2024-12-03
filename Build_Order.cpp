@@ -57,7 +57,7 @@ void BasicSc2Bot::BuildBarracks() {
 			TryBuildStructure(ABILITY_ID::BUILD_BARRACKS, UNIT_TYPEID::TERRAN_SCV);
 		}
 	}
-	else if (phase == 3 && first_battlecruiser)
+	else if (phase == 3 && bases.size() > 1)
 	{
 		if (barracks.size() < 2 && CanBuild(600) && current_gameloop % 46 == 0) {
 			TryBuildStructure(ABILITY_ID::BUILD_BARRACKS, UNIT_TYPEID::TERRAN_SCV);
@@ -259,7 +259,7 @@ void BasicSc2Bot::BuildFusionCore() {
 	const ObservationInterface* obs = Observation();
 
 	// Can't build fusion core without Starports
-	if (!num_starports || !num_fusioncores) {
+	if (!num_starports || num_fusioncores) {
 		return;
 	}
 

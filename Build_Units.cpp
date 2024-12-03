@@ -27,7 +27,7 @@ void BasicSc2Bot::TrainMarines()
 	// factory is built...gotta swap
 	if (phase == 1 && !factories.empty())
 	{
-		if (factories.front()->build_progress > 0.5)
+		if (factories.front()->build_progress > 0.4)
 		{
 			return;
 		}

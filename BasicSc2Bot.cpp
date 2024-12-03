@@ -9,6 +9,8 @@ BasicSc2Bot::BasicSc2Bot()
 	num_barracks(0),
 	num_factories(0),
 	num_starports(0),
+	num_fusioncores(0),
+	step_counter(0),
 	phase(0),
 	is_under_attack(false),
 	is_attacking(false),
@@ -29,7 +31,7 @@ BasicSc2Bot::BasicSc2Bot()
 	nearest_corner_enemy(0.0f, 0.0f),
 	rally_barrack(0.0f, 0.0f),
 	rally_factory(0.0f, 0.0f),
-	rally_starport(0.0f, 0.0f){
+	rally_starport(0.0f, 0.0f) {
 
 	build_order = {
 		ABILITY_ID::BUILD_SUPPLYDEPOT,
@@ -196,8 +198,7 @@ void BasicSc2Bot::Debugging()
 	debug->SendDebug();
 }
 
-void BasicSc2Bot::OnGameStart() {
-
+void BasicSc2Bot::on_start() {
 	// Initialize start locations, expansion locations, chokepoints, etc.
 	const ObservationInterface* obs = Observation();
 	start_location = obs->GetStartLocation();
@@ -226,7 +227,8 @@ void BasicSc2Bot::OnGameStart() {
 	find_right_ramp(start_location);
 	find_ramps_build_map(false);
 	update_build_map(true);
-	main_mineral_convexHull = convexHull(get_close_mineral_points(start_location));
+	auto mineral_points = get_close_mineral_points(start_location);
+	main_mineral_convexHull = convexHull(mineral_points);
 
 	// Initialize base
 	Units command_centers = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_COMMANDCENTER));
@@ -271,24 +273,28 @@ void BasicSc2Bot::OnGameStart() {
 	}
 
 	// Get map dimensions
-    unsigned int width = game_info.width;
-    unsigned int height = game_info.height;
+	unsigned int width = game_info.width;
+	unsigned int height = game_info.height;
 
-    // Generate grid points across the entire map for scouting
-    scout_points.clear(); // Clear previous scout points if any
-    const unsigned int step_size =
-        20; // Step size for grid points (adjust for thoroughness)
-    for (unsigned int x = 0; x < width; x += step_size) {
-        for (unsigned int y = 0; y < height; y += step_size) {
-            Point2D grid_point(static_cast<float>(x), static_cast<float>(y));
-            if (Observation()->IsPathable(grid_point)) {
-                scout_points.push_back(grid_point);
-            }
-        }
-    }
+	// Generate grid points across the entire map for scouting
+	scout_points.clear(); // Clear previous scout points if any
+	const unsigned int step_size =
+		20; // Step size for grid points (adjust for thoroughness)
+	for (unsigned int x = 0; x < width; x += step_size) {
+		for (unsigned int y = 0; y < height; y += step_size) {
+			Point2D grid_point(static_cast<float>(x), static_cast<float>(y));
+			if (Observation()->IsPathable(grid_point)) {
+				scout_points.push_back(grid_point);
+			}
+		}
+	}
 
-    // Start scouting from the beginning
-    current_scout_index = 0;
+	// Start scouting from the beginning
+	current_scout_index = 0;
+}
+
+void BasicSc2Bot::OnGameStart() {
+	// 
 }
 
 void BasicSc2Bot::OnGameEnd() {
@@ -322,15 +328,27 @@ void BasicSc2Bot::OnGameEnd() {
 }
 
 void BasicSc2Bot::OnStep() {
+	++step_counter;
+	// Wait for 10 frames
+	if (step_counter < 10) {
+		return;
+	}
+	// On 10th frame, redo our init
+	if (step_counter == 10) {
+		on_start();
+	}
 	current_gameloop = Observation()->GetGameLoop();
 	//BasicSc2Bot::Debugging();
-	BasicSc2Bot::depot_control();
-	BasicSc2Bot::ManageEconomy();
-	BasicSc2Bot::ExecuteBuildOrder();
-	BasicSc2Bot::ManageProduction();
-	BasicSc2Bot::ControlUnits();
-	BasicSc2Bot::Defense();
-	BasicSc2Bot::Offense();
+
+	if (step_counter > 10) {
+		BasicSc2Bot::depot_control();
+		BasicSc2Bot::ManageEconomy();
+		BasicSc2Bot::ExecuteBuildOrder();
+		BasicSc2Bot::ManageProduction();
+		BasicSc2Bot::ControlUnits();
+		BasicSc2Bot::Defense();
+		BasicSc2Bot::Offense();
+	}
 }
 
 void BasicSc2Bot::OnUnitIdle(const Unit* unit)
@@ -339,20 +357,20 @@ void BasicSc2Bot::OnUnitIdle(const Unit* unit)
 	{
 	case UNIT_TYPEID::TERRAN_BARRACKS:
 		if (rally_barrack == Point2D(0.0f, 0.0f)) {
-			rally_barrack = towards(mainBase_barrack_point, start_location, 3.5f);
+			rally_barrack = towards(mainBase_barrack_point, start_location, 4.0f);
 			SetRallyPoint(unit, rally_barrack);
 			break;
 		}
 	case UNIT_TYPEID::TERRAN_FACTORY:
 		if (rally_factory == Point2D(0.0f, 0.0f)) {
-			rally_factory = towards(mainBase_barrack_point, start_location, 6.0f);
+			rally_factory = towards(mainBase_barrack_point, start_location, 10.0f);
 			SetRallyPoint(unit, rally_factory);
 			break;
 		}
 
 	case UNIT_TYPEID::TERRAN_STARPORT:
 		if (rally_starport == Point2D(0.0f, 0.0f)) {
-			rally_starport = towards(mainBase_barrack_point, start_location, 8.0f);
+			rally_starport = towards(mainBase_barrack_point, start_location, 10.0f);
 			SetRallyPoint(unit, rally_starport);
 			break;
 		}
@@ -371,9 +389,6 @@ void BasicSc2Bot::OnUnitIdle(const Unit* unit)
 		break;
 	}
 }
-	
-
-
 
 void BasicSc2Bot::OnUnitCreated(const Unit* unit) {
 
@@ -414,23 +429,20 @@ void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
 	const ObservationInterface* obs = Observation();
 	update_build_map(true);
 
-	switch (unit->unit_type.ToType())
-	{
-	case UNIT_TYPEID::TERRAN_BARRACKS:
+	auto unit_type = unit->unit_type.ToType();
+
+	if (unit_type == UNIT_TYPEID::TERRAN_BARRACKS) {
 		++num_barracks;
-		break;
-	case UNIT_TYPEID::TERRAN_FACTORY:
+	} else if (unit_type == UNIT_TYPEID::TERRAN_FACTORY) {
 		++num_factories;
-		break;
-	case UNIT_TYPEID::TERRAN_STARPORT:
+	} else if (unit_type == UNIT_TYPEID::TERRAN_STARPORT) {
 		++num_starports;
-		break;
-	case UNIT_TYPEID::TERRAN_FUSIONCORE:
+	} else if (unit_type == UNIT_TYPEID::TERRAN_FUSIONCORE) {
 		++num_fusioncores;
-		break;
-	case UNIT_TYPEID::TERRAN_COMMANDCENTER:
+	} else if (unit_type == UNIT_TYPEID::TERRAN_COMMANDCENTER) {
 		bases.emplace_back(unit);
 	}
+	
 
 	if (unit->unit_type == UNIT_TYPEID::TERRAN_REFINERY) {
 		const ObservationInterface* observation = Observation();
@@ -559,14 +571,14 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) {
 				{
 					--num_barracks;
 				}
-				else 
+				else
 				{
 					rally_barrack = Point2D(0.0f, 0.0f);
 				}
 			}
 			else if (unit->unit_type == UNIT_TYPEID::TERRAN_FACTORY)
 			{
-				
+
 				if (num_factories)
 				{
 					--num_factories;
@@ -578,7 +590,7 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) {
 			}
 			else if (unit->unit_type == UNIT_TYPEID::TERRAN_STARPORT)
 			{
-				
+
 				if (num_factories)
 				{
 					--num_starports;
