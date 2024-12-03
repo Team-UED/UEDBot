@@ -73,7 +73,7 @@ bool BasicSc2Bot::NeedExpansion() const {
 	size_t num_scvs = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SCV)).size();
 
 	// Expand when we have enough SCVs to saturate our current bases
-	return num_scvs >= 0.9f * total_ideal_workers;
+	return num_scvs >= 0.95f * total_ideal_workers;
 }
 
 Point3D BasicSc2Bot::GetNextExpansion() const {
