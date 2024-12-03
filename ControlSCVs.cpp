@@ -28,11 +28,7 @@ void BasicSc2Bot::SCVScoutEnemySpawn() {
 		return;
 	}
 
-	if (is_scouting) {
-		if (!scv_scout) {
-			is_scouting = false;
-			return;
-		}
+	if (is_scouting && !scv_scout) {
 		// Get scouting SCV
 		scv_scout = observation->GetUnit(scv_scout->tag);
 
@@ -105,7 +101,7 @@ void BasicSc2Bot::SCVScoutEnemySpawn() {
 					return;
 				}
 				// Scout to the next location
-				Actions()->UnitCommand(scv_scout, sc2::ABILITY_ID::MOVE_MOVE, enemy_start_locations[current_scout_location_index]);
+				Actions()->UnitCommand(scv_scout, sc2::ABILITY_ID::MOVE_MOVE, enemy_start_locations[current_scout_location_index], true);
 			}
 		}
 	}
@@ -121,7 +117,7 @@ void BasicSc2Bot::SCVScoutEnemySpawn() {
 				scout_location = scv->pos;
 
 				// Command SCV to move to the initial possible enemy location
-				Actions()->UnitCommand(scv_scout, sc2::ABILITY_ID::MOVE_MOVE, enemy_start_locations[current_scout_location_index]);
+				Actions()->UnitCommand(scv_scout, sc2::ABILITY_ID::MOVE_MOVE, enemy_start_locations[current_scout_location_index], true);
 				break;
 			}
 		}
