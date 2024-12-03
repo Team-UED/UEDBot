@@ -318,7 +318,7 @@ void BasicSc2Bot::OnGameEnd() {
 	gameResults[Loss] = " Loses";
 	gameResults[Tie] = " Tied";
 	gameResults[Undecided] = " Undecided";
-	
+
 	// Print the results of the game
 	for (auto& playerResult : observation->GetResults()) {
 		std::cout << playerTypes[((*(players[playerResult.player_id])).player_type)]
@@ -357,14 +357,14 @@ void BasicSc2Bot::OnUnitIdle(const Unit* unit)
 	{
 	case UNIT_TYPEID::TERRAN_BARRACKS:
 		if (rally_barrack == Point2D(0.0f, 0.0f)) {
-			rally_barrack = towards(mainBase_barrack_point, start_location, 3.0f);
+			rally_barrack = towards(mainBase_barrack_point, start_location, 2.0f);
 			SetRallyPoint(unit, rally_barrack);
 
 		}
 		break;
 	case UNIT_TYPEID::TERRAN_FACTORY:
 		if (rally_factory == Point2D(0.0f, 0.0f)) {
-			rally_factory = towards(mainBase_barrack_point, start_location, 6.5f);
+			rally_factory = towards(mainBase_barrack_point, start_location, 6.0f);
 			SetRallyPoint(unit, rally_factory);
 
 		}
@@ -413,8 +413,8 @@ void BasicSc2Bot::OnUnitCreated(const Unit* unit) {
 	// Battlecruiser created
 	if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER) {
 		num_battlecruisers++;
-		//std::cout << "Battlecruiser created at " << minsec[0] << ":" << minsec[1] << std::endl;
-		//std::cout << "Marines: " << num_marines << " Tanks: " << num_siege_tanks << " Battlecruisers: " << num_battlecruisers << std::endl;
+		std::cout << "Battlecruiser created at " << minsec[0] << ":" << minsec[1] << std::endl;
+		std::cout << "Marines: " << num_marines << " Tanks: " << num_siege_tanks << " Battlecruisers: " << num_battlecruisers << std::endl;
 	}
 	// Marine created
 	if (unit->unit_type == UNIT_TYPEID::TERRAN_MARINE) {
@@ -423,8 +423,8 @@ void BasicSc2Bot::OnUnitCreated(const Unit* unit) {
 	// Siege Tank created
 	if (unit->unit_type == UNIT_TYPEID::TERRAN_SIEGETANK) {
 		num_siege_tanks++;
-		//std::cout << "Tank created at " << minsec[0] << ":" << minsec[1] << std::endl;
-		//std::cout << "Marines: " << num_marines << " Tanks: " << num_siege_tanks << " Battlecruisers: " << num_battlecruisers << std::endl;
+		std::cout << "Tank created at " << minsec[0] << ":" << minsec[1] << std::endl;
+		std::cout << "Marines: " << num_marines << " Tanks: " << num_siege_tanks << " Battlecruisers: " << num_battlecruisers << std::endl;
 	}
 
 }
@@ -505,7 +505,6 @@ void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
 			Units factories = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FACTORY));
 			Units barracks = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKS));
 			Units enemy_units = obs->GetUnits(Unit::Alliance::Enemy);
-
 			bool enemy_nearby = false;
 			for (const auto& e : enemy_units) {
 				if (IsTrivialUnit(e)) continue;
@@ -514,9 +513,10 @@ void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
 					break;
 				}
 			}
-			if (!enemy_nearby) {
+			if (!enemy_nearby && !barracks.empty() && barracks.front()->orders.empty()) {
 				const Unit* b = !barracks.empty() ? barracks.front() : nullptr;
 				const Unit* f = !factories.empty() ? factories.front() : nullptr;
+
 				ramp_middle[0] = const_cast<sc2::Unit*>(f);
 				Swap(b, f, true);
 			}

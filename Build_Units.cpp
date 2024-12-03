@@ -45,8 +45,6 @@ void BasicSc2Bot::TrainMarines()
 
 	if (CanBuild(50) && !barracks.empty())
 	{
-		if (current_gameloop % 24 == 0)
-			std::cout << " in the third one" << std::endl;
 		for (const auto& b : barracks) {
 			if (b->orders.empty() && !reactor.empty() && b->add_on_tag == reactor.front()->tag)
 			{
