@@ -31,7 +31,8 @@ BasicSc2Bot::BasicSc2Bot()
 	nearest_corner_enemy(0.0f, 0.0f),
 	rally_barrack(0.0f, 0.0f),
 	rally_factory(0.0f, 0.0f),
-	rally_starport(0.0f, 0.0f) {
+	rally_starport(0.0f, 0.0f),
+	attack_target(0.0f, 0.0f){
 
 	build_order = {
 		ABILITY_ID::BUILD_SUPPLYDEPOT,
@@ -382,15 +383,20 @@ void BasicSc2Bot::OnUnitIdle(const Unit* unit)
 		break;
 	case UNIT_TYPEID::TERRAN_MARINE:
 		if (Distance2D(unit->pos, rally_barrack) >= 3.0f &&
-			Distance2D(unit->pos, enemy_start_location) >= 30.0f) {
+			Distance2D(unit->pos, enemy_start_location) >= 30.0f &&
+			!unit_attacking[unit]) {
 			Actions()->UnitCommand(unit, ABILITY_ID::MOVE_MOVE, rally_barrack);
 		}
 		break;
 	case UNIT_TYPEID::TERRAN_SIEGETANK:
 		if (Distance2D(unit->pos, rally_factory) >= 3.0f &&
-			Distance2D(unit->pos, enemy_start_location) >= 30.0f) {
+			Distance2D(unit->pos, enemy_start_location) >= 30.0f &&
+			!unit_attacking[unit]) {
 			Actions()->UnitCommand(unit, ABILITY_ID::MOVE_MOVE, rally_factory);
 		}
+		break;
+	case UNIT_TYPEID::TERRAN_BATTLECRUISER:
+		Retreat(unit);
 		break;
 	case UNIT_TYPEID::TERRAN_SCV:
 		HarvestIdleWorkers(unit);
@@ -667,15 +673,15 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) {
 		scvs_repairing.erase(unit->tag);
 	}
 	else if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER) {
+		battlecruiser_retreating.erase(unit);
 		num_battlecruisers--;
-		if (battlecruiser_retreating[unit]) {
-			battlecruiser_retreating[unit] = false;
-		}
 	}
 	else if (unit->unit_type == UNIT_TYPEID::TERRAN_MARINE) {
+		unit_attacking.erase(unit);
 		num_marines--;
 	}
 	else if (unit->unit_type == UNIT_TYPEID::TERRAN_SIEGETANK) {
+		unit_attacking.erase(unit);
 		num_siege_tanks--;
 	}
 }

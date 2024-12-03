@@ -237,7 +237,16 @@ private:
 	// Determines if there are enough units to attack.
 	bool EnoughArmy();
 
+	// Ensure continuous movement to attack target
+	void ContinuousMove();
+
 	bool need_clean_up = false;
+
+	// Determines if units are attacking.
+	std::unordered_map<const Unit*, bool> unit_attacking;
+
+	// Attack target for offense
+	Point2D attack_target;
 
 	// =========================
 	// Unit Control (SCV)
