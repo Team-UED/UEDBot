@@ -59,8 +59,9 @@ private:
 	uint32_t current_gameloop;
 	uint32_t last_gameloop;
 
-	// test
-	void CancelTraining();
+	uint32_t step_counter;
+
+	void on_start();
 
 	// =========================
 	// Economy Management
