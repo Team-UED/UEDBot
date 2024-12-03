@@ -227,8 +227,8 @@ void BasicSc2Bot::RetreatFromDanger() {
 
 			// If the SCV is in a dangerous position, make it retreat
 			if (EnemyNearby(unit->pos, true, 5)) {
-				if (current_gameloop % 24 == 0)
-					std::cout << "Retreating SCV" << std::endl;
+				/*if (current_gameloop % 24 == 0)
+					std::cout << "Retreating SCV" << std::endl;*/
 				Point2D safe_position = GetNearestSafePosition(unit->pos);
 				Actions()->UnitCommand(unit, ABILITY_ID::MOVE_MOVE, safe_position);
 			}
@@ -333,7 +333,7 @@ void BasicSc2Bot::UpdateRepairingSCVs() {
 
 					// Assign the SCV to the refinery if found
 					if (target_refinery) {
-						std::cout << "Returning SCV to refinery" << std::endl;
+						/*std::cout << "Returning SCV to refinery" << std::endl;*/
 						Actions()->UnitCommand(scv, ABILITY_ID::HARVEST_GATHER, target_refinery);
 						continue;
 					}
@@ -342,7 +342,7 @@ void BasicSc2Bot::UpdateRepairingSCVs() {
 					const Unit* closest_mineral = FindNearestMineralPatch();
 					// Assign the SCV to harvest minerals if a mineral patch is found
 					if (closest_mineral) {
-						std::cout << "Returning SCV to close mineral" << std::endl;
+						/*std::cout << "Returning SCV to close mineral" << std::endl;*/
 						Actions()->UnitCommand(scv, ABILITY_ID::HARVEST_GATHER, closest_mineral);
 					}
 				}
