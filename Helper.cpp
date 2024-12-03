@@ -134,13 +134,14 @@ Point2D BasicSc2Bot::GetSafePosition() {
 
 // Find the closest damaged unit for repair
 const Unit* BasicSc2Bot::FindDamagedUnit() {
-	for (const auto& unit : Observation()->GetUnits(Unit::Alliance::Self)) {
-		if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER &&
-			unit->health < unit->health_max) {
-			return unit;
-		}
-	}
-	return nullptr;
+	Units damaged_units = Observation()->GetUnits(Unit::Alliance::Self, [](const Unit& unit)
+		{
+			return unit.health < unit.health_max &&
+				(unit.unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER ||
+					unit.unit_type == UNIT_TYPEID::TERRAN_SIEGETANK ||
+					unit.unit_type == UNIT_TYPEID::TERRAN_SIEGETANKSIEGED);
+		});
+	return !damaged_units.empty() ? damaged_units.front() : nullptr;
 }
 
 // Find the closest damaged structure for repair
@@ -152,7 +153,7 @@ const Unit* BasicSc2Bot::FindDamagedStructure() {
 	float lowest_health = std::numeric_limits<float>::max();
 
 	for (const auto& unit : units) {
-		if (unit->health < unit->health_max && unit->is_alive) {
+		if ((unit->health < (unit->health_max * 0.6)) && unit->is_alive) {
 			int priority = std::numeric_limits<int>::max();
 
 			// Assign priorities (lower number = higher priority)
@@ -245,12 +246,13 @@ bool BasicSc2Bot::IsMainBaseUnderAttack() {
 	}
 
 	// Check if there are enemy combat units near our main base
-	Units enemy_units_near_base = Observation()->GetUnits(Unit::Alliance::Enemy, [this, main_base](const Unit& unit) {
-		float distance = Distance2D(unit.pos, main_base->pos);
-		if (distance < 25.0f && !IsWorkerUnit(&unit) && !IsTrivialUnit(&unit)) {
-			return true;
-		}
-		return false;
+	Units enemy_units_near_base = Observation()->GetUnits(Unit::Alliance::Enemy, [this, main_base](const Unit& unit)
+		{
+			float distance = Distance2D(unit.pos, main_base->pos);
+			if (distance < 25.0f && !IsWorkerUnit(&unit) && !IsTrivialUnit(&unit)) {
+				return true;
+			}
+			return false;
 		});
 
 	return !enemy_units_near_base.empty();
@@ -535,7 +537,7 @@ const Unit* BasicSc2Bot::FindRefinery() {
 
 void BasicSc2Bot::HarvestIdleWorkers(const Unit* unit) {
 
-	if (!unit) {
+	if (!unit || unit == scv_scout) {
 		return;
 	}
 

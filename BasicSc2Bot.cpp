@@ -350,20 +350,20 @@ void BasicSc2Bot::OnUnitIdle(const Unit* unit)
 	{
 	case UNIT_TYPEID::TERRAN_BARRACKS:
 		if (rally_barrack == Point2D(0.0f, 0.0f)) {
-			rally_barrack = towards(mainBase_barrack_point, start_location, 3.5f);
+			rally_barrack = towards(mainBase_barrack_point, start_location, 4.0f);
 			SetRallyPoint(unit, rally_barrack);
 			break;
 		}
 	case UNIT_TYPEID::TERRAN_FACTORY:
 		if (rally_factory == Point2D(0.0f, 0.0f)) {
-			rally_factory = towards(mainBase_barrack_point, start_location, 6.0f);
+			rally_factory = towards(mainBase_barrack_point, start_location, 10.0f);
 			SetRallyPoint(unit, rally_factory);
 			break;
 		}
 
 	case UNIT_TYPEID::TERRAN_STARPORT:
 		if (rally_starport == Point2D(0.0f, 0.0f)) {
-			rally_starport = towards(mainBase_barrack_point, start_location, 8.0f);
+			rally_starport = towards(mainBase_barrack_point, start_location, 10.0f);
 			SetRallyPoint(unit, rally_starport);
 			break;
 		}
