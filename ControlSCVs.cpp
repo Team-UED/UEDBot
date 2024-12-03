@@ -156,7 +156,7 @@ void BasicSc2Bot::RetreatFromDanger() {
 void BasicSc2Bot::RepairUnits() {
 
 	// Radius around the base considered "at base".
-	const float base_radius = 15.0f;
+	const float base_radius = 20.0f;
 	const Unit* target = FindDamagedUnit();
 
 	if (target) {
@@ -186,6 +186,7 @@ void BasicSc2Bot::RepairUnits() {
 				continue;
 			}
 
+			// Repair the target if it is at the base
 			bool is_at_base = sc2::Distance2D(target->pos, start_location) <= base_radius;
 			if (is_at_base) {
 				Actions()->UnitCommand(scv, ABILITY_ID::EFFECT_REPAIR, target);
