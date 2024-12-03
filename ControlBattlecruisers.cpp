@@ -14,7 +14,9 @@ void BasicSc2Bot::Retreat(const Unit* unit) {
 
     battlecruiser_retreat_location[unit] = retreat_location;
     battlecruiser_retreating[unit] = true;
-    Actions()->UnitCommand(unit, ABILITY_ID::MOVE_MOVE, retreat_location);
+    if (Distance2D(unit->pos, retreat_location) > 5.0f) {
+        Actions()->UnitCommand(unit, ABILITY_ID::MOVE_MOVE, retreat_location);
+    }
 }
 
 // Calculate the threat level for the Battlecruisers

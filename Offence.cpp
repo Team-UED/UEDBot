@@ -263,10 +263,10 @@ void BasicSc2Bot::CleanUp() {
               });
 
     // set the attack target
-    if (current_scout_index >= scout_points.size()) {
-        current_scout_index = 0;
+    if (clean_up_index >= scout_points.size()) {
+        clean_up_index = 0;
     }
-    attack_target = scout_points[current_scout_index];
+    attack_target = scout_points[clean_up_index];
 
     // Check for enemy units or structures near the attack target, including
     // snapshots
@@ -290,7 +290,7 @@ void BasicSc2Bot::CleanUp() {
 
             if (marine->orders.empty() ||
                 sc2::Distance2D(marine->pos, attack_target) <= 5.0f) {
-                current_scout_index++;
+                clean_up_index++;
             }
         }
     }

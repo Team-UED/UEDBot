@@ -276,12 +276,6 @@ private:
 	// SCVs scouting enemy base.
 	void SCVScoutEnemySpawn();
 
-	// SCV scout entire map
-	void SCVScoutMapInit();
-
-	// Updates SCV scouting status
-	void UpdateSCVScouting();
-
 	// =========================
 	// Unit Control (Battlecruiser)
 	// =========================
@@ -360,6 +354,9 @@ private:
 
 	// Track visted map locations
 	int current_scout_index = 0;
+
+	// Track visited map locations for clean up
+    int clean_up_index = 0;
 
 	// Track location of scouting SCV
 	sc2::Point2D scout_location;
