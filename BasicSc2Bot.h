@@ -234,6 +234,9 @@ private:
 	// Searches the map for enemy units and attacks them.
 	void CleanUp();
 
+	// Determines if there are enough units to attack.
+	bool EnoughArmy();
+
 	bool need_clean_up = false;
 
 	// =========================
