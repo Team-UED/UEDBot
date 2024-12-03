@@ -29,6 +29,9 @@ void BasicSc2Bot::TrainMarines()
 	{
 		if (factories.front()->build_progress > 0.4)
 		{
+			if (current_gameloop % 24 == 0)
+				std::cout << factories.front()->build_progress << " first one skipping" << std::endl;
+
 			return;
 		}
 	}
@@ -39,8 +42,11 @@ void BasicSc2Bot::TrainMarines()
 			return;
 		}
 	}
+
 	if (CanBuild(50) && !barracks.empty())
 	{
+		if (current_gameloop % 24 == 0)
+			std::cout << " in the third one" << std::endl;
 		for (const auto& b : barracks) {
 			if (b->orders.empty() && !reactor.empty() && b->add_on_tag == reactor.front()->tag)
 			{

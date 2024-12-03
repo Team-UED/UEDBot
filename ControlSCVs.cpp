@@ -28,81 +28,77 @@ void BasicSc2Bot::SCVScoutEnemySpawn() {
 		return;
 	}
 
-	if (is_scouting && !scv_scout) {
-		// Get scouting SCV
-		scv_scout = observation->GetUnit(scv_scout->tag);
+	if (is_scouting && scv_scout) {
 
-		if (scv_scout) {
-			// Update the scouting SCV's current locationcd.
-			scout_location = scv_scout->pos;
+		// Update the scouting SCV's current locationcd.
+		scout_location = scv_scout->pos;
 
-			// Check if SCV has reached the current target location
-			float distance_to_target = sc2::Distance2D(scout_location, enemy_start_locations[current_scout_location_index]);
-			if (distance_to_target < 5.0f) {
-				// Check for enemy town halls
-				sc2::Units enemy_structures = observation->GetUnits(sc2::Unit::Alliance::Enemy, [](const sc2::Unit& unit) {
-					return unit.unit_type == sc2::UNIT_TYPEID::TERRAN_COMMANDCENTER ||
-						unit.unit_type == sc2::UNIT_TYPEID::TERRAN_ORBITALCOMMAND ||
-						unit.unit_type == sc2::UNIT_TYPEID::TERRAN_COMMANDCENTERFLYING ||
-						unit.unit_type == sc2::UNIT_TYPEID::TERRAN_ORBITALCOMMANDFLYING ||
-						unit.unit_type == sc2::UNIT_TYPEID::TERRAN_PLANETARYFORTRESS ||
-						unit.unit_type == sc2::UNIT_TYPEID::ZERG_HATCHERY ||
-						unit.unit_type == sc2::UNIT_TYPEID::ZERG_LAIR ||
-						unit.unit_type == sc2::UNIT_TYPEID::ZERG_HIVE ||
-						unit.unit_type == sc2::UNIT_TYPEID::PROTOSS_NEXUS;
-					});
+		// Check if SCV has reached the current target location
+		float distance_to_target = sc2::Distance2D(scout_location, enemy_start_locations[current_scout_location_index]);
+		if (distance_to_target < 5.0f) {
+			// Check for enemy town halls
+			sc2::Units enemy_structures = observation->GetUnits(sc2::Unit::Alliance::Enemy, [](const sc2::Unit& unit) {
+				return unit.unit_type == sc2::UNIT_TYPEID::TERRAN_COMMANDCENTER ||
+					unit.unit_type == sc2::UNIT_TYPEID::TERRAN_ORBITALCOMMAND ||
+					unit.unit_type == sc2::UNIT_TYPEID::TERRAN_COMMANDCENTERFLYING ||
+					unit.unit_type == sc2::UNIT_TYPEID::TERRAN_ORBITALCOMMANDFLYING ||
+					unit.unit_type == sc2::UNIT_TYPEID::TERRAN_PLANETARYFORTRESS ||
+					unit.unit_type == sc2::UNIT_TYPEID::ZERG_HATCHERY ||
+					unit.unit_type == sc2::UNIT_TYPEID::ZERG_LAIR ||
+					unit.unit_type == sc2::UNIT_TYPEID::ZERG_HIVE ||
+					unit.unit_type == sc2::UNIT_TYPEID::PROTOSS_NEXUS;
+				});
 
-				for (const auto& structure : enemy_structures) {
-					if (sc2::Distance2D(scout_location, structure->pos) < 5.0f) {
-						// Set the enemy start location and stop scouting
-						enemy_start_location = structure->pos;
+			for (const auto& structure : enemy_structures) {
+				if (sc2::Distance2D(scout_location, structure->pos) < 5.0f) {
+					// Set the enemy start location and stop scouting
+					enemy_start_location = structure->pos;
 
-						// Find the nearest corner to the enemy base
-						float min_corner_distance = std::numeric_limits<float>::max();
+					// Find the nearest corner to the enemy base
+					float min_corner_distance = std::numeric_limits<float>::max();
 
-						for (const auto& corner : map_corners) {
-							float corner_distance = DistanceSquared2D(enemy_start_location, corner);
-							if (corner_distance < min_corner_distance) {
-								min_corner_distance = corner_distance;
-								nearest_corner_enemy = corner;
-							}
+					for (const auto& corner : map_corners) {
+						float corner_distance = DistanceSquared2D(enemy_start_location, corner);
+						if (corner_distance < min_corner_distance) {
+							min_corner_distance = corner_distance;
+							nearest_corner_enemy = corner;
 						}
-
-						// Find the corners adjacent to the enemy base
-						for (const auto& corner : map_corners) {
-							if (corner.x == nearest_corner_enemy.x || corner.y == nearest_corner_enemy.y) {
-								enemy_adjacent_corners.push_back(corner);
-							}
-						}
-
-						// Find the closest mineral patch to the start location
-						const Unit* closest_mineral = FindNearestMineralPatch();
-
-						// harvest mineral if a mineral patch is found
-						if (closest_mineral && scv_scout) {
-							Actions()->UnitCommand(scv_scout, ABILITY_ID::HARVEST_GATHER, closest_mineral);
-						}
-
-						// Mark scouting as complete
-						scv_scout = nullptr;
-						is_scouting = false;
-						scout_complete = true;
-						return;
 					}
-				}
 
-				// Move to the next potential enemy location if no town hall is found here
-				current_scout_location_index++;
-				// All locations have been checked. Mark scouting as complete
-				if (current_scout_location_index >= enemy_start_locations.size()) {
+					// Find the corners adjacent to the enemy base
+					for (const auto& corner : map_corners) {
+						if (corner.x == nearest_corner_enemy.x || corner.y == nearest_corner_enemy.y) {
+							enemy_adjacent_corners.push_back(corner);
+						}
+					}
+
+					// Find the closest mineral patch to the start location
+					const Unit* closest_mineral = FindNearestMineralPatch();
+
+					// harvest mineral if a mineral patch is found
+					if (closest_mineral && scv_scout) {
+						Actions()->UnitCommand(scv_scout, ABILITY_ID::HARVEST_GATHER, closest_mineral);
+					}
+
+					// Mark scouting as complete
 					scv_scout = nullptr;
 					is_scouting = false;
 					scout_complete = true;
 					return;
 				}
-				// Scout to the next location
-				Actions()->UnitCommand(scv_scout, sc2::ABILITY_ID::MOVE_MOVE, enemy_start_locations[current_scout_location_index], true);
 			}
+
+			// Move to the next potential enemy location if no town hall is found here
+			current_scout_location_index++;
+			// All locations have been checked. Mark scouting as complete
+			if (current_scout_location_index >= enemy_start_locations.size()) {
+				scv_scout = nullptr;
+				is_scouting = false;
+				scout_complete = true;
+				return;
+			}
+			// Scout to the next location
+			Actions()->UnitCommand(scv_scout, sc2::ABILITY_ID::MOVE_MOVE, enemy_start_locations[current_scout_location_index]);
 		}
 	}
 	else {
@@ -117,7 +113,7 @@ void BasicSc2Bot::SCVScoutEnemySpawn() {
 				scout_location = scv->pos;
 
 				// Command SCV to move to the initial possible enemy location
-				Actions()->UnitCommand(scv_scout, sc2::ABILITY_ID::MOVE_MOVE, enemy_start_locations[current_scout_location_index], true);
+				Actions()->UnitCommand(scv_scout, sc2::ABILITY_ID::MOVE_MOVE, enemy_start_locations[current_scout_location_index]);
 				break;
 			}
 		}
@@ -213,7 +209,8 @@ void BasicSc2Bot::RetreatFromDanger() {
 	// Iterate through all our units
 	for (const auto& unit : Observation()->GetUnits(Unit::Alliance::Self)) {
 		// Only consider SCVs that are not the scouting SCV
-		if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV && unit != scv_scout) {
+		if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV &&
+			unit != scv_scout) {
 
 			// Skip SCVs that are actively attacking
 			bool scv_is_attacking = false; // Renamed to avoid conflict
