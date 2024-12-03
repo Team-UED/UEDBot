@@ -276,12 +276,6 @@ private:
 	// SCVs scouting enemy base.
 	void SCVScoutEnemySpawn();
 
-	// SCV scout entire map
-	void SCVScoutMapInit();
-
-	// Updates SCV scouting status
-	void UpdateSCVScouting();
-
 	// =========================
 	// Unit Control (Battlecruiser)
 	// =========================
