@@ -302,6 +302,10 @@ bool BasicSc2Bot::build33_after_check(const Unit* builder, const AbilityID& buil
 					}
 					if (area33_check(Point2D(i, k), addon))
 					{
+						if (EnemyNearby(Point2D(i, k)))
+						{
+							return false;
+						}
 						Actions()->UnitCommand(builder, build_ability, Point2D(i, k));
 						return true;
 					}
@@ -323,6 +327,10 @@ bool BasicSc2Bot::build33_after_check(const Unit* builder, const AbilityID& buil
 					}
 					if (area33_check(Point2D(i, k), addon))
 					{
+						if (EnemyNearby(Point2D(i, k)))
+						{
+							return false;
+						}
 						Actions()->UnitCommand(builder, build_ability, Point2D(i, k));
 						return true;
 					}
@@ -340,6 +348,10 @@ bool BasicSc2Bot::build33_after_check(const Unit* builder, const AbilityID& buil
 						continue;
 					}
 					if (area33_check(Point2D(i, k), addon)) {
+						if (EnemyNearby(Point2D(i, k)))
+						{
+							return false;
+						}
 						Actions()->UnitCommand(builder, build_ability, Point2D(i, k));
 						return true;
 					}
@@ -357,6 +369,10 @@ bool BasicSc2Bot::build33_after_check(const Unit* builder, const AbilityID& buil
 						continue;
 					}
 					if (area33_check(Point2D(i, k), addon)) {
+						if (EnemyNearby(Point2D(i, k)))
+						{
+							return false;
+						}
 						Actions()->UnitCommand(builder, build_ability, Point2D(i, k));
 						return true;
 					}
@@ -873,23 +889,29 @@ void BasicSc2Bot::find_right_ramp(const Point2D& location)
 void BasicSc2Bot::depot_control() {
 	const ObservationInterface* obs = Observation();
 
-	Units dp_being_built = obs->GetUnits(Unit::Self, [](const Unit& unit) {
-		// display_type == 4 means the unit is Placeholder(?)
-		return unit.unit_type == UNIT_TYPEID::TERRAN_SUPPLYDEPOT && unit.build_progress < 1.0f && unit.display_type
-			!= 4;
+	Units dp_being_built_1 = obs->GetUnits(Unit::Self, [this](const Unit& unit)
+		{
+			// display_type == 4 means the unit is Placeholder(?)
+			return unit.unit_type == UNIT_TYPEID::TERRAN_SUPPLYDEPOT &&
+				Point2D(unit.pos) == mainBase_depot_points[0] &&
+				unit.display_type != 4;
+		});
+	Units dp_being_built_2 = obs->GetUnits(Unit::Self, [this](const Unit& unit)
+		{
+			// display_type == 4 means the unit is Placeholder(?)
+			return unit.unit_type == UNIT_TYPEID::TERRAN_SUPPLYDEPOT &&
+				Point2D(unit.pos) == mainBase_depot_points[1] &&
+				unit.display_type != 4;
 		});
 
 	//! first depot is the one that is built first
-	if ((!ramp_depots[0] || !ramp_depots[1]) && !dp_being_built.empty()) {
-		sc2::Unit* first_unit = const_cast<sc2::Unit*>(dp_being_built.front());
-		if (!ramp_depots[0]) {
-			ramp_depots[0] = first_unit;
-		}
-		//! make sure if ramp_depots[1] becomes ramp_depots[0] when ramp_depots[0] is destroyed, 
-		else if (!ramp_depots[1] && ramp_depots[0] != first_unit) {
-			std::swap(ramp_depots[0], ramp_depots[1]);
-			ramp_depots[1] = first_unit;
-		}
+	if (!ramp_depots[0] && !dp_being_built_1.empty())
+	{
+		ramp_depots[0] = const_cast<Unit*>(dp_being_built_1.front());
+	}
+	else if (!ramp_depots[1] && !dp_being_built_2.empty())
+	{
+		ramp_depots[1] = const_cast<Unit*>(dp_being_built_2.front());
 	}
 
 	Units depots = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SUPPLYDEPOT));
@@ -898,27 +920,15 @@ void BasicSc2Bot::depot_control() {
 
 	// Raise depots when enemies are nearby
 	for (const auto& depo : depots) {
-		bool enemy_nearby = false;
-		for (const auto& unit : enemy_units) {
-			if (IsTrivialUnit(unit)) continue;
-			if (Distance2D(unit->pos, depo->pos) < 15) {
-				enemy_nearby = true;
-				break;
-			}
-		}
-		if (!enemy_nearby) {
+		if (!EnemyNearby(depo->pos, false)) {
 			Actions()->UnitCommand(depo, ABILITY_ID::MORPH_SUPPLYDEPOT_LOWER);
 		}
 	}
 
 	// Lower depots when no enemies are nearby
 	for (const auto& depo : lowered_depots) {
-		for (const auto& unit : enemy_units) {
-			if (IsTrivialUnit(unit)) continue;
-			if (Distance2D(unit->pos, depo->pos) < 10) {
-				Actions()->UnitCommand(depo, ABILITY_ID::MORPH_SUPPLYDEPOT_RAISE);
-				break;
-			}
+		if (EnemyNearby(depo->pos, false, 10)) {
+			Actions()->UnitCommand(depo, ABILITY_ID::MORPH_SUPPLYDEPOT_RAISE);
 		}
 	}
 }

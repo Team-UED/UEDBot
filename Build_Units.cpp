@@ -29,9 +29,6 @@ void BasicSc2Bot::TrainMarines()
 	{
 		if (factories.front()->build_progress > 0.4)
 		{
-			if (current_gameloop % 24 == 0)
-				std::cout << factories.front()->build_progress << " first one skipping" << std::endl;
-
 			return;
 		}
 	}
@@ -122,17 +119,19 @@ void BasicSc2Bot::TrainSiegeTanks() {
 			if (first_battlecruiser)
 			{
 				std::vector<float> MineralGas = HowCloseToResourceGoal(400, 300);
-				float avg_resources = (MineralGas[0] + MineralGas[1]) / 2;
+				/*float avg_resources = (MineralGas[0] + MineralGas[1]) / 2;*/
+				float m_close = MineralGas[0];
+				float g_close = MineralGas[1];
 				float how_close = !starport.empty() ? HowClosetoFinishCurrentJob(starport.front()) : 0.0f;
 				factory = factories.front();
-				if (num_starports && ((0.0f < how_close && how_close < 0.4f) && avg_resources > 0.8f))
+				if (num_starports && ((0.0f < how_close && how_close < 0.6f)))
 				{
 					if (factory->add_on_tag != 0 && factory->orders.empty())
 					{
 						Actions()->UnitCommand(factory, ABILITY_ID::TRAIN_SIEGETANK);
 					}
 				}
-				else if (num_starports && avg_resources > 1.5f)
+				else if (num_starports && m_close > 0.9f && g_close > 0.9f)
 				{
 
 					if (factory->add_on_tag != 0 && factory->orders.empty())

@@ -388,6 +388,7 @@ private:
 	// checks if enough resources are available to build
 	bool CanBuild(const int32_t mineral, const int32_t gas = 0, const int32_t food = 0) const;
 
+	bool EnemyNearby(const Point2D& pos, const bool worker = true, const int32_t distance = 15);
 
 	// Checks if an expansion is needed.
 	bool NeedExpansion() const;
@@ -401,8 +402,8 @@ private:
 	// Get the main base.
 	const Unit* GetMainBase() const;
 
-	// Returns true if the position is dangerous. (e.g., enemy units nearby)
-	bool IsDangerousPosition(const Point2D& pos);
+	//// Returns true if the position is dangerous. (e.g., enemy units nearby)
+	//bool IsDangerousPosition(const Point2D& pos);
 
 	// Gets the closest safe position for SCVs. (e.g., towards the main base)
 	Point2D GetSafePosition();
@@ -451,8 +452,6 @@ private:
 	bool IsBuilding(const UnitOrder& order) const;
 
 	bool ALLBuildingsFilter(const Unit& unit) const;
-
-	Point2D GetChokepointPosition();
 
 	bool IsAnyBaseUnderAttack();
 

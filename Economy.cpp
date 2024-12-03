@@ -206,9 +206,7 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
 				{
 					continue;
 				}
-
-				// find the closest mineral patch to the chokepoint
-				if (Query()->Placement(ABILITY_ID::BUILD_SUPPLYDEPOT, mainBase_depot_points[i]))
+				if (!EnemyNearby(mainBase_depot_points[i], true) && Query()->Placement(ABILITY_ID::BUILD_SUPPLYDEPOT, mainBase_depot_points[i]))
 				{
 					scv_building = builder;
 					Actions()->UnitCommand(builder, ability_type_for_structure, mainBase_depot_points[i], true);
@@ -216,7 +214,6 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
 				}
 				return false;
 			}
-
 			return depot_area_check(builder, ability_type_for_structure, base_location);
 		}
 
@@ -233,7 +230,6 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
 				{
 					if (Query()->Placement(ABILITY_ID::BUILD_BARRACKS, mainBase_barrack_point))
 					{
-
 						Actions()->UnitCommand(scv_building, ability_type_for_structure, mainBase_barrack_point, true);
 						return true;
 					}
@@ -242,7 +238,7 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
 				else
 				{
 					// ramp is blocked?
-					if (!ramp_middle[0])
+					if (!ramp_middle[0] && ramp_mid_destroyed->unit_type == UNIT_TYPEID::TERRAN_BARRACKS && !EnemyNearby(mainBase_barrack_point, true))
 					{
 						Actions()->UnitCommand(scv_building, ability_type_for_structure, mainBase_barrack_point, true);
 						return true;
@@ -263,12 +259,13 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
 							tl = addons_t.front();
 							Point2D tl_p = Point2D(tl->pos);
 							tl_p = Point2D(tl_p.x - 2.5f, tl_p.y + 0.5f);
-							if (Query()->Placement(ability_type_for_structure, tl_p)) {
+							if (!EnemyNearby(tl_p, true) && Query()->Placement(ability_type_for_structure, tl_p)) {
 								Actions()->UnitCommand(builder, ability_type_for_structure, tl_p);
 								return true;
 							}
 						}
 					}
+
 					return build33_after_check(builder, ability_type_for_structure, base_location, true);
 				}
 			}
@@ -286,7 +283,7 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
 				{
 					return build33_after_check(builder, ability_type_for_structure, base_location, true);
 				}
-				else if (!ramp_middle[0])
+				else if (!ramp_middle[0] && ramp_mid_destroyed->unit_type == UNIT_TYPEID::TERRAN_FACTORY && !EnemyNearby(mainBase_barrack_point))
 				{
 					Actions()->UnitCommand(scv_building, ability_type_for_structure, mainBase_barrack_point, true);
 					return true;
@@ -302,7 +299,7 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
 						tl = addons_t.front();
 						Point2D tl_p = Point2D(tl->pos);
 						tl_p = Point2D(tl_p.x - 2.5f, tl_p.y + 0.5f);
-						if (Query()->Placement(ability_type_for_structure, tl_p)) {
+						if (!EnemyNearby(tl_p, true) && Query()->Placement(ability_type_for_structure, tl_p)) {
 							Actions()->UnitCommand(builder, ability_type_for_structure, tl_p);
 							return true;
 						}
@@ -335,7 +332,7 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
 						tl = addons_t.front();
 						Point2D tl_p = Point2D(tl->pos);
 						tl_p = Point2D(tl_p.x - 2.5f, tl_p.y + 0.5f);
-						if (Query()->Placement(ability_type_for_structure, tl_p)) {
+						if (!EnemyNearby(tl_p, true) && Query()->Placement(ability_type_for_structure, tl_p)) {
 							Actions()->UnitCommand(builder, ability_type_for_structure, tl_p);
 							return true;
 						}
@@ -616,7 +613,7 @@ void BasicSc2Bot::BuildExpansion() {
 	}
 
 	// Check if we have enough resources to expand
-	if (!CanBuild(450)) {
+	if (!CanBuild(500)) {
 		return;
 	}
 
@@ -645,7 +642,7 @@ void BasicSc2Bot::BuildExpansion() {
 	}
 
 	// Check if the expansion location is safe
-	if (IsDangerousPosition(next_expansion)) {
+	if (EnemyNearby(next_expansion)) {
 		return; // Don't expand to a location that's under threat
 	}
 
@@ -665,9 +662,8 @@ void BasicSc2Bot::BuildExpansion() {
 			break;
 		}
 	}
-
 	if (builder) {
-		if (Query()->Placement(ABILITY_ID::BUILD_COMMANDCENTER, next_expansion)) {
+		if (!EnemyNearby(next_expansion, true, 20) && Query()->Placement(ABILITY_ID::BUILD_COMMANDCENTER, next_expansion)) {
 			Actions()->UnitCommand(builder, ABILITY_ID::BUILD_COMMANDCENTER, next_expansion);
 		}
 		return;
