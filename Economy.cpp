@@ -446,19 +446,7 @@ void BasicSc2Bot::AssignWorkers() {
 			continue;
 		}
 
-		const Unit* nearest_refinery = nullptr;
-		float min_distance_refinery = std::numeric_limits<float>::max();
-
-		// Assign to refineries needing workers
-		for (const auto& refinery : refineries) {
-			if (refinery->assigned_harvesters < refinery->ideal_harvesters) {
-				float distance = Distance2D(scv->pos, refinery->pos);
-				if (distance < min_distance_refinery) {
-					min_distance_refinery = distance;
-					nearest_refinery = refinery;
-				}
-			}
-		}
+		const Unit* nearest_refinery = FindRefinery();
 
 		if (nearest_refinery) {
 			Actions()->UnitCommand(scv, ABILITY_ID::HARVEST_GATHER, nearest_refinery);
@@ -466,18 +454,7 @@ void BasicSc2Bot::AssignWorkers() {
 		}
 
 		// Assign to the nearest mineral patch at our bases
-		const Unit* closest_mineral = nullptr;
-		float min_distance_mineral = std::numeric_limits<float>::max();
-
-		for (const auto& base_pair : base_minerals_map) {
-			for (const auto& mineral : base_pair.second) {
-				float distance = Distance2D(scv->pos, mineral->pos);
-				if (distance < min_distance_mineral) {
-					min_distance_mineral = distance;
-					closest_mineral = mineral;
-				}
-			}
-		}
+		const Unit* closest_mineral = FindNearestMineralPatch();
 
 		if (closest_mineral) {
 			Actions()->UnitCommand(scv, ABILITY_ID::HARVEST_GATHER, closest_mineral);
