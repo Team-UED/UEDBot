@@ -57,9 +57,9 @@ void BasicSc2Bot::BuildBarracks() {
 			TryBuildStructure(ABILITY_ID::BUILD_BARRACKS, UNIT_TYPEID::TERRAN_SCV);
 		}
 	}
-	else if (phase == 3 && bases.size() > 1)
+	else if (phase == 3)
 	{
-		if (barracks.size() < 2 && CanBuild(600) && current_gameloop % 46 == 0) {
+		if (barracks.size() < 2 && CanBuild(750) && current_gameloop % 46 == 0) {
 			TryBuildStructure(ABILITY_ID::BUILD_BARRACKS, UNIT_TYPEID::TERRAN_SCV);
 		}
 	}
@@ -243,8 +243,11 @@ void BasicSc2Bot::BuildAddon() {
 							}
 						}
 						// Build addon
-						Actions()->UnitCommand(building, build_order);
-						break;
+						if (!EnemyNearby(building->pos, true))
+						{
+							Actions()->UnitCommand(building, build_order);
+							break;
+						}
 					}
 					addon_bits >>= 1;
 				}

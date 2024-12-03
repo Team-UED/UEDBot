@@ -15,6 +15,21 @@ bool BasicSc2Bot::CanBuild(const int32_t mineral, const int32_t gas, const int32
 		obs->GetFoodCap() - obs->GetFoodUsed() >= food;
 }
 
+bool BasicSc2Bot::EnemyNearby(const Point2D& pos, const bool worker, const int32_t distance) {
+	// if enemy units are within a certain radius (run!!!!)
+	const ObservationInterface* obs = Observation();
+	Units enemy_units = obs->GetUnits(Unit::Alliance::Enemy);
+	bool enemy_nearby = false;
+	for (const auto& e : enemy_units) {
+		if (IsTrivialUnit(e) || (worker * IsWorkerUnit(e))) continue;
+		if (Distance2D(e->pos, pos) < 15) {
+			enemy_nearby = true;
+			break;
+		}
+	}
+	return enemy_nearby;
+}
+
 std::vector<float> BasicSc2Bot::HowCloseToResourceGoal(const int32_t& m, const int32_t& g) const {
 	const ObservationInterface* obs = Observation();
 	return { obs->GetMinerals() / static_cast<float>(m), obs->GetVespene() / static_cast<float>(g) };
@@ -58,7 +73,7 @@ bool BasicSc2Bot::NeedExpansion() const {
 	size_t num_scvs = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SCV)).size();
 
 	// Expand when we have enough SCVs to saturate our current bases
-	return num_scvs >= 0.95 * total_ideal_workers;
+	return num_scvs >= 0.9f * total_ideal_workers;
 }
 
 Point3D BasicSc2Bot::GetNextExpansion() const {
@@ -108,20 +123,20 @@ Point3D BasicSc2Bot::GetNextExpansion() const {
 	return next_expansion;
 }
 
-// Detect dangerous positions
-bool BasicSc2Bot::IsDangerousPosition(const Point2D& pos) {
-	// if enemy units are within a certain radius (run!!!!)
-	auto enemy_units = Observation()->GetUnits(Unit::Alliance::Enemy);
-	for (const auto& enemy : enemy_units) {
-		if (IsTrivialUnit(enemy) || IsWorkerUnit(enemy)) {
-			continue;
-		}
-		if (Distance2D(pos, enemy->pos) < 5.0f) {
-			return true;
-		}
-	}
-	return false;
-}
+//// Detect dangerous positions
+//bool BasicSc2Bot::IsDangerousPosition(const Point2D& pos) {
+//	// if enemy units are within a certain radius (run!!!!)
+//	auto enemy_units = Observation()->GetUnits(Unit::Alliance::Enemy);
+//	for (const auto& enemy : enemy_units) {
+//		if (IsTrivialUnit(enemy) || IsWorkerUnit(enemy)) {
+//			continue;
+//		}
+//		if (Distance2D(pos, enemy->pos) < 5.0f) {
+//			return true;
+//		}
+//	}
+//	return false;
+//}
 
 // Get a safe position for the main base
 Point2D BasicSc2Bot::GetSafePosition() {
@@ -153,7 +168,7 @@ const Unit* BasicSc2Bot::FindDamagedStructure() {
 	float lowest_health = std::numeric_limits<float>::max();
 
 	for (const auto& unit : units) {
-		if ((unit->health < (unit->health_max * 0.6)) && unit->is_alive) {
+		if ((unit->health < (unit->health_max * 0.65)) && unit->is_alive) {
 			int priority = std::numeric_limits<int>::max();
 
 			// Assign priorities (lower number = higher priority)
@@ -395,20 +410,6 @@ Point2D BasicSc2Bot::GetNearestSafePosition(const Point2D& pos) {
 	return nearest_safe_position;
 }
 
-Point2D BasicSc2Bot::GetChokepointPosition() {
-	// Get the main base location
-	const Unit* main_base = GetMainBase();
-	if (!main_base) {
-		return Point2D(0.0f, 0.0f);
-	}
-
-	// Find the closest chokepoint to the main base
-	float closest_distance = std::numeric_limits<float>::max();
-	Point2D chokepoint_position = Point2D(0.0f, 0.0f);
-
-	return chokepoint_position;
-}
-
 bool BasicSc2Bot::IsAnyBaseUnderAttack() {
 	const ObservationInterface* observation = Observation();
 	Units bases = observation->GetUnits(Unit::Alliance::Self, IsTownHall());
@@ -512,6 +513,11 @@ const Unit* BasicSc2Bot::FindNearestMineralPatch() {
 			closest_mineral = mineral;
 		}
 	}
+	if (closest_mineral != nullptr) {
+		Point3D p = closest_mineral->pos + Point3D(1.0f, 1.0f, 1.0f);
+		Debug()->DebugBoxOut(closest_mineral->pos, p);
+	}
+
 
 	return closest_mineral;
 };
@@ -532,6 +538,10 @@ const Unit* BasicSc2Bot::FindRefinery() {
 		}
 	}
 
+	if (target_refinery != nullptr) {
+		Point3D p = target_refinery->pos + Point3D(1.0f, 1.0f, 1.0f);
+		Debug()->DebugBoxOut(target_refinery->pos, p);
+	}
 	return target_refinery;
 };
 

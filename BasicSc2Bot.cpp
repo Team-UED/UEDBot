@@ -295,6 +295,9 @@ void BasicSc2Bot::on_start() {
 
 void BasicSc2Bot::OnGameStart() {
 	// 
+	/*Debug()->DebugIgnoreResourceCost();
+	Debug()->DebugFastBuild();
+	Debug()->SendDebug();*/
 }
 
 void BasicSc2Bot::OnGameEnd() {
@@ -364,9 +367,10 @@ void BasicSc2Bot::OnUnitIdle(const Unit* unit)
 		break;
 	case UNIT_TYPEID::TERRAN_FACTORY:
 		if (rally_factory == Point2D(0.0f, 0.0f)) {
-			rally_factory = towards(mainBase_barrack_point, start_location, 6.0f);
+			Point2D p1 = towards(mainBase_depot_points[0], start_location, 6.0f);
+			Point2D p2 = towards(mainBase_depot_points[1], start_location, 6.0f);
+			rally_factory = Distance2D(p1, start_location) < Distance2D(p2, start_location) ? p1 : p2;
 			SetRallyPoint(unit, rally_factory);
-
 		}
 		break;
 	case UNIT_TYPEID::TERRAN_STARPORT:
@@ -453,10 +457,10 @@ void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
 
 
 	if (unit->unit_type == UNIT_TYPEID::TERRAN_REFINERY) {
-		const ObservationInterface* observation = Observation();
+		const ObservationInterface* obs = Observation();
 
 		// Get all SCVs that are free
-		Units scvs = observation->GetUnits(Unit::Alliance::Self, [](const Unit& unit) {
+		Units scvs = obs->GetUnits(Unit::Alliance::Self, [](const Unit& unit) {
 			return unit.unit_type == UNIT_TYPEID::TERRAN_SCV && !unit.orders.empty() &&
 				unit.orders.front().ability_id == ABILITY_ID::HARVEST_GATHER;
 			});
@@ -468,7 +472,7 @@ void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
 			Actions()->UnitCommand(scv, ABILITY_ID::HARVEST_GATHER, unit);
 			++scv_count;
 			// Stop after assigning 3 SCVs
-			if (scv_count >= 3) break;
+			if (scv_count == 2) break;
 		}
 	}
 
@@ -504,19 +508,12 @@ void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
 		{
 			Units factories = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FACTORY));
 			Units barracks = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKS));
-			Units enemy_units = obs->GetUnits(Unit::Alliance::Enemy);
-			bool enemy_nearby = false;
-			for (const auto& e : enemy_units) {
-				if (IsTrivialUnit(e)) continue;
-				if (Distance2D(e->pos, barracks.front()->pos) < 15) {
-					enemy_nearby = true;
-					break;
-				}
-			}
-			if (!enemy_nearby && !barracks.empty() && barracks.front()->orders.empty()) {
-				const Unit* b = !barracks.empty() ? barracks.front() : nullptr;
-				const Unit* f = !factories.empty() ? factories.front() : nullptr;
 
+			if (barracks.empty()) return;
+
+			if (!EnemyNearby(barracks.front()->pos, true) && !barracks.empty() && barracks.front()->orders.empty()) {
+				const Unit* b = barracks.front();
+				const Unit* f = factories.front();
 				ramp_middle[0] = const_cast<sc2::Unit*>(f);
 				Swap(b, f, true);
 			}
@@ -554,8 +551,7 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) {
 		update_build_map(false, unit);
 		//TODO: make sure if ramp_depots[1] becomes ramp_depots[0] when ramp_depots[0] is destroyed, 
 		if (unit == ramp_depots[0]) {
-			ramp_depots[0] = ramp_depots[1];
-			ramp_depots[1] = nullptr;
+			ramp_depots[0] = nullptr;
 		}
 		else if (unit == ramp_depots[1]) {
 			ramp_depots[1] = nullptr;

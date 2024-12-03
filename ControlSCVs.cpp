@@ -210,7 +210,8 @@ void BasicSc2Bot::RetreatFromDanger() {
 	for (const auto& unit : Observation()->GetUnits(Unit::Alliance::Self)) {
 		// Only consider SCVs that are not the scouting SCV
 		if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV &&
-			unit != scv_scout) {
+			unit != scv_scout && !(Distance2D(unit->pos, enemy_start_location) < 20.0f))
+		{
 
 			// Skip SCVs that are actively attacking
 			bool scv_is_attacking = false; // Renamed to avoid conflict
@@ -225,9 +226,11 @@ void BasicSc2Bot::RetreatFromDanger() {
 			}
 
 			// If the SCV is in a dangerous position, make it retreat
-			if (IsDangerousPosition(unit->pos)) {
+			if (EnemyNearby(unit->pos, true, 5)) {
+				if (current_gameloop % 24 == 0)
+					std::cout << "Retreating SCV" << std::endl;
 				Point2D safe_position = GetNearestSafePosition(unit->pos);
-				Actions()->UnitCommand(unit, ABILITY_ID::SMART, safe_position);
+				Actions()->UnitCommand(unit, ABILITY_ID::MOVE_MOVE, safe_position);
 			}
 		}
 	}
@@ -252,6 +255,9 @@ void BasicSc2Bot::RepairUnits() {
 			}
 
 			// Check if SCV is already repairing
+			if (scvs_repairing.find(scv->tag) != scvs_repairing.end()) {
+				continue;
+			}
 			bool is_repairing = false;
 			for (const auto& order : scv->orders) {
 				if (order.ability_id == ABILITY_ID::EFFECT_REPAIR || order.ability_id == ABILITY_ID::EFFECT_REPAIR_SCV) {
@@ -327,6 +333,7 @@ void BasicSc2Bot::UpdateRepairingSCVs() {
 
 					// Assign the SCV to the refinery if found
 					if (target_refinery) {
+						std::cout << "Returning SCV to refinery" << std::endl;
 						Actions()->UnitCommand(scv, ABILITY_ID::HARVEST_GATHER, target_refinery);
 						continue;
 					}
@@ -335,6 +342,7 @@ void BasicSc2Bot::UpdateRepairingSCVs() {
 					const Unit* closest_mineral = FindNearestMineralPatch();
 					// Assign the SCV to harvest minerals if a mineral patch is found
 					if (closest_mineral) {
+						std::cout << "Returning SCV to close mineral" << std::endl;
 						Actions()->UnitCommand(scv, ABILITY_ID::HARVEST_GATHER, closest_mineral);
 					}
 				}
@@ -342,7 +350,6 @@ void BasicSc2Bot::UpdateRepairingSCVs() {
 		}
 	}
 }
-
 
 // SCVs attack in urgent situations (e.g., enemy attacking the main base)
 void BasicSc2Bot::SCVAttackEmergency() {
@@ -387,7 +394,7 @@ void BasicSc2Bot::SCVAttackEmergency() {
 					if (target && !IsWorkerUnit(target) &&
 						Distance2D(target->pos, main_base->pos) <
 						max_distance_from_base) {
-						scvs_sent++;
+						++scvs_sent;
 						if (scvs_sent > max_scvs_to_send) {
 							break;
 						}
