@@ -651,6 +651,9 @@ private:
 	// For managing repairs.
 	std::unordered_set<Tag> scvs_repairing;
 
+	// For guranteeing our mineral generation.
+    std::unordered_set<Tag> scvs_gathering;
+
 	// For managing SCV safety.
 	std::unordered_set<Tag> scvs_under_attack;
 
