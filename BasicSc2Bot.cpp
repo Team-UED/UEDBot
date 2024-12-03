@@ -262,16 +262,28 @@ void BasicSc2Bot::on_start() {
 	}
 
 	// Mark 6 scvs to repair
-	for (const auto& unit : Observation()->GetUnits(Unit::Alliance::Self)) {
-		if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV) {
-			if (scvs_repairing.size() >= 6) {
-				break;
-			}
-			if (scvs_repairing.find(unit->tag) == scvs_repairing.end()) {
-				scvs_repairing.insert(unit->tag);
-			}
-		}
-	}
+	//for (const auto& unit : Observation()->GetUnits(Unit::Alliance::Self)) {
+	//	if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV) {
+	//		if (scvs_repairing.size() >= 6) {
+	//			break;
+	//		}
+	//		if (scvs_repairing.find(unit->tag) == scvs_repairing.end()) {
+	//			scvs_repairing.insert(unit->tag);
+	//		}
+	//	}
+	//}
+
+	// Mark 6 scvs to always gather
+    for (const auto &unit : Observation()->GetUnits(Unit::Alliance::Self)) {
+        if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV) {
+            if (scvs_gathering.size() >= 6) {
+                break;
+            }
+            if (scvs_gathering.find(unit->tag) == scvs_gathering.end()) {
+                scvs_gathering.insert(unit->tag);
+            }
+        }
+    }
 
 	// Get map dimensions
 	unsigned int width = game_info.width;
