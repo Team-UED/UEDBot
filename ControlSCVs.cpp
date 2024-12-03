@@ -161,7 +161,6 @@ void BasicSc2Bot::RepairUnits() {
 
 	if (target) {
 		for (const auto& scv_tag : scvs_repairing) {
-
 			const Unit* scv = Observation()->GetUnit(scv_tag);
 
 			// Skip if the SCV is invalid
@@ -170,9 +169,6 @@ void BasicSc2Bot::RepairUnits() {
 			}
 
 			// Check if SCV is already repairing
-			if (scvs_repairing.find(scv->tag) != scvs_repairing.end()) {
-				continue;
-			}
 			bool is_repairing = false;
 			for (const auto& order : scv->orders) {
 				if (order.ability_id == ABILITY_ID::EFFECT_REPAIR || order.ability_id == ABILITY_ID::EFFECT_REPAIR_SCV) {
@@ -181,14 +177,9 @@ void BasicSc2Bot::RepairUnits() {
 				}
 			}
 
-			// Skip SCV if it is already repairing
-			if (is_repairing) {
-				continue;
-			}
-
 			// Repair the target if it is at the base
 			bool is_at_base = sc2::Distance2D(target->pos, start_location) <= base_radius;
-			if (is_at_base) {
+			if (is_at_base && !is_repairing) {
 				Actions()->UnitCommand(scv, ABILITY_ID::EFFECT_REPAIR, target);
 			}
 		}
@@ -227,6 +218,22 @@ void BasicSc2Bot::RepairStructures() {
 }
 
 void BasicSc2Bot::UpdateRepairingSCVs() {
+    // if there are less than 6 repairing SCVs, add more to the scv_repairing
+    // set
+    if (scvs_repairing.size() < 6) {
+        for (const auto &unit : Observation()->GetUnits(Unit::Alliance::Self)) {
+            if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV) {
+                // Make sure it's not a gathering SCV
+                if (scvs_gathering.find(unit->tag) != scvs_gathering.end()) {
+                    continue;
+                }
+                if (scvs_repairing.find(unit->tag) == scvs_repairing.end()) {
+                    scvs_repairing.insert(unit->tag);
+                }
+            }
+        }
+    }
+
 	for (const auto& scv_tag : scvs_repairing) {
 		const Unit* scv = Observation()->GetUnit(scv_tag);
 
@@ -298,6 +305,12 @@ void BasicSc2Bot::SCVAttackEmergency() {
 			for (const auto& unit :
 				Observation()->GetUnits(Unit::Alliance::Self)) {
 				if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV) {
+                    // Skip SCVs that are harvesting minerals or gas
+                    if (scvs_gathering.find(unit->tag) !=
+                        scvs_gathering.end()) {
+                        continue;
+                    }
+
 					// Ensure SCV does not move too far from the main base
 					if (Distance2D(unit->pos, main_base->pos) >
 						max_distance_from_base) {

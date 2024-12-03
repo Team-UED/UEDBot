@@ -14,7 +14,7 @@ void BasicSc2Bot::Retreat(const Unit* unit) {
 
     battlecruiser_retreat_location[unit] = retreat_location;
     battlecruiser_retreating[unit] = true;
-    if (Distance2D(unit->pos, retreat_location) > 5.0f) {
+    if (Distance2D(unit->pos, retreat_location) >= 5.0f) {
         Actions()->UnitCommand(unit, ABILITY_ID::MOVE_MOVE, retreat_location);
     }
 }
@@ -179,7 +179,6 @@ void BasicSc2Bot::Jump() {
 		}
 	}
 }
-
 
 // Target mechanics for Battlecruisers
 void BasicSc2Bot::TargetBattlecruisers() {
