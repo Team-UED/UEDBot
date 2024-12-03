@@ -16,7 +16,7 @@ Download and install [Visual Studio 2022](https://www.visualstudio.com/downloads
 
 ```bat
 :: Clone the project
-$ git clone --recursive https://github.com/tuero/BasicSc2Bot.git
+$ git clone --recursive https://github.com/imrichardwu/StarCraft2UED.git
 $ cd BasicSc2Bot
 
 :: Create build directory.
@@ -40,7 +40,7 @@ Note: Try opening the SC2 game client before installing. If the game crashes bef
 To build, you must use the version of clang that comes with MacOS. 
 ```bat
 :: Clone the project
-$ git clone --recursive https://github.com/tuero/BasicSc2Bot.git
+$ git clone --recursive https://github.com/imrichardwu/StarCraft2UED.git
 $ cd BasicSc2Bot
 
 :: Create build directory.
