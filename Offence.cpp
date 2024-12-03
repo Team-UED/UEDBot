@@ -4,11 +4,14 @@ void BasicSc2Bot::Offense() {
 
     const ObservationInterface* observation = Observation();
 
+    Units marines = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_MARINE));
+    Units siege_tanks = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SIEGETANK));
+	Units battlecruisers = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BATTLECRUISER));
+    Units starports = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_STARPORT));
+
    // Check if we should start attacking
     if (!is_attacking) {
 
-        Units starports = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_STARPORT));
-        
         if (starports.empty()) {
             return;
         }
@@ -17,29 +20,40 @@ void BasicSc2Bot::Offense() {
 
 		// Default timing for first attack When battlecruiser production is at 40%
         float timing = 0.4f;
+        const GameInfo& game_info = observation->GetGameInfo();
 
-		// Attack timing for the case where the enemy is not in diagonal opposite (Production at 60%)
-        if ((nearest_corner_enemy.x == nearest_corner_ally.x) ||
-            (nearest_corner_enemy.y == nearest_corner_ally.y)) {
-            timing = 0.60f;
+		if (game_info.map_name == "Cactus Valley LE (Void)") {
+            if ((nearest_corner_enemy.x == nearest_corner_ally.x) ||
+                (nearest_corner_enemy.y == nearest_corner_ally.y)) {
+                timing = 0.55f;
+            }
+			else {
+				timing = 0.4f;
+			}
+		}
+        else {
+            timing = 0.5f;
         }
 
 		// Check if we have enough army to attack
         // At least one battlecruisers is currently in combat and not retreating
         if (UnitsInCombat((UNIT_TYPEID::TERRAN_BATTLECRUISER)) > 0) {
-            for (const auto& unit : Observation()->GetUnits(Unit::Alliance::Self)) {
-                if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER && !battlecruiser_retreating[unit]) {
-                    if (num_marines >= 8 - UnitsInCombat(UNIT_TYPEID::TERRAN_MARINE) && 
-                        num_siege_tanks >= 1 - UnitsInCombat(UNIT_TYPEID::TERRAN_SIEGETANKSIEGED)) {
-                        if (need_clean_up) {
-                            CleanUp();
-                        } else {
-                            // Continue attacking
-                            AllOutRush();
-                        }
-                        return;
-                    }
+			bool not_retreating = false;
+            for (const auto& battlecruiser :battlecruisers) {
+                if (!battlecruiser_retreating[battlecruiser]) {
+					not_retreating = true;
+					break;
                 }
+            }
+            if (EnoughArmy() && not_retreating) {
+                if (need_clean_up) {
+                    CleanUp();
+                }
+                else {
+                    // Continue attacking
+                    AllOutRush();
+                }
+                return;
             }
         }
         // No Battlecruisers in combat
@@ -49,7 +63,7 @@ void BasicSc2Bot::Offense() {
                 if (!starport->orders.empty()) {
                     for (const auto& order : starport->orders) {
                         if (order.ability_id == ABILITY_ID::TRAIN_BATTLECRUISER) {
-                            if (order.progress >= timing) {
+                            if (order.progress >= timing - 0.02f && order.progress <= timing + 0.02f) {
                                 if (need_clean_up) {
                                     CleanUp();
                                 } else {
@@ -123,6 +137,20 @@ void BasicSc2Bot::AllOutRush() {
 		return;
 	}
 
+    Units marine_near_rally;
+	Units tank_near_rally;
+
+	for (const auto& marine : marines) {
+		if (Distance2D(marine->pos, rally_barrack) < 5.0f) {
+			marine_near_rally.push_back(marine);
+		}
+	}
+	for (const auto& tank : siege_tanks) {
+		if (Distance2D(tank->pos, rally_factory) < 5.0f) {
+			tank_near_rally.push_back(tank);
+		}
+	}
+
     // Determine attack target 
     Point2D attack_target = enemy_start_location;
 
@@ -183,13 +211,13 @@ void BasicSc2Bot::AllOutRush() {
     }
 
     // Move units to the target location
-    for (const auto& marine : marines) {
+    for (const auto& marine : marine_near_rally) {
         if (marine->orders.empty() && Distance2D(marine->pos, attack_target) > 5.0f) {
             Actions()->UnitCommand(marine, ABILITY_ID::MOVE_MOVE, attack_target);
         }
     }
 
-    for (const auto& tank : siege_tanks) {
+    for (const auto& tank : tank_near_rally) {
         if (tank->orders.empty() && Distance2D(tank->pos, attack_target) > 5.0f) {
             Actions()->UnitCommand(tank, ABILITY_ID::MOVE_MOVE, attack_target);
         }
@@ -257,5 +285,39 @@ void BasicSc2Bot::CleanUp() {
                 current_scout_index++;
             }
         }
+    }
+}
+
+bool BasicSc2Bot::EnoughArmy() {
+	const ObservationInterface* observation = Observation();
+
+	Units marines = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_MARINE));
+	Units siege_tanks = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SIEGETANK));
+
+	if (marines.empty() && siege_tanks.empty()) {
+		return false;
+	}
+
+    int marine_count = 0;
+	int tank_count = 0;
+
+    if (!marines.empty()) {
+        for (const auto& marine : marines) {
+            if (Distance2D(marine->pos, rally_barrack) <= 5.0f) {
+                marine_count++;
+            }
+        }
+    }
+
+    if (!siege_tanks.empty()) {
+        for (const auto& tank : siege_tanks) {
+            if (Distance2D(tank->pos, rally_factory) <= 5.0f) {
+                tank_count++;
+            }
+        }
+    }
+
+    if (marine_count + tank_count >= 9) {
+        return true;
     }
 }
