@@ -3,7 +3,6 @@
 void BasicSc2Bot::Offense() {
 
     const ObservationInterface* observation = Observation();
-    need_clean_up = true;
 
    // Check if we should start attacking
     if (!is_attacking) {
