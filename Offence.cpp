@@ -258,14 +258,4 @@ void BasicSc2Bot::CleanUp() {
             }
         }
     }
-    for (const auto &tank : siege_tanks) {
-        if (tank->orders.empty() &&
-            Distance2D(tank->pos, attack_target) > 5.0f) {
-            Actions()->UnitCommand(tank, ABILITY_ID::MOVE_MOVE, attack_target);
-            if (tank->orders.empty() ||
-                sc2::Distance2D(tank->pos, attack_target) <= 5.0f) {
-                current_scout_index++;
-            }
-        }
-    }
 }
