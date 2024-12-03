@@ -357,33 +357,37 @@ void BasicSc2Bot::OnUnitIdle(const Unit* unit)
 	{
 	case UNIT_TYPEID::TERRAN_BARRACKS:
 		if (rally_barrack == Point2D(0.0f, 0.0f)) {
-			rally_barrack = towards(mainBase_barrack_point, start_location, 4.0f);
+			rally_barrack = towards(mainBase_barrack_point, start_location, 3.0f);
 			SetRallyPoint(unit, rally_barrack);
-			break;
+
 		}
+		break;
 	case UNIT_TYPEID::TERRAN_FACTORY:
 		if (rally_factory == Point2D(0.0f, 0.0f)) {
-			rally_factory = towards(mainBase_barrack_point, start_location, 10.0f);
+			rally_factory = towards(mainBase_barrack_point, start_location, 6.5f);
 			SetRallyPoint(unit, rally_factory);
-			break;
-		}
 
+		}
+		break;
 	case UNIT_TYPEID::TERRAN_STARPORT:
 		if (rally_starport == Point2D(0.0f, 0.0f)) {
-			rally_starport = towards(mainBase_barrack_point, start_location, 10.0f);
+			rally_starport = towards(mainBase_barrack_point, start_location, 6.0f);
 			SetRallyPoint(unit, rally_starport);
-			break;
+
 		}
+		break;
 	case UNIT_TYPEID::TERRAN_MARINE:
 		if (Distance2D(unit->pos, rally_barrack) >= 3.0f &&
 			Distance2D(unit->pos, enemy_start_location) >= 30.0f) {
 			Actions()->UnitCommand(unit, ABILITY_ID::MOVE_MOVE, rally_barrack);
 		}
+		break;
 	case UNIT_TYPEID::TERRAN_SIEGETANK:
 		if (Distance2D(unit->pos, rally_factory) >= 3.0f &&
 			Distance2D(unit->pos, enemy_start_location) >= 30.0f) {
 			Actions()->UnitCommand(unit, ABILITY_ID::MOVE_MOVE, rally_factory);
 		}
+		break;
 	case UNIT_TYPEID::TERRAN_SCV:
 		HarvestIdleWorkers(unit);
 		break;
@@ -433,16 +437,20 @@ void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
 
 	if (unit_type == UNIT_TYPEID::TERRAN_BARRACKS) {
 		++num_barracks;
-	} else if (unit_type == UNIT_TYPEID::TERRAN_FACTORY) {
+	}
+	else if (unit_type == UNIT_TYPEID::TERRAN_FACTORY) {
 		++num_factories;
-	} else if (unit_type == UNIT_TYPEID::TERRAN_STARPORT) {
+	}
+	else if (unit_type == UNIT_TYPEID::TERRAN_STARPORT) {
 		++num_starports;
-	} else if (unit_type == UNIT_TYPEID::TERRAN_FUSIONCORE) {
+	}
+	else if (unit_type == UNIT_TYPEID::TERRAN_FUSIONCORE) {
 		++num_fusioncores;
-	} else if (unit_type == UNIT_TYPEID::TERRAN_COMMANDCENTER) {
+	}
+	else if (unit_type == UNIT_TYPEID::TERRAN_COMMANDCENTER) {
 		bases.emplace_back(unit);
 	}
-	
+
 
 	if (unit->unit_type == UNIT_TYPEID::TERRAN_REFINERY) {
 		const ObservationInterface* observation = Observation();

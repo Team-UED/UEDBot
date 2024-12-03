@@ -537,7 +537,7 @@ const Unit* BasicSc2Bot::FindRefinery() {
 
 void BasicSc2Bot::HarvestIdleWorkers(const Unit* unit) {
 
-	if (!unit || unit == scv_scout) {
+	if (!unit || unit == scv_scout || unit == scv_building) {
 		return;
 	}
 
