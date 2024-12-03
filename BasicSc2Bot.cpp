@@ -291,7 +291,7 @@ void BasicSc2Bot::on_start() {
 	}
 
 	// Start scouting from the beginning
-	current_scout_index = 0;
+	clean_up_index = 0;
 }
 
 void BasicSc2Bot::OnGameStart() {
