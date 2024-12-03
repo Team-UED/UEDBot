@@ -355,6 +355,9 @@ private:
 	// Track visted map locations
 	int current_scout_index = 0;
 
+	// Track visited map locations for clean up
+    int clean_up_index = 0;
+
 	// Track location of scouting SCV
 	sc2::Point2D scout_location;
 
