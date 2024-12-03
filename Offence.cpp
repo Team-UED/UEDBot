@@ -3,7 +3,6 @@
 void BasicSc2Bot::Offense() {
 
     const ObservationInterface* observation = Observation();
-
     Units marines = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_MARINE));
     Units siege_tanks = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SIEGETANK));
 	Units battlecruisers = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BATTLECRUISER));
@@ -100,6 +99,7 @@ void BasicSc2Bot::Offense() {
         }
     }
     else {
+		ContinuousMove();
         // Check if our army is mostly dead
         Units marines = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_MARINE));
 		Units siege_tanks = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SIEGETANK));
@@ -107,9 +107,15 @@ void BasicSc2Bot::Offense() {
         if (num_marines < 5) {
             is_attacking = false;
             for (const auto& marine : marines) {
+                if (unit_attacking[marine]) {
+					unit_attacking[marine] = false;
+                }
                 Actions()->UnitCommand(marine, ABILITY_ID::MOVE_MOVE, rally_barrack);
             }
             for (const auto& tank : siege_tanks) {
+                if (unit_attacking[tank]) {
+                    unit_attacking[tank] = false;
+                }
                 Actions()->UnitCommand(tank, ABILITY_ID::MOVE_MOVE, rally_factory);
             }
         }
@@ -152,7 +158,7 @@ void BasicSc2Bot::AllOutRush() {
 	}
 
     // Determine attack target 
-    Point2D attack_target = enemy_start_location;
+    attack_target = enemy_start_location;
 
     // Check for enemy presence at the attack target
     bool enemy_base_destroyed = true;
@@ -213,12 +219,14 @@ void BasicSc2Bot::AllOutRush() {
     // Move units to the target location
     for (const auto& marine : marine_near_rally) {
         if (marine->orders.empty() && Distance2D(marine->pos, attack_target) > 5.0f) {
+            unit_attacking[marine] = true;
             Actions()->UnitCommand(marine, ABILITY_ID::MOVE_MOVE, attack_target);
         }
     }
 
     for (const auto& tank : tank_near_rally) {
         if (tank->orders.empty() && Distance2D(tank->pos, attack_target) > 5.0f) {
+			unit_attacking[tank] = true;
             Actions()->UnitCommand(tank, ABILITY_ID::MOVE_MOVE, attack_target);
         }
     }
@@ -320,4 +328,31 @@ bool BasicSc2Bot::EnoughArmy() {
     if (marine_count + tank_count >= 9) {
         return true;
     }
+}
+
+void BasicSc2Bot::ContinuousMove() {
+    const ObservationInterface* observation = Observation();
+
+    Units marines = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_MARINE));
+    Units siege_tanks = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SIEGETANK));
+
+    if (marines.empty() && siege_tanks.empty()) {
+        return;
+    }
+
+    if (!marines.empty()) {
+        for (const auto& marine : marines) {
+            if (unit_attacking[marine] && marine->orders.empty()) {
+				Actions()->UnitCommand(marine, ABILITY_ID::MOVE_MOVE, attack_target);
+            }
+        }
+    }
+
+	if (!siege_tanks.empty()) {
+		for (const auto& tank : siege_tanks) {
+			if (unit_attacking[tank] && tank->orders.empty()) {
+				Actions()->UnitCommand(tank, ABILITY_ID::MOVE_MOVE, attack_target);
+			}
+		}
+	}
 }

@@ -168,7 +168,12 @@ void BasicSc2Bot::Jump() {
 			unit->health >= unit->health_max &&
 			Distance2D(unit->pos, enemy_start_location) > 40.0f &&
 			HasAbility(unit, ABILITY_ID::EFFECT_TACTICALJUMP)) {
-			Actions()->UnitCommand(unit, ABILITY_ID::EFFECT_TACTICALJUMP, enemy_start_location);
+			if (attack_target != enemy_start_location) {
+				Actions()->UnitCommand(unit, ABILITY_ID::EFFECT_TACTICALJUMP, attack_target);
+			}
+			else {
+				Actions()->UnitCommand(unit, ABILITY_ID::EFFECT_TACTICALJUMP, enemy_start_location);
+			}
 		}
 	}
 }
