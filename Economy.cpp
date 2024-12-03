@@ -160,6 +160,11 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
 			continue;
 		}
 
+		// Check if the SCV is a gatherer
+        if (scvs_gathering.find(scv->tag) != scvs_gathering.end()) {
+            continue;
+        }
+
 		// Check if the SCV is already repairing
 		if (scvs_repairing.find(scv->tag) != scvs_repairing.end()) {
 			continue;
@@ -589,7 +594,12 @@ void BasicSc2Bot::BuildRefineries() {
 							break;
 						}
 					}
-					if (!is_constructing && scv != scv_scout) {
+                    // Check if the SCV is a gatherer
+                    if (scvs_gathering.find(scv->tag) != scvs_gathering.end()) {
+                        continue;
+                    }
+                    if (!is_constructing && scv != scv_scout &&
+                        scvs_repairing.find(scv->tag) == scvs_repairing.end()) {
 						builder = scv;
 						break;
 					}
@@ -655,6 +665,10 @@ void BasicSc2Bot::BuildExpansion() {
 		if (scvs_repairing.find(scv->tag) != scvs_repairing.end()) {
 			continue;
 		}
+        // Check if the SCV is a gatherer
+        if (scvs_gathering.find(scv->tag) != scvs_gathering.end()) {
+            continue;
+        }
 
 		// Check if the SCV is idle (has no orders)
 		if (scv->orders.empty()) {
