@@ -38,7 +38,7 @@ void BasicSc2Bot::TrainSCVs() {
 	Units scvs = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SCV));
 	if (scvs.size() >= desired_scv_count) return;
 
-    // Get all completed Supply Depots
+	// Get all completed Supply Depots
 	Units dps = obs->GetUnits(Unit::Alliance::Self, [](const Unit& unit) {
 		return unit.unit_type == UNIT_TYPEID::TERRAN_SUPPLYDEPOT && !(unit.build_progress < 0.5f);
 		});
@@ -130,10 +130,10 @@ void BasicSc2Bot::UseScan() {
 			cloacked_enemy = enemy;
 		}
 	}
-	
+
 	// Scan cloacked enemy
 	float energy_cost = 50.0f;
-	if (cloacked_enemy) { 
+	if (cloacked_enemy) {
 		// Loop Orbital Command to check if it has enough energy
 		for (const auto& orbital : orbital_commands) {
 			if (orbital->energy >= energy_cost) {
@@ -157,16 +157,23 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
 
 	// Find an SCV to build with
 	Units scvs = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SCV));
+	Units scvs_gas = GetAllSCVsGettingGas();
 
 	// Check if we have a builder
 	const Unit* builder = nullptr;
-	for (const auto& scv : scvs) {
+	for (const auto& scv : scvs)
+	{
+		bool IsHoldingGas = scv->buffs.empty() ? false : scv->buffs.front() == BUFF_ID::CARRYHARVESTABLEVESPENEGEYSERGAS;
 		// Check if the SCV is scv_scout
-        // Check if the SCV is a gas harvester
+		// Check if the SCV is a gas harvester
 		// Check if the SCV is already repairing
+		auto it = FindInVector(scvs_gas, scv);
 		if (scv == scv_scout ||
-			scvs_gas.find(scv->tag) != scvs_gas.end() ||
-			scvs_repairing.find(scv->tag) != scvs_repairing.end()) {
+			it != scvs_gas.end() ||
+			scvs_repairing.find(scv->tag) != scvs_repairing.end() ||
+			IsHoldingGas
+			)
+		{
 			continue;
 		}
 
@@ -174,7 +181,7 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
 		float min_distance_to_base = std::numeric_limits<float>::max();
 		float distance_to_cc;
 		for (const auto& cc : bases) {
-            // Check if the SCV is within the base radius
+			// Check if the SCV is within the base radius
 			if (ability_type_for_structure == ABILITY_ID::BUILD_SUPPLYDEPOT &&
 				cc != bases[0]) {
 				continue;
@@ -188,11 +195,11 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
 		if (min_distance_to_base > base_radius) {
 			continue;
 		}
-        // Check if the SCV is already building
+		// Check if the SCV is already building
 		for (const auto& order : scv->orders) {
 			if (!IsBuildingOrder(order) && !builder) {
 				builder = scv;
-                break;
+				break;
 			}
 		}
 		if (builder) {
@@ -200,7 +207,7 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
 		}
 	}
 
-    // Check if we have a builder
+	// Check if we have a builder
 	if (builder) {
 		if (ability_type_for_structure == ABILITY_ID::BUILD_SUPPLYDEPOT)
 		{
@@ -419,88 +426,107 @@ bool BasicSc2Bot::TryBuildSupplyDepot() {
 }
 
 void BasicSc2Bot::AssignWorkers() {
-    const ObservationInterface *obs = Observation();
+	const ObservationInterface* obs = Observation();
 
-    // Get idle SCVs
-    Units idle_scvs = obs->GetUnits(Unit::Alliance::Self, [](const Unit &unit) {
-        return unit.unit_type == UNIT_TYPEID::TERRAN_SCV && unit.orders.empty();
-    });
+	// Get idle SCVs
+	Units idle_scvs = obs->GetUnits(Unit::Alliance::Self, [](const Unit& unit) {
+		return unit.unit_type == UNIT_TYPEID::TERRAN_SCV && unit.orders.empty();
+		});
 
-    // Get bases and refineries
-    Units bases = obs->GetUnits(Unit::Alliance::Self, IsTownHall());
-    Units refineries = obs->GetUnits(Unit::Alliance::Self,
-                                     IsUnit(UNIT_TYPEID::TERRAN_REFINERY));
+	Units scvs_not_holding = obs->GetUnits(Unit::Alliance::Self, [](const Unit& unit) {
+		return unit.unit_type == UNIT_TYPEID::TERRAN_SCV &&
+			!unit.orders.empty() &&
+			unit.orders.front().ability_id == ABILITY_ID::HARVEST_GATHER &&
+			unit.buffs.empty();
+		});
 
-	// Always keep scv_gas.size() == refineries.size() * 3
-    if (scvs_gas.size() < refineries.size() * 3) {
-        int replacement_count = refineries.size() * 3 - scvs_gas.size();
-        for (const auto &scv : idle_scvs) {
-            if (replacement_count == 0) { // No more needed
-                break;
-            }
-            // If scv is scout or repairing, skip
-            if (scv == scv_scout ||
-                scvs_repairing.find(scv->tag) != scvs_repairing.end()) {
-                continue;
-            }
-            scvs_gas.insert(scv->tag); // Add to gas set
-            replacement_count--;
-        }
-    }
+	// Get bases and refineries
+	Units bases = obs->GetUnits(Unit::Alliance::Self, IsTownHall());
+	Units refineries = obs->GetUnits(Unit::Alliance::Self, [](const Unit& unit) {
+		return unit.unit_type == UNIT_TYPEID::TERRAN_REFINERY && unit.build_progress == 1.0f;
+		});
 
-    // Map bases to nearby minerals
-    std::map<const Unit *, Units> base_minerals_map;
-    for (const auto &base : bases) {
-        Units nearby_minerals =
-            obs->GetUnits(Unit::Alliance::Neutral, [base](const Unit &unit) {
-                return IsMineralPatch()(unit) &&
-                       Distance2D(unit.pos, base->pos) < 10.0f;
-            });
-        base_minerals_map[base] = nearby_minerals;
-    }
+	// Keep track of workers per refinery
+	std::map<const Unit*, int> refinery_worker_count;
+	for (const auto& refinery : refineries) {
+		refinery_worker_count[refinery] =
+			refinery->assigned_harvesters; // Current workers on the refinery
+	}
 
-    // Keep track of workers per refinery
-    std::map<const Unit *, int> refinery_worker_count;
-    for (const auto &refinery : refineries) {
-        refinery_worker_count[refinery] =
-            refinery->assigned_harvesters; // Current workers on the refinery
-    }
+	// Map bases to nearby minerals
+	std::map<const Unit*, Units> base_minerals_map;
+	for (const auto& base : bases) {
+		Units nearby_minerals =
+			obs->GetUnits(Unit::Alliance::Neutral, [base](const Unit& unit) {
+			return IsMineralPatch()(unit) &&
+				Distance2D(unit.pos, base->pos) < 10.0f;
+				});
+		base_minerals_map[base] = nearby_minerals;
+	}
+	if (!idle_scvs.empty())
+	{
+		// Assign idle SCVs to tasks
+		for (const auto& scv : idle_scvs)
+		{
+			// Skip SCVs that are scouting or repairing
+			if (scv == scv_scout ||
+				scvs_repairing.find(scv->tag) != scvs_repairing.end())
+			{
+				continue;
+			}
 
-    // Assign idle SCVs to tasks
-    for (const auto &scv : idle_scvs) {
-        // Skip SCVs that are scouting or repairing
-        if (scv == scv_scout ||
-            scvs_repairing.find(scv->tag) != scvs_repairing.end() ||
-            scvs_gas.find(scv->tag) != scvs_gas.end()) {
-            continue;
-        }
+			// Assign SCV to a Refinery with fewer than 3 workers
+			const Unit* target_refinery = nullptr;
+			for (const auto& refinery : refineries)
+			{
+				if (refinery_worker_count[refinery] < 3)
+				{
+					target_refinery = refinery;
+					++refinery_worker_count[refinery]; // Increment worker count for
+					break;
+				}
+			}
+			if (target_refinery)
+			{
+				Actions()->UnitCommand(scv, ABILITY_ID::HARVEST_GATHER, target_refinery);
+				continue;
+			}
 
-        // Assign SCV to a Refinery with fewer than 3 workers
-        const Unit *target_refinery = nullptr;
-        for (const auto &refinery : refineries) {
-            if (refinery_worker_count[refinery] < 3) {
-                target_refinery = refinery;
-                refinery_worker_count[refinery]++; // Increment worker count for
-                                                   // this refinery
-                break;
-            }
-        }
-        if (target_refinery) {
-            // If the scv is a gas harvester, gather gas
-            if (scvs_gas.find(scv->tag) != scvs_gas.end()) {
-                Actions()->UnitCommand(scv, ABILITY_ID::HARVEST_GATHER,
-                                       target_refinery);
-            }
-            continue;
-        }
+			// Assign SCV to the nearest mineral patch
+			const Unit* closest_mineral = FindNearestMineralPatch();
+			if (closest_mineral)
+			{
+				Actions()->UnitCommand(scv, ABILITY_ID::HARVEST_GATHER,
+					closest_mineral);
+			}
+		}
+	}
+	else if (!refineries.empty() && idle_scvs.empty())
+	{
+		for (const auto& scv : scvs_not_holding)
+		{
+			// Skip SCVs that are scouting or repairing
+			if (scv == scv_scout ||
+				scvs_repairing.find(scv->tag) != scvs_repairing.end()) {
+				continue;
+			}
 
-        // Assign SCV to the nearest mineral patch
-        const Unit *closest_mineral = FindNearestMineralPatch();
-        if (closest_mineral) {
-            Actions()->UnitCommand(scv, ABILITY_ID::HARVEST_GATHER,
-                                   closest_mineral);
-        }
-    }
+			// Assign SCV to a Refinery with fewer than 3 workers
+			const Unit* target_refinery = nullptr;
+			for (const auto& refinery : refineries) {
+				if (refinery_worker_count[refinery] < 3) {
+					target_refinery = refinery;
+					++refinery_worker_count[refinery]; // Increment worker count for
+					break;
+				}
+			}
+			if (target_refinery)
+			{
+				Actions()->UnitCommand(scv, ABILITY_ID::HARVEST_GATHER, target_refinery);
+				continue;
+			}
+		}
+	}
 }
 
 void BasicSc2Bot::ReassignWorkers() {
@@ -520,10 +546,10 @@ void BasicSc2Bot::ReassignWorkers() {
 
 		int worker_diff = base->ideal_harvesters - base->assigned_harvesters;
 		if (worker_diff > 0) {
-			under_saturated_bases.push_back(base);
+			under_saturated_bases.emplace_back(base);
 		}
 		else if (worker_diff < 0) {
-			over_saturated_bases.push_back(base);
+			over_saturated_bases.emplace_back(base);
 		}
 	}
 
@@ -539,10 +565,6 @@ void BasicSc2Bot::ReassignWorkers() {
 
 		for (int i = 0; i < excess_workers && i < workers_at_base.size(); ++i) {
 			const Unit* worker = workers_at_base[i];
-
-			if (scvs_gas.find(worker->tag) != scvs_gas.end()) {
-                scvs_gas.erase(worker->tag); // Remove from gas set
-            }
 
 			// Assign to the closest under-saturated base
 			const Unit* closest_base = nullptr;
@@ -578,7 +600,8 @@ void BasicSc2Bot::ReassignWorkers() {
 	for (const auto& refinery : refineries) {
 		int excess_workers = refinery->assigned_harvesters - refinery->ideal_harvesters;
 
-		if (excess_workers > 0) {
+		if (excess_workers > 0)
+		{
 			Units gas_workers = obs->GetUnits(Unit::Alliance::Self, [refinery](const Unit& unit) {
 				return unit.unit_type == UNIT_TYPEID::TERRAN_SCV &&
 					!unit.orders.empty() &&
@@ -624,9 +647,14 @@ void BasicSc2Bot::BuildRefineries() {
 				});
 			if (refineries.empty() && obs->GetMinerals() >= 75 && (!barracks.empty() || phase)) {
 				Units scvs = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SCV));
+				Units scvs_gas = GetAllSCVsGettingGas();
 				const Unit* builder = nullptr;
 
 				for (const auto& scv : scvs) {
+					auto it = FindInVector(scvs_gas, scv);
+					if (scvs_repairing.find(scv->tag) != scvs_repairing.end() || it != scvs_gas.end()) {
+						continue;
+					}
 					bool is_constructing = false;
 					for (const auto& order : scv->orders) {
 						if (order.ability_id == ABILITY_ID::BUILD_SUPPLYDEPOT ||
@@ -637,10 +665,7 @@ void BasicSc2Bot::BuildRefineries() {
 							break;
 						}
 					}
-					// Check if the SCV is a gatherer
-					if (scvs_gas.find(scv->tag) != scvs_gas.end()) {
-						continue;
-					}
+
 					if (!is_constructing && scv != scv_scout &&
 						scvs_repairing.find(scv->tag) == scvs_repairing.end()) {
 						builder = scv;
@@ -666,7 +691,7 @@ void BasicSc2Bot::BuildExpansion() {
 	}
 
 	// Check if we have enough resources to expand
-	if (!CanBuild(500)) {
+	if (!CanBuild(550)) {
 		return;
 	}
 
@@ -700,21 +725,20 @@ void BasicSc2Bot::BuildExpansion() {
 	}
 
 	Units scvs = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SCV));
+	Units scvs_gas = GetAllSCVsGettingGas();
 	const Unit* builder = nullptr;
 
 	// Find an idle SCV to build the expansion
 	for (const auto& scv : scvs) {
 		// Skip SCVs that are in the scvs_repairing set
-		if (scvs_repairing.find(scv->tag) != scvs_repairing.end()) {
-			continue;
-		}
 		// Check if the SCV is a gatherer
-		if (scvs_gas.find(scv->tag) != scvs_gas.end()) {
+		auto it = FindInVector(scvs_gas, scv);
+		if (scvs_repairing.find(scv->tag) != scvs_repairing.end() || it != scvs_gas.end()) {
 			continue;
 		}
 
 		// Check if the SCV is idle (has no orders)
-		if (scv->orders.empty()) {
+		if (!scv->orders.empty() && scv->orders.front().ability_id == ABILITY_ID::HARVEST_GATHER) {
 			builder = scv;
 			break;
 		}

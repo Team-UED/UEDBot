@@ -105,41 +105,42 @@ void BasicSc2Bot::Offense() {
 		// Check if our army is mostly dead
 		Units marines = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_MARINE));
 		Units siege_tanks = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SIEGETANK));
-        // If army is severely depleted, retreat and rebuild before attacking again
-        if (AllRetreating()) {
-            is_attacking = false;
-            for (const auto& marine : marines) {
-                if (unit_attacking[marine]) {
+		// If army is severely depleted, retreat and rebuild before attacking again
+		if (AllRetreating()) {
+			is_attacking = false;
+			for (const auto& marine : marines) {
+				if (unit_attacking[marine]) {
 					unit_attacking[marine] = false;
-                }
-                Actions()->UnitCommand(marine, ABILITY_ID::MOVE_MOVE, rally_barrack);
-            }
-            for (const auto& tank : siege_tanks) {
-                if (unit_attacking[tank]) {
-                    unit_attacking[tank] = false;
-                }
-                Actions()->UnitCommand(tank, ABILITY_ID::MOVE_MOVE, rally_factory);
-            }
-        }
-        else {
-            if (need_clean_up) {
-                CleanUp();
-            } else {
-                if (EnoughArmy()) {
-                    AllOutRush();
-                }
-            }
-        }
-    }
+				}
+				Actions()->UnitCommand(marine, ABILITY_ID::MOVE_MOVE, rally_barrack);
+			}
+			for (const auto& tank : siege_tanks) {
+				if (unit_attacking[tank]) {
+					unit_attacking[tank] = false;
+				}
+				Actions()->UnitCommand(tank, ABILITY_ID::MOVE_MOVE, rally_factory);
+			}
+		}
+		else {
+			if (need_clean_up) {
+				CleanUp();
+			}
+			else {
+				if (EnoughArmy()) {
+					AllOutRush();
+				}
+			}
+		}
+	}
 }
 
 void BasicSc2Bot::AllOutRush() {
-	const ObservationInterface* observation = Observation();
+	const ObservationInterface* obs = Observation();
 
 	// Get all our combat units
-	Units marines = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_MARINE));
-	Units siege_tanks = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SIEGETANK));
-	Units battlecruisers = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BATTLECRUISER));
+	Units marines = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_MARINE));
+	Units siege_tanks = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SIEGETANK));
+	Units battlecruisers = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BATTLECRUISER));
 
 	// Check if we have any units to attack with
 	if (marines.empty() && siege_tanks.empty()) {
@@ -151,12 +152,12 @@ void BasicSc2Bot::AllOutRush() {
 
 	for (const auto& marine : marines) {
 		if (Distance2D(marine->pos, rally_barrack) < 5.0f) {
-			marine_near_rally.push_back(marine);
+			marine_near_rally.emplace_back(marine);
 		}
 	}
 	for (const auto& tank : siege_tanks) {
 		if (Distance2D(tank->pos, rally_factory) < 5.0f) {
-			tank_near_rally.push_back(tank);
+			tank_near_rally.emplace_back(tank);
 		}
 	}
 
@@ -167,21 +168,21 @@ void BasicSc2Bot::AllOutRush() {
 	bool enemy_base_destroyed = true;
 
 	// Check for enemy units or structures near the attack target, including snapshots
-	for (const auto& enemy_unit : observation->GetUnits(Unit::Alliance::Enemy)) {
-		if ((enemy_unit->display_type == Unit::DisplayType::Visible || enemy_unit->display_type == Unit::DisplayType::Snapshot) &&
-			enemy_unit->is_alive &&
-			Distance2D(enemy_unit->pos, attack_target) < 25.0f) {
-			enemy_base_destroyed = false;
-			break;
-		}
+	Units enemy_units = obs->GetUnits(Unit::Alliance::Enemy, [this](const Unit& unit) {
+		return (unit.display_type == Unit::DisplayType::Visible ||
+			unit.display_type == Unit::DisplayType::Snapshot) &&
+			unit.is_alive &&
+			Distance2D(unit.pos, attack_target) < 25.0f;
+		});
+	if (!enemy_units.empty()) {
+		enemy_base_destroyed = false;
 	}
-
 	if (enemy_base_destroyed) {
 		const Unit* closest_unit = nullptr;
 		float min_distance = std::numeric_limits<float>::max();
 
 		// Search for any visible unit left on the map
-		for (const auto& enemy_unit : observation->GetUnits(Unit::Alliance::Enemy)) {
+		for (const auto& enemy_unit : obs->GetUnits(Unit::Alliance::Enemy)) {
 			if (enemy_unit->display_type == Unit::DisplayType::Visible && enemy_unit->is_alive) {
 				float distance = Distance2D(enemy_unit->pos, start_location);
 				if (distance < min_distance) {
@@ -198,7 +199,7 @@ void BasicSc2Bot::AllOutRush() {
 		// No visible units left, search for snapshot units
 		else {
 			// Search for the closest snapshot unit
-			for (const auto& enemy_unit : observation->GetUnits(Unit::Alliance::Enemy)) {
+			for (const auto& enemy_unit : obs->GetUnits(Unit::Alliance::Enemy)) {
 				if (enemy_unit->display_type == Unit::DisplayType::Snapshot && enemy_unit->is_alive) {
 					float distance = Distance2D(enemy_unit->pos, start_location);
 					if (distance < min_distance) {
@@ -234,8 +235,10 @@ void BasicSc2Bot::AllOutRush() {
 		}
 	}
 
-	if (enemy_base_destroyed && !battlecruisers.empty()) {
-		for (const auto& battlecruiser : battlecruisers) {
+	if (enemy_base_destroyed && !battlecruisers.empty())
+	{
+		for (const auto& battlecruiser : battlecruisers)
+		{
 			if (battlecruiser->orders.empty() && Distance2D(battlecruiser->pos, attack_target) > 5.0f) {
 				Actions()->UnitCommand(battlecruiser, ABILITY_ID::MOVE_MOVE, attack_target);
 			}
@@ -246,7 +249,6 @@ void BasicSc2Bot::AllOutRush() {
 		is_attacking = true;
 	}
 }
-
 
 void BasicSc2Bot::CleanUp() {
 	const ObservationInterface* observation = Observation();
@@ -362,21 +364,21 @@ void BasicSc2Bot::ContinuousMove() {
 }
 
 bool BasicSc2Bot::AllRetreating() {
-    const ObservationInterface* observation = Observation();
+	const ObservationInterface* observation = Observation();
 
-    Units battlecruisers = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BATTLECRUISER));
+	Units battlecruisers = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BATTLECRUISER));
 
 	bool retreat = true;
 
 	// All Battlecruisers destroyed, or none trained yet
-    if (battlecruisers.empty()) {
-        if (!first_battlecruiser_trained) {
-            retreat = false;
-        }
-        else {
-            return retreat;
-        }
-    }
+	if (battlecruisers.empty()) {
+		if (!first_battlecruiser_trained) {
+			retreat = false;
+		}
+		else {
+			return retreat;
+		}
+	}
 
 	for (const auto& battlecruiser : battlecruisers) {
 		if (!battlecruiser_retreating[battlecruiser] || battlecruiser->health > 150.0f) {
