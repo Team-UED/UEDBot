@@ -329,6 +329,9 @@ private:
 	// Controls Marines to target enemy units
 	void TargetMarines();
 
+	// Controls Marines to target agressive scouts(reapers)
+	void KillScouts();
+
 	// Checks if the ramp is intact
 	bool IsRampIntact();
 
