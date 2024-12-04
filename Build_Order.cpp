@@ -20,7 +20,7 @@ void BasicSc2Bot::ExecuteBuildOrder() {
 		// Building one more battlecruiser might be more helpful??
 		BuildEngineeringBay();
 		// don't need
-		//BuildArmory();
+		BuildArmory();
 	}
 }
 
