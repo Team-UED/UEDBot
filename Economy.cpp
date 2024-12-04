@@ -426,6 +426,23 @@ void BasicSc2Bot::AssignWorkers() {
     Units refineries = obs->GetUnits(Unit::Alliance::Self,
                                      IsUnit(UNIT_TYPEID::TERRAN_REFINERY));
 
+	// Always keep scv_gas.size() == refineries.size() * 3
+    if (scvs_gas.size() < refineries.size() * 3) {
+        int replacement_count = refineries.size() * 3 - scvs_gas.size();
+        for (const auto &scv : idle_scvs) {
+            if (replacement_count == 0) { // No more needed
+                break;
+            }
+            // If scv is scout or repairing, skip
+            if (scv == scv_scout ||
+                scvs_repairing.find(scv->tag) != scvs_repairing.end()) {
+                continue;
+            }
+            scvs_gas.insert(scv->tag); // Add to gas set
+            replacement_count--;
+        }
+    }
+
     // Map bases to nearby minerals
     std::map<const Unit *, Units> base_minerals_map;
     for (const auto &base : bases) {
@@ -464,9 +481,11 @@ void BasicSc2Bot::AssignWorkers() {
             }
         }
         if (target_refinery) {
-            scvs_gas.insert(scv->tag); // Track this SCV as assigned to gas
-            Actions()->UnitCommand(scv, ABILITY_ID::HARVEST_GATHER,
-                                   target_refinery);
+            // If the scv is a gas harvester, gather gas
+            if (scvs_gas.find(scv->tag) != scvs_gas.end()) {
+                Actions()->UnitCommand(scv, ABILITY_ID::HARVEST_GATHER,
+                                       target_refinery);
+            }
             continue;
         }
 
