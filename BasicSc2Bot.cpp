@@ -661,6 +661,7 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) {
 	if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV) {
 		num_scvs--;
 		scvs_repairing.erase(unit->tag);
+        scvs_gas.erase(unit->tag);
 	}
 	else if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER) {
 		battlecruiser_retreating.erase(unit);
