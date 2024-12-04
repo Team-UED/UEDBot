@@ -142,17 +142,25 @@ static void RunBot(int argc, char* argv[], sc2::Agent* Agent, sc2::Race race)
 	ConnectionOptions Options;
 	ParseArguments(argc, argv, Options);
 
+	class Human : public sc2::Agent {
+	public:
+		void OnGameStart() final {
+			Debug()->DebugTextOut("Human");
+			Debug()->SendDebug();
+		}
+	};
+	Human human_bot;
 	sc2::Coordinator coordinator;
 	int num_agents;
 	if (Options.ComputerOpponent) {
 		num_agents = 1;
 		coordinator.SetParticipants({
-			CreateParticipant(race, Agent),
-			CreateComputer(Options.ComputerRace, Options.ComputerDifficulty)
+			CreateParticipant(race, &human_bot),
+			CreateParticipant(race, Agent)
 			});
 		coordinator.LoadSettings(1, argv);
 		// added
-		//coordinator.SetRealtime(true);
+		coordinator.SetRealtime(true);
 		coordinator.LaunchStarcraft();
 		coordinator.StartGame(Options.Map);
 	}
@@ -162,6 +170,7 @@ static void RunBot(int argc, char* argv[], sc2::Agent* Agent, sc2::Race race)
 			CreateParticipant(race, Agent),
 			});
 		// Start the game.
+		coordinator.SetRealtime(true);
 		std::cout << "Connecting to port " << Options.GamePort << std::endl;
 		coordinator.Connect(Options.GamePort);
 		coordinator.SetupPorts(num_agents, Options.StartPort, false);

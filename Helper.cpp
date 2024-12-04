@@ -15,10 +15,6 @@ bool BasicSc2Bot::CanBuild(const int32_t mineral, const int32_t gas, const int32
 		obs->GetFoodCap() - obs->GetFoodUsed() >= food;
 }
 
-// check if the enemy is nearby
-// worker: default is true, if false, consider all enemy including workers
-// distance: default is 15, if enemy is within this distance
-// return: true if enemy is nearby
 bool BasicSc2Bot::EnemyNearby(const Point2D& pos, const bool worker, const int32_t distance) {
 	// if enemy units are within a certain radius (run!!!!)
 	const ObservationInterface* obs = Observation();
@@ -43,14 +39,66 @@ float BasicSc2Bot::HowClosetoFinishCurrentJob(const Unit* b) const {
 	return b->orders.empty() ? -1.0f : b->orders.front().progress;
 }
 
-float BasicSc2Bot::GetBuildProgress(const Unit* b) const {
-	return b->build_progress;
+void BasicSc2Bot::IsBuildingProgress() {
+
+	const ObservationInterface* obs = Observation();
+	Units buildings = obs->GetUnits(Unit::Alliance::Self, [this](const Unit& b)
+		{
+			return BuildingsBeingBuiltFilter(b);
+		});
+
+	for (const auto& b : buildings)
+	{
+		auto it = buildings_in_progress.find(b->tag);
+		if (it != buildings_in_progress.end()) {
+
+			if (!b->is_alive)
+			{
+				buildings_in_progress.erase(it);
+			}
+			else
+			{
+				b->build_progress != 1.0f && b->build_progress == it->second ?
+					Actions()->UnitCommand(b, ABILITY_ID::CANCEL_BUILDINPROGRESS) :
+					it->second = b->build_progress;
+			}
+		}
+		else
+		{
+			buildings_in_progress[b->tag] = b->build_progress;
+		}
+	}
+	return;
 }
 
-bool BasicSc2Bot::IsBuildingProgress(const Unit* b) const {
-
-
-	return b->build_progress < 1.0f;
+void BasicSc2Bot::IsBuilderGettingDamaged()
+{
+	const ObservationInterface* obs = Observation();
+	Units scvs = obs->GetUnits(Unit::Alliance::Self, [this](const Unit& u)
+		{
+			return !u.orders.empty() && IsBuildingOrder(u.orders.front());
+		});
+	for (const auto& scv : scvs)
+	{
+		auto it = builders_container.find(scv->tag);
+		if (it != builders_container.end())
+		{
+			if (!scv->is_alive)
+			{
+				builders_container.erase(it);
+			}
+			else if (scv->health < it->second)
+			{
+				it->second = scv->health;
+				Actions()->UnitCommand(scv, ABILITY_ID::HALT);
+			}
+		}
+		else
+		{
+			builders_container[scv->tag] = scv->health;
+		}
+	}
+	return;
 }
 
 bool BasicSc2Bot::NeedExpansion() const {
@@ -63,7 +111,7 @@ bool BasicSc2Bot::NeedExpansion() const {
 	// Filter out completed bases
 	for (const auto& base : all_bases) {
 		if (base->build_progress == 1.0f) {
-			bases.push_back(base);
+			bases.emplace_back(base);
 		}
 	}
 
@@ -137,21 +185,6 @@ Point3D BasicSc2Bot::GetNextExpansion() const {
 	return next_expansion;
 }
 
-//// Detect dangerous positions
-//bool BasicSc2Bot::IsDangerousPosition(const Point2D& pos) {
-//	// if enemy units are within a certain radius (run!!!!)
-//	auto enemy_units = Observation()->GetUnits(Unit::Alliance::Enemy);
-//	for (const auto& enemy : enemy_units) {
-//		if (IsTrivialUnit(enemy) || IsWorkerUnit(enemy)) {
-//			continue;
-//		}
-//		if (Distance2D(pos, enemy->pos) < 5.0f) {
-//			return true;
-//		}
-//	}
-//	return false;
-//}
-
 // Get a safe position for the main base
 Point2D BasicSc2Bot::GetSafePosition() {
 	const Unit* main_base = GetMainBase();
@@ -182,7 +215,7 @@ const Unit* BasicSc2Bot::FindDamagedStructure() {
 	float lowest_health = std::numeric_limits<float>::max();
 
 	for (const auto& unit : units) {
-		if ((unit->health < (unit->health_max * 0.65)) && unit->is_alive) {
+		if ((unit->health < (unit->health_max * 0.7)) && unit->is_alive) {
 			int priority = std::numeric_limits<int>::max();
 
 			// Assign priorities (lower number = higher priority)
@@ -265,6 +298,11 @@ bool BasicSc2Bot::ALLBuildingsFilter(const Unit& unit) const
 		unit.tag ||
 		unit.build_progress < 1.0f ||
 		unit.display_type == 4);
+}
+
+bool BasicSc2Bot::BuildingsBeingBuiltFilter(const Unit& unit) const
+{
+	return (unit.tag && unit.build_progress < 1.0f);
 }
 
 // Modify IsMainBaseUnderAttack() to consider only combat units

@@ -8,7 +8,7 @@ using namespace sc2;
 // Retreat function for Battlecruisers
 void BasicSc2Bot::Retreat(const Unit* unit) {
 
-	if (unit == nullptr) {
+	if (!unit) {
 		return;
 	}
 
@@ -151,6 +151,7 @@ void BasicSc2Bot::ControlBattlecruisers() {
 void BasicSc2Bot::Jump() {
 
 	const Unit* main_base = GetMainBase();
+	const ObservationInterface* obs = Observation();
 	// Check if the main base is under attack; don't use Tactical Jump in that case
 	if (!main_base || EnemyNearby(main_base->pos, true, 25)) {
 		return;
