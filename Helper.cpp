@@ -58,9 +58,11 @@ void BasicSc2Bot::IsBuildingProgress() {
 			}
 			else
 			{
-				b->build_progress != 1.0f && b->build_progress == it->second ?
-					Actions()->UnitCommand(b, ABILITY_ID::CANCEL_BUILDINPROGRESS) :
+				if (b->build_progress != 1.0f && b->build_progress == it->second) {
+					Actions()->UnitCommand(b, ABILITY_ID::CANCEL_BUILDINPROGRESS);
+				} else {
 					it->second = b->build_progress;
+				}
 			}
 		}
 		else
