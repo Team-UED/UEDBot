@@ -225,7 +225,7 @@ void BasicSc2Bot::UpdateRepairingSCVs() {
 	if (scvs_repairing.size() < 6) {
 		for (const auto& scv : scvs) {
 			// Make sure it's not a gathering SCV
-			if (scvs_gathering.find(scv->tag) != scvs_gathering.end()) {
+			if (scvs_gas.find(scv->tag) != scvs_gas.end()) {
 				continue;
 			}
 			if (scvs_repairing.find(scv->tag) == scvs_repairing.end()) {
@@ -291,8 +291,8 @@ void BasicSc2Bot::SCVAttackEmergency() {
 			Units scvs = Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SCV));
 			for (const auto& scv : scvs) {
 				// Skip SCVs that are harvesting minerals or gas
-				if (scvs_gathering.find(scv->tag) !=
-					scvs_gathering.end()) {
+				if (scvs_gas.find(scv->tag) !=
+					scvs_gas.end()) {
 					continue;
 				}
 				// Ensure SCV does not move too far from the main base
@@ -301,6 +301,11 @@ void BasicSc2Bot::SCVAttackEmergency() {
 					continue; // Skip this SCV if it is too far from the
 					// base
 				}
+
+				// Only use SCVs that have the repair tag
+                if (scvs_repairing.find(scv->tag) == scvs_repairing.end()) {
+                    continue;
+                }
 
 				// Find the closest enemy unit to attack
 				const Unit* target = FindClosestEnemy(scv->pos);
