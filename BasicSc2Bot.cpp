@@ -23,6 +23,7 @@ BasicSc2Bot::BasicSc2Bot()
 	swap_in_progress(false),
 	ramp_mid_destroyed(nullptr),
 	first_battlecruiser(false),
+	first_battlecruiser_trained(false),
 	is_scouting(false),
 	scout_complete(false),
 	current_scout_location_index(0),
@@ -434,6 +435,9 @@ void BasicSc2Bot::OnUnitCreated(const Unit* unit) {
 
 	// Battlecruiser created
 	if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER) {
+		if (!first_battlecruiser_trained) {
+			first_battlecruiser_trained = true;
+		}
 		num_battlecruisers++;
 		std::cout << "Battlecruiser created at " << minsec[0] << ":" << minsec[1] << std::endl;
 		std::cout << "Marines: " << num_marines << " Tanks: " << num_siege_tanks << " Battlecruisers: " << num_battlecruisers << std::endl;
