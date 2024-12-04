@@ -59,37 +59,9 @@ void BasicSc2Bot::BuildBarracks() {
 	}
 	else if (phase == 3)
 	{
-		if (barracks.size() < 2 && CanBuild(750) && current_gameloop % 46 == 0) {
+		if (barracks.size() < 2 && bases.size() > 1 && CanBuild(550) && current_gameloop % 46 == 0) {
 			TryBuildStructure(ABILITY_ID::BUILD_BARRACKS, UNIT_TYPEID::TERRAN_SCV);
 		}
-	}
-}
-
-// Build Engineering bay if we have a Barrack and enough resources
-void BasicSc2Bot::BuildEngineeringBay() {
-	const ObservationInterface* obs = Observation();
-
-	// Get Barracks
-	Units barracks = obs->GetUnits(Unit::Alliance::Self, [this](const Unit& unit) {
-		return unit.unit_type == UNIT_TYPEID::TERRAN_BARRACKS && ALLBuildingsFilter(unit);
-		});
-	// Get Startports
-	Units starports = obs->GetUnits(Unit::Alliance::Self, [this](const Unit& unit) {
-		return unit.unit_type == UNIT_TYPEID::TERRAN_STARPORT && ALLBuildingsFilter(unit);
-		});
-
-	// Can't build Engineering bay without Barracks
-	if (barracks.empty() || !first_battlecruiser) {
-		return;
-	}
-
-	// Build only 1 engineering bay (After Starports)
-	Units engineeringbays = obs->GetUnits(Unit::Alliance::Self, [this](const Unit& unit) {
-		return unit.unit_type == UNIT_TYPEID::TERRAN_ENGINEERINGBAY && ALLBuildingsFilter(unit);
-		});
-
-	if (engineeringbays.empty() && !starports.empty() && CanBuild(400 + 125)) {
-		TryBuildStructure(ABILITY_ID::BUILD_ENGINEERINGBAY, UNIT_TYPEID::TERRAN_SCV);
 	}
 }
 
@@ -293,6 +265,35 @@ void BasicSc2Bot::BuildArmory() {
 
 	if (armories.empty() && CanBuild(400 + 150, 300 + 50)) {
 		TryBuildStructure(ABILITY_ID::BUILD_ARMORY, UNIT_TYPEID::TERRAN_SCV);
+	}
+}
+
+// Build Engineering bay if we have a Barrack and enough resources
+void BasicSc2Bot::BuildEngineeringBay() {
+	const ObservationInterface* obs = Observation();
+
+	// Get Barracks
+	Units barracks = obs->GetUnits(Unit::Alliance::Self, [this](const Unit& unit) {
+		return unit.unit_type == UNIT_TYPEID::TERRAN_BARRACKS && ALLBuildingsFilter(unit);
+		});
+	// Get Startports
+	Units starports = obs->GetUnits(Unit::Alliance::Self, [this](const Unit& unit) {
+		return unit.unit_type == UNIT_TYPEID::TERRAN_STARPORT && ALLBuildingsFilter(unit);
+		});
+
+	// Can't build Engineering bay without Barracks
+	if (barracks.empty() || !first_battlecruiser) {
+		return;
+	}
+
+	// Build only 1 engineering bay (After Starports)
+	Units engineeringbays = obs->GetUnits(Unit::Alliance::Self, [this](const Unit& unit) {
+		return unit.unit_type == UNIT_TYPEID::TERRAN_ENGINEERINGBAY && ALLBuildingsFilter(unit);
+		});
+
+	if (engineeringbays.size() < 2 && !starports.empty() && bases.size() > 1 && CanBuild(125))
+	{
+		TryBuildStructure(ABILITY_ID::BUILD_ENGINEERINGBAY, UNIT_TYPEID::TERRAN_SCV);
 	}
 }
 

@@ -78,7 +78,9 @@ void BasicSc2Bot::DrawBoxAtLocation(sc2::DebugInterface* debug, const sc2::Point
 	p_max.y += size / 2.0f;
 
 	// Keep the z-coordinate constant to make the box flat
-	p_max.z = p_min.z = location.z;
+	p_min.z = location.z;
+
+	p_max.z = location.z + 2.0f;
 
 	debug->DebugBoxOut(p_min, p_max, color);
 }
@@ -134,6 +136,8 @@ std::vector<uint32_t> BasicSc2Bot::GetRealTime() const {
 	return { minutes, seconds };
 }
 
+Units gas_scvs_start;
+
 void BasicSc2Bot::Debugging()
 {
 	Control()->GetObservation();
@@ -142,26 +146,45 @@ void BasicSc2Bot::Debugging()
 	sc2::QueryInterface* query = Query();
 	sc2::DebugInterface* debug = Debug();
 
-	//Color c;
-	//for (int i = 0; i < main_mineral_convexHull.size(); ++i) {
-	//	// first 2 points for red
-	//	if (i == 0 || i == 1) {
-	//		c = Colors::Red;
-	//	}
-	//	// next 2 points for blue
-	//	else if (i == 2 || i == 3) {
-	//		c = Colors::Blue;
-	//	}
-	//	else {
-	//		c = Colors::Black;
-	//	}
+	Units scvs_building = obs->GetUnits(Unit::Alliance::Self, [this](const Unit& unit) {
+		return unit.unit_type == UNIT_TYPEID::TERRAN_SCV && !unit.orders.empty() &&
+			IsBuildingOrder(unit.orders.front());
+		});
 
-	//	DrawBoxAtLocation(debug, Point3D(main_mineral_convexHull[i].x, main_mineral_convexHull[i].y, height_at(Point2DI(main_mineral_convexHull[i])) + 0.5f), 1.0f, c);
-	//}
-
-	if (current_gameloop % 100)
+	for (const auto& scv : scvs_building) {
+		const UnitOrder& order = scv->orders.front();
+		const Unit* target = obs->GetUnit(order.target_unit_tag);
+		if (target) {
+			debug->DebugLineOut(scv->pos, target->pos, sc2::Colors::Yellow);
+			debug->SendDebug();
+		}
+		DrawBoxAtLocation(debug, scv->pos, 2.0f, sc2::Colors::Red);
+	}
+	Units gas_scvs = GetAllSCVsGettingGas();
+	for (const auto& scv_g : gas_scvs)
 	{
+		// gas
+		DrawBoxAtLocation(debug, scv_g->pos, 2.0f, sc2::Colors::Green);
+	}
 
+	for (const auto& scv_repairing : scvs_repairing)
+	{
+		const Unit* scv = obs->GetUnit(scv_repairing);
+		if (scv)
+		{
+			// repairing
+			DrawBoxAtLocation(debug, scv->pos, 2.0f, sc2::Colors::Yellow);
+			if (std::find(gas_scvs.begin(), gas_scvs.end(), scv) != gas_scvs.end())
+			{
+				// this one is supposed to get gas only
+				std::cout << "SCV " << scv->tag << " is repairing? but should get gas" << std::endl;
+			}
+		}
+	}
+
+	// buildable map
+	/*if (current_gameloop % 100)
+	{
 		for (const auto& i : build_map[0])
 		{
 			if (!i.second)
@@ -170,8 +193,7 @@ void BasicSc2Bot::Debugging()
 			}
 			DrawBoxAtLocation(debug, Point3D(i.first.x + 0.5f, i.first.y + 0.5f, height_at_float(i.first) + 0.1f), 1.0f, sc2::Colors::Green);
 		}
-
-	}
+	}*/
 
 	/*if (Control()->GetLastStatus() != SC2APIProtocol::Status::in_game)
 		return;
@@ -259,17 +281,6 @@ void BasicSc2Bot::on_start() {
 		}
 	}
 
-	// Mark 6 scvs to always gather
-	Units scvs = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SCV));
-	for (const auto& scv : scvs) {
-		if (scvs_gas.size() == 6) {
-			break;
-		}
-		if (scvs_gas.find(scv->tag) == scvs_gas.end()) {
-			scvs_gas.insert(scv->tag);
-		}
-	}
-
 	// Get map dimensions
 	unsigned int width = game_info.width;
 	unsigned int height = game_info.height;
@@ -339,7 +350,8 @@ void BasicSc2Bot::OnStep() {
 		on_start();
 	}
 	current_gameloop = Observation()->GetGameLoop();
-	//BasicSc2Bot::Debugging();
+	if (current_gameloop % 22 == 0)
+		BasicSc2Bot::Debugging();
 
 	if (step_counter > 10) {
 		BasicSc2Bot::depot_control();
@@ -401,6 +413,8 @@ void BasicSc2Bot::OnUnitIdle(const Unit* unit)
 	case UNIT_TYPEID::TERRAN_SCV:
 		HarvestIdleWorkers(unit);
 		break;
+	default:
+		break;
 	}
 }
 
@@ -412,8 +426,9 @@ void BasicSc2Bot::OnUnitCreated(const Unit* unit) {
 
 	// SCV created
 	if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV) {
-		num_scvs++;
-		if (scvs_repairing.size() < 6) {
+		++num_scvs;
+		if (scvs_repairing.size() < 6)
+		{
 			scvs_repairing.insert(unit->tag);
 		}
 	}
@@ -445,7 +460,7 @@ void BasicSc2Bot::OnUnitCreated(const Unit* unit) {
 void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
 	const ObservationInterface* obs = Observation();
 	update_build_map(true);
-
+	std::vector<uint32_t> minsec = GetRealTime();
 	auto unit_type = unit->unit_type.ToType();
 
 	if (unit_type == UNIT_TYPEID::TERRAN_BARRACKS) {
@@ -461,6 +476,8 @@ void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
 		++num_fusioncores;
 	}
 	else if (unit_type == UNIT_TYPEID::TERRAN_COMMANDCENTER) {
+		std::cout << "COMMANDCENTER created at " << minsec[0] << ":" << minsec[1] << std::endl;
+		std::cout << "Marines: " << num_marines << " Tanks: " << num_siege_tanks << " Battlecruisers: " << num_battlecruisers << std::endl;
 		bases.emplace_back(unit);
 	}
 
@@ -477,10 +494,13 @@ void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
 		// Assign them to gas
 		int scv_count = 0;
 		for (const auto& scv : scvs) {
-			// Assign SCV to the refinery
+			if (scvs_repairing.find(scv->tag) != scvs_repairing.end())
+			{
+				continue;
+			}
 			Actions()->UnitCommand(scv, ABILITY_ID::HARVEST_GATHER, unit);
 			++scv_count;
-			// Stop after assigning 3 SCVs
+			// make sure it has 3 including the scv that is building the refinery
 			if (scv_count == 2) break;
 		}
 	}
@@ -520,7 +540,7 @@ void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
 
 			if (barracks.empty()) return;
 
-			if (!EnemyNearby(barracks.front()->pos, true) && !barracks.empty() && barracks.front()->orders.empty()) {
+			if (!EnemyNearby(barracks.front()->pos, true, 20) && !barracks.empty() && barracks.front()->orders.empty()) {
 				const Unit* b = barracks.front();
 				const Unit* f = factories.front();
 				ramp_middle[0] = const_cast<sc2::Unit*>(f);
@@ -662,21 +682,21 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit* unit) {
 
 	// SCV died
 	if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV) {
-		num_scvs--;
+		--num_scvs;
 		scvs_repairing.erase(unit->tag);
-        scvs_gas.erase(unit->tag);
+		//scvs_gas.erase(unit->tag);
 	}
 	else if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER) {
 		battlecruiser_retreating.erase(unit);
-		num_battlecruisers--;
+		--num_battlecruisers;
 	}
 	else if (unit->unit_type == UNIT_TYPEID::TERRAN_MARINE) {
 		unit_attacking.erase(unit);
-		num_marines--;
+		--num_marines;
 	}
 	else if (unit->unit_type == UNIT_TYPEID::TERRAN_SIEGETANK) {
 		unit_attacking.erase(unit);
-		num_siege_tanks--;
+		--num_siege_tanks;
 	}
 }
 

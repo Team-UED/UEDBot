@@ -124,7 +124,7 @@ void BasicSc2Bot::TrainSiegeTanks() {
 				float g_close = MineralGas[1];
 				float how_close = !starport.empty() ? HowClosetoFinishCurrentJob(starport.front()) : 0.0f;
 				factory = factories.front();
-				if (num_starports && ((0.0f < how_close && how_close < 0.6f)))
+				if (num_starports && ((0.0f < how_close && how_close < 0.5f)))
 				{
 					if (factory->add_on_tag != 0 && factory->orders.empty())
 					{
@@ -155,7 +155,9 @@ void BasicSc2Bot::UpgradeMarines() {
 
 	const ObservationInterface* observation = Observation();
 	Units techlabs = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKSTECHLAB));
-	Units engineeringbays = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_ENGINEERINGBAY));
+	Units engineeringbays = observation->GetUnits(Unit::Alliance::Self, [](const Unit& unit) {
+		return unit.unit_type == UNIT_TYPEID::TERRAN_ENGINEERINGBAY && unit.build_progress == 1.0f;
+		});
 
 	// Can't upgrade Marines without Engineering Bays
 	if (engineeringbays.empty()) {
@@ -191,11 +193,33 @@ void BasicSc2Bot::UpgradeMarines() {
 			}
 		}
 
-		// Check if the Engineering Bay is busy or not
-		for (const auto& engineeringbay : engineeringbays) {
-			if (engineeringbay->orders.empty() && CanBuild(500, 400)) {
-				Actions()->UnitCommand(engineeringbay, ability_id);
-				return;
+
+		if (bases.size() > 1)
+		{
+			int factor = 50;
+			// Check if the Engineering Bay is busy or not
+			for (const auto& bay : engineeringbays)
+			{
+				if (bay->orders.empty() && CanBuild(150 + factor, 150 + factor)) {
+					if (Is_researching_bay.first == ability_id && !Is_researching_bay.second)
+					{
+						Is_researching_bay.second = true;
+						Actions()->UnitCommand(bay, ability_id);
+					}
+					else if (bay->orders.empty() && Is_researching_bay.first == ability_id && Is_researching_bay.second)
+					{
+						auto it = FindInVector(engineeringbay_upgrade_order, upgrade);
+						it++;
+						if (it != engineeringbay_upgrade_order.end())
+						{
+							ability_id = GetAbilityForUpgrade(*it);
+							Is_researching_bay = { ability_id , true };
+							Actions()->UnitCommand(bay, ability_id);
+							factor += 50;
+						}
+					}
+					return;
+				}
 			}
 		}
 	}

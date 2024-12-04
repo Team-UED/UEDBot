@@ -84,6 +84,18 @@ private:
 	// Assigns extra idle workers to gather gas.
 	void HarvestIdleWorkers(const Unit* unit);
 
+	Units GetAllSCVsGettingGas() const;
+
+	template <typename T>
+	typename std::vector<T>::const_iterator FindInVector(const std::vector<T>& vec, const T& item) {
+		return std::find(vec.begin(), vec.end(), item);
+	};
+
+	template <typename T, typename Predicate>
+	typename std::vector<T>::const_iterator FindInVectorIf(const std::vector<T>& vec, Predicate pred) {
+		return std::find_if(vec.begin(), vec.end(), pred);
+	};
+
 	const Unit* FindNearestMineralPatch();
 
 	const Unit* FindRefinery();
@@ -810,6 +822,9 @@ private:
 
 	// Set of completed upgrades
 	std::set<UpgradeID> completed_upgrades;
+
+	// pair to check which one is being researched
+	std::pair<ABILITY_ID, bool> Is_researching_bay = { ABILITY_ID::RESEARCH_TERRANINFANTRYWEAPONSLEVEL1, false };
 
 	// Order of upgrades for Armory
 	std::vector<UPGRADE_ID> armory_upgrade_order = {

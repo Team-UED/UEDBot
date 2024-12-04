@@ -91,7 +91,7 @@ void BasicSc2Bot::LateDefense() {
 
 		for (const auto& t : turret_locations)
 		{
-			if (CanBuild(100) && TryBuildStructureAtLocation(ABILITY_ID::BUILD_MISSILETURRET, UNIT_TYPEID::TERRAN_SCV, t))
+			if (CanBuild(450) && TryBuildStructureAtLocation(ABILITY_ID::BUILD_MISSILETURRET, UNIT_TYPEID::TERRAN_SCV, t))
 			{
 				return;
 			}

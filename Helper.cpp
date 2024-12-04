@@ -357,23 +357,16 @@ const Unit* BasicSc2Bot::FindUnit(sc2::UnitTypeID unit_type) const {
 // Returns the count of units of a given type
 bool BasicSc2Bot::TryBuildStructureAtLocation(ABILITY_ID ability_type_for_structure, UNIT_TYPEID unit_type, const Point2D& location) {
 	const Unit* builder = FindUnit(unit_type);
-	if (!builder) return false;
-	if (Query()->Placement(ability_type_for_structure, location, builder)) {
-		Actions()->UnitCommand(builder, ability_type_for_structure, location);
-		return true;
+	Units gas_scvs = GetAllSCVsGettingGas();
+	auto it = FindInVector(gas_scvs, builder);
+
+	if (builder && it == gas_scvs.end() && scvs_repairing.find(builder->tag) == scvs_repairing.end())
+	{
+		if (Query()->Placement(ability_type_for_structure, location, builder)) {
+			Actions()->UnitCommand(builder, ability_type_for_structure, location);
+			return true;
+		}
 	}
-	//else {
-	//	// Try alternate locations near the initial location
-	//	for (float x_offset = -5.0f; x_offset <= 5.0f; x_offset += 1.0f) {
-	//		for (float y_offset = -5.0f; y_offset <= 5.0f; y_offset += 1.0f) {
-	//			Point2D new_location = location + Point2D(x_offset, y_offset);
-	//			if (Query()->Placement(ability_type_for_structure, new_location, builder)) {
-	//				Actions()->UnitCommand(builder, ability_type_for_structure, new_location);
-	//				return true;
-	//			}
-	//		}
-	//	}
-	//}
 	return false;
 }
 
@@ -569,8 +562,6 @@ const Unit* BasicSc2Bot::FindNearestMineralPatch() {
 		Point3D p = closest_mineral->pos + Point3D(1.0f, 1.0f, 1.0f);
 		Debug()->DebugBoxOut(closest_mineral->pos, p);
 	}
-
-
 	return closest_mineral;
 };
 
@@ -589,17 +580,17 @@ const Unit* BasicSc2Bot::FindRefinery() {
 			}
 		}
 	}
-
-	if (target_refinery != nullptr) {
-		Point3D p = target_refinery->pos + Point3D(1.0f, 1.0f, 1.0f);
-		Debug()->DebugBoxOut(target_refinery->pos, p);
-	}
 	return target_refinery;
 };
 
 void BasicSc2Bot::HarvestIdleWorkers(const Unit* unit) {
 
-	if (!unit || unit == scv_scout || unit == scv_building) {
+	auto scv_repair = scvs_repairing.find(unit->tag);
+
+	if (!unit ||
+		unit == scv_scout ||
+		unit == scv_building)
+	{
 		return;
 	}
 
@@ -619,4 +610,21 @@ void BasicSc2Bot::HarvestIdleWorkers(const Unit* unit) {
 		Actions()->UnitCommand(unit, ABILITY_ID::HARVEST_GATHER, closest_mineral);
 		return;
 	}
+}
+
+Units BasicSc2Bot::GetAllSCVsGettingGas() const {
+	const ObservationInterface* obs = Observation();
+	Units gas_buildings = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_REFINERY));
+	Units scvs = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SCV));;
+	Units gas_scvs;
+	for (const auto& scv : scvs) {
+		for (const auto& gas_b : gas_buildings) {
+			if (scv->orders.size() >= 1 &&
+				scv->orders.front().ability_id == ABILITY_ID::HARVEST_GATHER &&
+				scv->orders.front().target_unit_tag == gas_b->tag) {
+				gas_scvs.emplace_back(scv);
+			}
+		}
+	}
+	return gas_scvs;
 }
