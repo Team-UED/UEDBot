@@ -1,7 +1,6 @@
 #include "BasicSc2Bot.h"
 
 void BasicSc2Bot::Defense() {
-	//BlockRamp();
 	EarlyDefense();
 
 	if (current_gameloop % 42 == 0)
