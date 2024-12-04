@@ -675,12 +675,6 @@ private:
 	// For managing SCV safety.
 	std::unordered_set<Tag> scvs_under_attack;
 
-	// For tracking enemy units.
-	std::unordered_map<Tag, const Unit*> enemy_unit_map;
-
-	// Track if we need to scout the entire map
-	bool scout_entire_map = false;
-
 	// buildings for ramps
 	std::vector<sc2::Unit*> ramp_depots = { nullptr, nullptr };
 	std::vector<sc2::Unit*> ramp_middle = { nullptr, nullptr };
