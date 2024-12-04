@@ -479,7 +479,6 @@ void BasicSc2Bot::AssignWorkers() {
     }
 }
 
-
 void BasicSc2Bot::ReassignWorkers() {
 	const ObservationInterface* obs = Observation();
 
