@@ -208,6 +208,9 @@ private:
 	// Tracks if train of the first battlecruiser is in progress
 	bool first_battlecruiser;
 
+	// Tracks if the first battlecruiser is trained
+	bool first_battlecruiser_trained;
+
 	// =========================
 	// Defense Management
 	// =========================
@@ -239,6 +242,9 @@ private:
 
 	// Ensure continuous movement to attack target
 	void ContinuousMove();
+
+	// Determines retreat conditions
+	bool AllRetreating();
 
 	bool need_clean_up = false;
 
