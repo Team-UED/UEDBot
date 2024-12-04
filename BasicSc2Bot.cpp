@@ -401,6 +401,8 @@ void BasicSc2Bot::OnUnitIdle(const Unit* unit)
 	case UNIT_TYPEID::TERRAN_SCV:
 		HarvestIdleWorkers(unit);
 		break;
+	default:
+		break;
 	}
 }
 
