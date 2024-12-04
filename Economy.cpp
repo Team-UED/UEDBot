@@ -29,9 +29,11 @@ void BasicSc2Bot::TrainSCVs() {
 	}
 	desired_scv_count += 5; // Additional SCVs for building and contingency
 
+	// If we have enough SCVs, return
 	Units scvs = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SCV));
 	if (scvs.size() >= desired_scv_count) return;
 
+    // Get all completed Supply Depots
 	Units dps = obs->GetUnits(Unit::Alliance::Self, [](const Unit& unit) {
 		return unit.unit_type == UNIT_TYPEID::TERRAN_SUPPLYDEPOT && !(unit.build_progress < 0.5f);
 		});
@@ -115,26 +117,24 @@ void BasicSc2Bot::UseScan() {
 		return;
 	}
 
+	// Find all cloacked enemies
 	Units enemies = observation->GetUnits(Unit::Alliance::Enemy);
-
 	const Unit* cloacked_enemy = nullptr;
-
 	for (const auto& enemy : enemies) {
 		if (enemy->cloak == 1) {
 			cloacked_enemy = enemy;
 		}
 	}
-
+	
+	// Scan cloacked enemy
 	float energy_cost = 50.0f;
-
-	if (cloacked_enemy) {
+	if (cloacked_enemy) { 
 		// Loop Orbital Command to check if it has enough energy
 		for (const auto& orbital : orbital_commands) {
 			if (orbital->energy >= energy_cost) {
 				Actions()->UnitCommand(orbital, ABILITY_ID::EFFECT_SCAN, cloacked_enemy->pos);
 			}
 		}
-
 	}
 }
 
@@ -153,8 +153,8 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
 	// Find an SCV to build with
 	Units scvs = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SCV));
 
+	// Check if we have a builder
 	const Unit* builder = nullptr;
-
 	for (const auto& scv : scvs) {
 		// Check if the SCV is scv_scout
         // Check if the SCV is a gas harvester
@@ -165,9 +165,11 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
 			continue;
 		}
 
+		// Check if the SCV is already building
 		float min_distance_to_base = std::numeric_limits<float>::max();
 		float distance_to_cc;
 		for (const auto& cc : bases) {
+            // Check if the SCV is within the base radius
 			if (ability_type_for_structure == ABILITY_ID::BUILD_SUPPLYDEPOT &&
 				cc != bases[0]) {
 				continue;
@@ -181,21 +183,19 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
 		if (min_distance_to_base > base_radius) {
 			continue;
 		}
+        // Check if the SCV is already building
 		for (const auto& order : scv->orders) {
-
-			if (!IsBuildingOrder(order))
-			{
-				if (!builder)
-				{
-					builder = scv;
-					break;
-				}
+			if (!IsBuildingOrder(order) && !builder) {
+				builder = scv;
+                break;
 			}
 		}
 		if (builder) {
 			break;
 		}
 	}
+
+    // Check if we have a builder
 	if (builder) {
 		if (ability_type_for_structure == ABILITY_ID::BUILD_SUPPLYDEPOT)
 		{
@@ -265,7 +265,6 @@ bool BasicSc2Bot::TryBuildStructure(ABILITY_ID ability_type_for_structure, UNIT_
 							}
 						}
 					}
-
 					return build33_after_check(builder, ability_type_for_structure, base_location, true);
 				}
 			}
