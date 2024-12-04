@@ -392,12 +392,6 @@ private:
 	// Retreating location
 	std::unordered_map<const Unit*, Point2D> battlecruiser_retreat_location;
 
-	// Moving flag
-	std::unordered_map<const Unit*, bool> unit_moving;
-
-	// Moving location
-	std::unordered_map<const Unit*, Point2D> unit_moving_location;
-
 	// =========================
 	// Helper Methods
 	// =========================
@@ -598,14 +592,8 @@ private:
 	std::vector<std::map<Point2D, bool, Point2DComparator>> build_map;
 	std::vector<Point2D> build_map_minmax;
 
-	// convex hull of the main base
-	std::vector<Point2D> main_base_edges;
-
 	// Our bases.
 	Units bases;
-
-	// Our army units.
-	Units army_units;
 
 	// Enemy units we've seen.
 	Units enemy_units;
@@ -617,15 +605,6 @@ private:
 
 	// Timing variables.
 	double game_time;
-
-	// For managing supply depots.
-	size_t last_supply_check;
-
-	// For managing expansions.
-	size_t last_expansion_check;
-
-	// For managing scouting.
-	size_t last_scout_time;
 
 	// For controlling specific units.
 	Units battlecruisers;
@@ -645,16 +624,6 @@ private:
 	};
 	EnemyStrategy enemy_strategy;
 
-	// Unit Filters
-	const std::vector<UnitTypeID> mineral_fields;
-	const std::vector<UnitTypeID> vespene_geysers;
-
-	// Stores possible places that bases can be built.
-	std::vector<sc2::Point3D> possible_expansions;
-
-	// For storing pending actions to prevent duplicates.
-	std::unordered_set<AbilityID> pending_actions;
-
 	// For managing specific build tasks.
 	struct BuildTask {
 		UnitTypeID unit_type;
@@ -663,23 +632,11 @@ private:
 	};
 	std::vector<BuildTask> build_tasks;
 
-	// For microing units.
-	std::unordered_map<Tag, const Unit*> unit_micro_map;
-
 	// For managing repairs.
 	std::unordered_set<Tag> scvs_repairing;
 
 	// For guranteeing our mineral generation.
 	std::unordered_set<Tag> scvs_gas;
-
-	// For managing SCV safety.
-	std::unordered_set<Tag> scvs_under_attack;
-
-	// For tracking enemy units.
-	std::unordered_map<Tag, const Unit*> enemy_unit_map;
-
-	// Track if we need to scout the entire map
-	bool scout_entire_map = false;
 
 	// buildings for ramps
 	std::vector<sc2::Unit*> ramp_depots = { nullptr, nullptr };
