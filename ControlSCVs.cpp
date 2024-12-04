@@ -9,7 +9,6 @@ void BasicSc2Bot::ControlSCVs() {
     RepairStructures();
     UpdateRepairingSCVs();
     SCVAttackEmergency();
-    UpdateDeadSCVs();
 }
 
 // SCVs scout the map to find enemy bases
@@ -341,24 +340,6 @@ void BasicSc2Bot::SCVAttackEmergency() {
                         Actions()->UnitCommand(scv, ABILITY_ID::ATTACK, target);
                     }
                 }
-            }
-        }
-    }
-}
-
-void BasicSc2Bot::UpdateDeadSCVs() {
-    const ObservationInterface *obs = Observation();
-    Units scvs =
-        obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SCV));
-    for (const auto &scv : scvs) {
-        if (!scv->is_alive) {
-            // Remove the SCV from the repairing set
-            if (scvs_repairing.find(scv->tag) != scvs_repairing.end()) {
-                scvs_repairing.erase(scv->tag);
-            }
-            // Remove the SCV from the gas set
-            if (scvs_gas.find(scv->tag) != scvs_gas.end()) {
-                scvs_gas.erase(scv->tag);
             }
         }
     }

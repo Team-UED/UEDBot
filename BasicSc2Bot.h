@@ -282,9 +282,6 @@ private:
 	// SCVs scouting enemy base.
 	void SCVScoutEnemySpawn();
 
-	// Update Dead SCVs
-    void UpdateDeadSCVs();
-
 	// =========================
 	// Unit Control (Battlecruiser)
 	// =========================
