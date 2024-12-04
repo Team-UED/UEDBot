@@ -206,7 +206,7 @@ void BasicSc2Bot::UpgradeMarines() {
 						Is_researching_bay.second = true;
 						Actions()->UnitCommand(bay, ability_id);
 					}
-					else if (bay->orders.empty() && Is_researching_bay.first == ability_id && Is_researching_bay.second)
+					else if (Is_researching_bay.first == ability_id && Is_researching_bay.second)
 					{
 						auto it = FindInVector(engineeringbay_upgrade_order, upgrade);
 						it++;

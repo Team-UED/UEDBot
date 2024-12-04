@@ -350,8 +350,8 @@ void BasicSc2Bot::OnStep() {
 		on_start();
 	}
 	current_gameloop = Observation()->GetGameLoop();
-	if (current_gameloop % 22 == 0)
-		BasicSc2Bot::Debugging();
+	/*if (current_gameloop % 22 == 0)
+		BasicSc2Bot::Debugging();*/
 
 	if (step_counter > 10) {
 		BasicSc2Bot::depot_control();
@@ -405,7 +405,7 @@ void BasicSc2Bot::OnUnitIdle(const Unit* unit)
 		}
 		break;
 	case UNIT_TYPEID::TERRAN_BATTLECRUISER:
-		if (current_gameloop % 46 == 0)
+		if (current_gameloop % 23 == 0 && !Distance2D(unit->pos, start_location) < 25.0f)
 		{
 			Retreat(unit);
 		}
