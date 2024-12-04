@@ -636,7 +636,7 @@ private:
 	std::unordered_set<Tag> scvs_repairing;
 
 	// For guranteeing our mineral generation.
-	std::unordered_set<Tag> scvs_gathering;
+	std::unordered_set<Tag> scvs_gas;
 
 	// buildings for ramps
 	std::vector<sc2::Unit*> ramp_depots = { nullptr, nullptr };

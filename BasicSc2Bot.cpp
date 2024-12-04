@@ -259,26 +259,14 @@ void BasicSc2Bot::on_start() {
 		}
 	}
 
-	// Mark 6 scvs to repair
-	//for (const auto& unit : Observation()->GetUnits(Unit::Alliance::Self)) {
-	//	if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV) {
-	//		if (scvs_repairing.size() >= 6) {
-	//			break;
-	//		}
-	//		if (scvs_repairing.find(unit->tag) == scvs_repairing.end()) {
-	//			scvs_repairing.insert(unit->tag);
-	//		}
-	//	}
-	//}
-
 	// Mark 6 scvs to always gather
 	Units scvs = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SCV));
 	for (const auto& scv : scvs) {
-		if (scvs_gathering.size() == 6) {
+		if (scvs_gas.size() == 6) {
 			break;
 		}
-		if (scvs_gathering.find(scv->tag) == scvs_gathering.end()) {
-			scvs_gathering.insert(scv->tag);
+		if (scvs_gas.find(scv->tag) == scvs_gas.end()) {
+			scvs_gas.insert(scv->tag);
 		}
 	}
 
@@ -289,7 +277,7 @@ void BasicSc2Bot::on_start() {
 	// Generate grid points across the entire map for scouting
 	scout_points.clear(); // Clear previous scout points if any
 	const unsigned int step_size =
-		20; // Step size for grid points (adjust for thoroughness)
+		15; // Step size for grid points (adjust for thoroughness)
 	for (unsigned int x = 0; x < width; x += step_size) {
 		for (unsigned int y = 0; y < height; y += step_size) {
 			Point2D grid_point(static_cast<float>(x), static_cast<float>(y));
