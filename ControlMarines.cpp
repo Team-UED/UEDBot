@@ -98,7 +98,33 @@ void BasicSc2Bot::KiteMarine(const Unit* marine, const Unit* target, bool advanc
 
 // Main function to control Marines
 void BasicSc2Bot::ControlMarines() {
+    KillScouts();
 	TargetMarines();
+}
+
+// Target agressive scouts(Reapers) with Marines
+void BasicSc2Bot::KillScouts() {
+
+    // Get all Marines
+    Units marines = Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_MARINE));
+	// Get all enemy units
+    Units enemies = Observation()->GetUnits(Unit::Alliance::Enemy);
+
+	// Check if there are no Marines or enemies
+    if (marines.empty() || enemies.empty()) {
+        return;
+    }
+
+    for (const auto& enemy_unit : enemies) {
+		if (enemy_unit->unit_type == UNIT_TYPEID::TERRAN_REAPER &&
+            Distance2D(enemy_unit->pos, start_location) <= 15.0f) {
+			for (const auto& marine : marines) {
+                if (marine->orders.empty()) {
+                    Actions()->UnitCommand(marine, ABILITY_ID::ATTACK_ATTACK, enemy_unit);
+                }
+			}
+		}
+    }
 }
 
 // Target mechanics for Marines
