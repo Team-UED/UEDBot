@@ -171,7 +171,6 @@ static void RunBot(int argc, char* argv[], sc2::Agent* Agent, sc2::Race race)
 			CreateParticipant(race, Agent),
 			});
 		// Start the game.
-		coordinator.SetRealtime(true);
 		std::cout << "Connecting to port " << Options.GamePort << std::endl;
 		coordinator.Connect(Options.GamePort);
 		coordinator.SetupPorts(num_agents, Options.StartPort, false);
