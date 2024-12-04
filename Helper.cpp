@@ -15,6 +15,10 @@ bool BasicSc2Bot::CanBuild(const int32_t mineral, const int32_t gas, const int32
 		obs->GetFoodCap() - obs->GetFoodUsed() >= food;
 }
 
+// check if the enemy is nearby
+// worker: default is true, if false, consider all enemy including workers
+// distance: default is 15, if enemy is within this distance
+// return: true if enemy is nearby
 bool BasicSc2Bot::EnemyNearby(const Point2D& pos, const bool worker, const int32_t distance) {
 	// if enemy units are within a certain radius (run!!!!)
 	const ObservationInterface* obs = Observation();
@@ -37,6 +41,16 @@ std::vector<float> BasicSc2Bot::HowCloseToResourceGoal(const int32_t& m, const i
 
 float BasicSc2Bot::HowClosetoFinishCurrentJob(const Unit* b) const {
 	return b->orders.empty() ? -1.0f : b->orders.front().progress;
+}
+
+float BasicSc2Bot::GetBuildProgress(const Unit* b) const {
+	return b->build_progress;
+}
+
+bool BasicSc2Bot::IsBuildingProgress(const Unit* b) const {
+
+
+	return b->build_progress < 1.0f;
 }
 
 bool BasicSc2Bot::NeedExpansion() const {
@@ -229,7 +243,7 @@ bool BasicSc2Bot::IsTrivialUnit(const Unit* unit) const {
 		unit->unit_type == UNIT_TYPEID::PROTOSS_OBSERVERSIEGEMODE;
 }
 
-bool BasicSc2Bot::IsBuilding(const UnitOrder& order) const
+bool BasicSc2Bot::IsBuildingOrder(const UnitOrder& order) const
 {
 	return order.ability_id == ABILITY_ID::BUILD_ARMORY ||
 		order.ability_id == ABILITY_ID::BUILD_BARRACKS ||

@@ -32,7 +32,7 @@ BasicSc2Bot::BasicSc2Bot()
 	rally_barrack(0.0f, 0.0f),
 	rally_factory(0.0f, 0.0f),
 	rally_starport(0.0f, 0.0f),
-	attack_target(0.0f, 0.0f){
+	attack_target(0.0f, 0.0f) {
 
 	build_order = {
 		ABILITY_ID::BUILD_SUPPLYDEPOT,
@@ -242,7 +242,7 @@ void BasicSc2Bot::on_start() {
 		BuildTask task;
 		task.ability_id = ability;
 		task.is_complete = false;
-		build_tasks.push_back(task);
+		build_tasks.emplace_back(task);
 	}
 
 	// Initialize other game state variables
@@ -274,16 +274,15 @@ void BasicSc2Bot::on_start() {
 	//}
 
 	// Mark 6 scvs to always gather
-    for (const auto &unit : Observation()->GetUnits(Unit::Alliance::Self)) {
-        if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV) {
-            if (scvs_gathering.size() >= 6) {
-                break;
-            }
-            if (scvs_gathering.find(unit->tag) == scvs_gathering.end()) {
-                scvs_gathering.insert(unit->tag);
-            }
-        }
-    }
+	Units scvs = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SCV));
+	for (const auto& scv : scvs) {
+		if (scvs_gathering.size() == 6) {
+			break;
+		}
+		if (scvs_gathering.find(scv->tag) == scvs_gathering.end()) {
+			scvs_gathering.insert(scv->tag);
+		}
+	}
 
 	// Get map dimensions
 	unsigned int width = game_info.width;
@@ -296,8 +295,8 @@ void BasicSc2Bot::on_start() {
 	for (unsigned int x = 0; x < width; x += step_size) {
 		for (unsigned int y = 0; y < height; y += step_size) {
 			Point2D grid_point(static_cast<float>(x), static_cast<float>(y));
-			if (Observation()->IsPathable(grid_point)) {
-				scout_points.push_back(grid_point);
+			if (obs->IsPathable(grid_point)) {
+				scout_points.emplace_back(grid_point);
 			}
 		}
 	}
@@ -542,17 +541,7 @@ void BasicSc2Bot::OnBuildingConstructionComplete(const Unit* unit) {
 	{
 		if (unit->unit_type == UNIT_TYPEID::TERRAN_STARPORT) {
 			++phase;
-			/*Units barracks = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_BARRACKS));
-			Units starport = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_STARPORT));
-			Units factories = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_FACTORY));
-			const Unit* switching_building = barracks.front();
-			const Unit* s = starport.front();
-
-			if (ramp_middle[0]->unit_type == UNIT_TYPEID::TERRAN_BARRACKS)
-			{
-				switching_building = factories.front();
-			}*/
-			//Swap(switching_building, s, true);
+			// now it is phase 3
 		}
 	}
 }
