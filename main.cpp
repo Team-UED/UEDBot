@@ -9,6 +9,7 @@
 
 // LadderInterface allows the bot to be tested against the built-in AI or
 // played against other bots
+
 int main(int argc, char* argv[]) {
 	RunBot(argc, argv, new BasicSc2Bot(), sc2::Race::Terran);
 	return 0;

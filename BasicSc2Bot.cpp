@@ -55,12 +55,12 @@ BasicSc2Bot::BasicSc2Bot()
 static uint32_t c_text_size = 11;
 std::string last_action_text_;
 
-void BasicSc2Bot::DrawBoxesOnMap(sc2::DebugInterface* debug, int map_width, int map_height)
+void BasicSc2Bot::DrawBoxesOnMap(sc2::DebugInterface* debug, uint32_t map_width, uint32_t map_height)
 {
-	for (int x = 0; x < map_width; ++x) {
-		for (int y = 0; y < map_height; ++y) {
+	for (uint32_t x = 0; x < map_width; ++x) {
+		for (uint32_t y = 0; y < map_height; ++y) {
 
-			int z = height_at(Point2DI(x, y));
+			uint32_t z = height_at(Point2DI(x, y));
 			sc2::Point3D p_min(0, 0, z);
 			sc2::Point3D p_max(0.5, 0.5, z + 0.5);
 			debug->DebugBoxOut(p_min, p_max, sc2::Colors::Red);
@@ -408,7 +408,10 @@ void BasicSc2Bot::OnUnitIdle(const Unit* unit)
 		}
 		break;
 	case UNIT_TYPEID::TERRAN_BATTLECRUISER:
-		Retreat(unit);
+		if (current_gameloop % 46 == 0)
+		{
+			Retreat(unit);
+		}
 		break;
 	case UNIT_TYPEID::TERRAN_SCV:
 		HarvestIdleWorkers(unit);

@@ -14,12 +14,9 @@
 #include <vector>
 #include <unordered_set>
 #include <unordered_map>
-#include <functional>
 #include <iostream>
 #include <string>
-#include <cmath>
 #include <map>
-#include <memory>
 
 using namespace sc2;
 
@@ -53,7 +50,7 @@ private:
 	// =========================
 	void Debugging();
 	std::vector<uint32_t> GetRealTime() const;
-	void DrawBoxesOnMap(sc2::DebugInterface* debug, int map_width, int map_height);
+	void DrawBoxesOnMap(sc2::DebugInterface* debug, uint32_t map_width, uint32_t map_height);
 	void DrawBoxAtLocation(sc2::DebugInterface* debug, const sc2::Point3D& location, float size, const sc2::Color& color = sc2::Colors::Red) const;
 
 	uint32_t current_gameloop;
@@ -406,6 +403,10 @@ private:
 	// checks if enough resources are available to build
 	bool CanBuild(const int32_t mineral, const int32_t gas = 0, const int32_t food = 0) const;
 
+	// check if the enemy is nearby
+	// worker: default is true, if false, consider all enemy including workers
+	// distance: default is 15, if enemy is within this distance
+	// return: true if enemy is nearby
 	bool EnemyNearby(const Point2D& pos, const bool worker = true, const int32_t distance = 15);
 
 	// Checks if an expansion is needed.
@@ -467,18 +468,22 @@ private:
 	// returns how close current job is to being finished
 	float HowClosetoFinishCurrentJob(const Unit* b) const;
 
-	// returns how close the building is to being finished
-	float GetBuildProgress(const Unit* b) const;
-
-	// check if the building is under construction
+	// check if the building is still under construction
 	// compare the build progress with the previous frame (1 or 2)
-	bool IsBuildingProgress(const Unit* b) const;
+	void IsBuildingProgress();
+
+	// check if the builder is getting damaged meaning that it is close to the enemy
+	// cancle the building if it is getting damaged
+	void IsBuilderGettingDamaged();
 
 	// return if this is a building order
 	bool IsBuildingOrder(const UnitOrder& order) const;
 
-
+	// return if there is a building being built or about to be built
 	bool ALLBuildingsFilter(const Unit& unit) const;
+
+	// return if there is a building being built
+	bool BuildingsBeingBuiltFilter(const Unit& unit) const;
 
 	bool IsAnyBaseUnderAttack();
 
@@ -595,11 +600,14 @@ private:
 	std::vector<sc2::Point2D> main_mineral_convexHull;
 	std::vector<sc2::Point2D> main_base_terret_locations;
 
+	//buildable map
 	std::vector<std::map<Point2D, bool, Point2DComparator>> build_map;
-	std::vector<Point2D> build_map_minmax;
 
-	// convex hull of the main base
-	std::vector<Point2D> main_base_edges;
+	//map for buildings in progress
+	//it is used to check if the building is under construction after 1 or 2 frames
+	std::map<Tag, float> buildings_in_progress;
+	std::map<Tag, uint32_t> builders_container;
+	std::vector<Point2D> build_map_minmax;
 
 	// Our bases.
 	Units bases;
