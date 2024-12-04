@@ -405,7 +405,7 @@ void BasicSc2Bot::OnUnitIdle(const Unit* unit)
 		}
 		break;
 	case UNIT_TYPEID::TERRAN_BATTLECRUISER:
-		if (current_gameloop % 23 == 0 && !Distance2D(unit->pos, start_location) < 25.0f)
+		if (current_gameloop % 23 == 0 && !(Distance2D(unit->pos, start_location) < 25.0f))
 		{
 			Retreat(unit);
 		}
