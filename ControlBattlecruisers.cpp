@@ -346,29 +346,6 @@ void BasicSc2Bot::TargetBattlecruisers() {
 				// No turret nearby or turret is the target or there are only turrets in threat radius -> Attack
 				Actions()->UnitCommand(battlecruiser, ABILITY_ID::ATTACK_ATTACK, target);
 			}
-			// No target
-			else {
-				if (battlecruiser->health >= 500.0f) {
-					if (Distance2D(battlecruiser->pos, enemy_start_location) < 40.0f) {
-						Retreat(battlecruiser);
-						return;
-					}
-					else {
-						// Check if any Battlecruiser is still retreating
-						for (const auto& unit : Observation()->GetUnits(Unit::Alliance::Self)) {
-							if (unit->unit_type == UNIT_TYPEID::TERRAN_BATTLECRUISER && battlecruiser_retreating[unit]) {
-								// Wait until all retreating Battlecruisers finish their retreat
-								return;
-							}
-						}
-						Actions()->UnitCommand(battlecruiser, ABILITY_ID::EFFECT_TACTICALJUMP, enemy_start_location);
-					}
-				}
-				else {
-					Retreat(battlecruiser);
-					return;
-				}
-			}
 		}
 	}
 }
