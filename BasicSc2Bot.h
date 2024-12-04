@@ -356,7 +356,7 @@ private:
 	int current_scout_index = 0;
 
 	// Track visited map locations for clean up
-    int clean_up_index = 0;
+	int clean_up_index = 0;
 
 	// Track location of scouting SCV
 	sc2::Point2D scout_location;
@@ -458,7 +458,16 @@ private:
 	// returns how close current job is to being finished
 	float HowClosetoFinishCurrentJob(const Unit* b) const;
 
-	bool IsBuilding(const UnitOrder& order) const;
+	// returns how close the building is to being finished
+	float GetBuildProgress(const Unit* b) const;
+
+	// check if the building is under construction
+	// compare the build progress with the previous frame (1 or 2)
+	bool IsBuildingProgress(const Unit* b) const;
+
+	// return if this is a building order
+	bool IsBuildingOrder(const UnitOrder& order) const;
+
 
 	bool ALLBuildingsFilter(const Unit& unit) const;
 
@@ -652,7 +661,7 @@ private:
 	std::unordered_set<Tag> scvs_repairing;
 
 	// For guranteeing our mineral generation.
-    std::unordered_set<Tag> scvs_gathering;
+	std::unordered_set<Tag> scvs_gathering;
 
 	// For managing SCV safety.
 	std::unordered_set<Tag> scvs_under_attack;

@@ -218,30 +218,28 @@ void BasicSc2Bot::RepairStructures() {
 }
 
 void BasicSc2Bot::UpdateRepairingSCVs() {
-    // if there are less than 6 repairing SCVs, add more to the scv_repairing
-    // set
-    if (scvs_repairing.size() < 6) {
-        for (const auto &unit : Observation()->GetUnits(Unit::Alliance::Self)) {
-            if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV) {
-                // Make sure it's not a gathering SCV
-                if (scvs_gathering.find(unit->tag) != scvs_gathering.end()) {
-                    continue;
-                }
-                if (scvs_repairing.find(unit->tag) == scvs_repairing.end()) {
-                    scvs_repairing.insert(unit->tag);
-                }
-            }
-        }
-    }
+	// if there are less than 6 repairing SCVs, add more to the scv_repairing
+	// set
+	const ObservationInterface* obs = Observation();
+	Units scvs = obs->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SCV));
+	if (scvs_repairing.size() < 6) {
+		for (const auto& scv : scvs) {
+			// Make sure it's not a gathering SCV
+			if (scvs_gathering.find(scv->tag) != scvs_gathering.end()) {
+				continue;
+			}
+			if (scvs_repairing.find(scv->tag) == scvs_repairing.end()) {
+				scvs_repairing.insert(scv->tag);
+			}
+		}
+	}
 
 	for (const auto& scv_tag : scvs_repairing) {
-		const Unit* scv = Observation()->GetUnit(scv_tag);
-
+		const Unit* scv = obs->GetUnit(scv_tag);
 		// Skip dead or invalid SCVs
 		if (!scv || !scv->is_alive) {
 			continue;
 		}
-
 		// Return SCVs to harvest when repair is complete
 		if (!scv->orders.empty()) {
 			// Check if the SCV is repairing
@@ -249,7 +247,7 @@ void BasicSc2Bot::UpdateRepairingSCVs() {
 			if (order.ability_id == ABILITY_ID::EFFECT_REPAIR ||
 				order.ability_id == ABILITY_ID::EFFECT_REPAIR_SCV) {
 				// Check if the repair target is fully repaired
-				const Unit* target = Observation()->GetUnit(order.target_unit_tag);
+				const Unit* target = obs->GetUnit(order.target_unit_tag);
 				if (target && target->health == target->health_max) {
 					// Find a refinery with fewer than 3 workers
 					const Unit* target_refinery = FindRefinery();
@@ -272,26 +270,15 @@ void BasicSc2Bot::UpdateRepairingSCVs() {
 			}
 		}
 	}
+	return;
 }
 
 // SCVs attack in urgent situations (e.g., enemy attacking the main base)
 void BasicSc2Bot::SCVAttackEmergency() {
-	if (IsMainBaseUnderAttack()) {
-		// Get enemy units near our main base
-		Units enemy_units_near_base = Observation()->GetUnits(
-			Unit::Alliance::Enemy, [this](const Unit& unit) {
-				// Return enemy units that are near our main base and are combat
-				// units
-				const Unit* main_base = GetMainBase();
-				if (main_base) {
-					return Distance2D(unit.pos, main_base->pos) < 15.0f &&
-						!IsWorkerUnit(&unit);
-				}
-				return false;
-			});
+	if (EnemyNearby(start_location, false, 25)) {
 
 		// If there are significant enemy combat units, send SCVs to attack
-		if (!enemy_units_near_base.empty()) {
+		if (EnemyNearby(start_location)) {
 			int scvs_sent = 0;
 			const int max_scvs_to_send = 5; // Limit the number of SCVs
 			const float max_distance_from_base =
@@ -301,37 +288,33 @@ void BasicSc2Bot::SCVAttackEmergency() {
 			if (!main_base) {
 				return; // If we don't have a main base, exit
 			}
+			Units scvs = Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SCV));
+			for (const auto& scv : scvs) {
+				// Skip SCVs that are harvesting minerals or gas
+				if (scvs_gathering.find(scv->tag) !=
+					scvs_gathering.end()) {
+					continue;
+				}
+				// Ensure SCV does not move too far from the main base
+				if (Distance2D(scv->pos, main_base->pos) >
+					max_distance_from_base) {
+					continue; // Skip this SCV if it is too far from the
+					// base
+				}
 
-			for (const auto& unit :
-				Observation()->GetUnits(Unit::Alliance::Self)) {
-				if (unit->unit_type == UNIT_TYPEID::TERRAN_SCV) {
-                    // Skip SCVs that are harvesting minerals or gas
-                    if (scvs_gathering.find(unit->tag) !=
-                        scvs_gathering.end()) {
-                        continue;
-                    }
-
-					// Ensure SCV does not move too far from the main base
-					if (Distance2D(unit->pos, main_base->pos) >
-						max_distance_from_base) {
-						continue; // Skip this SCV if it is too far from the
-						// base
+				// Find the closest enemy unit to attack
+				const Unit* target = FindClosestEnemy(scv->pos);
+				if (target && !IsWorkerUnit(target) &&
+					Distance2D(target->pos, main_base->pos) <
+					max_distance_from_base) {
+					++scvs_sent;
+					if (scvs_sent > max_scvs_to_send) {
+						break;
 					}
-
-					// Find the closest enemy unit to attack
-					const Unit* target = FindClosestEnemy(unit->pos);
-					if (target && !IsWorkerUnit(target) &&
-						Distance2D(target->pos, main_base->pos) <
-						max_distance_from_base) {
-						++scvs_sent;
-						if (scvs_sent > max_scvs_to_send) {
-							break;
-						}
-						Actions()->UnitCommand(unit, ABILITY_ID::ATTACK,
-							target);
-					}
+					Actions()->UnitCommand(scv, ABILITY_ID::ATTACK, target);
 				}
 			}
 		}
 	}
+	return;
 }
