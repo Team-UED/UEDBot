@@ -137,8 +137,8 @@ void BasicSc2Bot::RetreatFromDanger() {
 					break;
 				}
 			}
-			if (scv_is_attacking || scvs_repairing.find(unit->tag) != scvs_repairing.end()) {
-				continue; // Skip SCVs that are currently attacking, or reparing
+			if (scv_is_attacking || unit->health == unit->health_max|| scvs_repairing.find(unit->tag) != scvs_repairing.end()) {
+				continue; // Skip SCVs that are currently attacking, are full hp, or reparing
 			}
 
 			// If the SCV is in a dangerous position, make it retreat
