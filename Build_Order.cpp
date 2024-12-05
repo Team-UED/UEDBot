@@ -20,7 +20,7 @@ void BasicSc2Bot::ExecuteBuildOrder() {
 		// Building one more battlecruiser might be more helpful??
 		BuildEngineeringBay();
 		// don't need
-		//BuildArmory();
+		BuildArmory();
 	}
 }
 
@@ -292,7 +292,7 @@ void BasicSc2Bot::BuildEngineeringBay() {
 		return unit.unit_type == UNIT_TYPEID::TERRAN_ENGINEERINGBAY && ALLBuildingsFilter(unit);
 		});
 
-	if (engineeringbays.size() < 2 && !starports.empty() && bases.size() > 1 && CanBuild(250))
+	if (!engineeringbays.size() && !starports.empty() && bases.size() > 1 && CanBuild(250))
 	{
 		TryBuildStructure(ABILITY_ID::BUILD_ENGINEERINGBAY, UNIT_TYPEID::TERRAN_SCV);
 	}
