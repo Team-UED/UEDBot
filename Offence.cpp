@@ -1,7 +1,6 @@
 #include "BasicSc2Bot.h"
 
 void BasicSc2Bot::Offense() {
-
 	const ObservationInterface* observation = Observation();
 	Units marines = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_MARINE));
 	Units siege_tanks = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::TERRAN_SIEGETANK));
