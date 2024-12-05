@@ -781,7 +781,7 @@ private:
 	};
 
 	// Meele units
-	std::set<UNIT_TYPEID> melee_units = {
+	std::unordered_set<UNIT_TYPEID> melee_units = {
 		UNIT_TYPEID::ZERG_DRONE,
 		UNIT_TYPEID::PROTOSS_PROBE,
 		UNIT_TYPEID::TERRAN_SCV,
@@ -821,7 +821,7 @@ private:
 	}
 
 	// Set of completed upgrades
-	std::set<UpgradeID> completed_upgrades;
+	std::unordered_set<UpgradeID> completed_upgrades;
 
 	// pair to check which one is being researched
 	std::pair<ABILITY_ID, bool> Is_researching_bay = { ABILITY_ID::RESEARCH_TERRANINFANTRYWEAPONSLEVEL1, false };
