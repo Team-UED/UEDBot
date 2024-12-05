@@ -781,7 +781,7 @@ private:
 	};
 
 	// Meele units
-	std::unordered_set<UNIT_TYPEID> melee_units = {
+	std::set<UNIT_TYPEID> melee_units = {
 		UNIT_TYPEID::ZERG_DRONE,
 		UNIT_TYPEID::PROTOSS_PROBE,
 		UNIT_TYPEID::TERRAN_SCV,
@@ -821,7 +821,7 @@ private:
 	}
 
 	// Set of completed upgrades
-	std::unordered_set<UpgradeID> completed_upgrades;
+	std::set<UpgradeID> completed_upgrades;
 
 	// Order of upgrades for Armory
 	std::vector<UPGRADE_ID> armory_upgrade_order = {
