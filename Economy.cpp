@@ -513,7 +513,8 @@ void BasicSc2Bot::AssignWorkers() {
 
 			// Assign SCV to a Refinery with fewer than 3 workers
 			const Unit* target_refinery = nullptr;
-			for (const auto& refinery : refineries) {
+			for (const auto& refinery : refineries)
+			{
 				if (refinery_worker_count[refinery] < 3) {
 					target_refinery = refinery;
 					++refinery_worker_count[refinery]; // Increment worker count for
@@ -522,7 +523,10 @@ void BasicSc2Bot::AssignWorkers() {
 			}
 			if (target_refinery)
 			{
-				Actions()->UnitCommand(scv, ABILITY_ID::HARVEST_GATHER, target_refinery);
+				if (Distance2D(scv->pos, target_refinery->pos) < 15.0f)
+				{
+					Actions()->UnitCommand(scv, ABILITY_ID::HARVEST_GATHER, target_refinery);
+				}
 				continue;
 			}
 		}

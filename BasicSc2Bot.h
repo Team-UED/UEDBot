@@ -823,9 +823,6 @@ private:
 	// Set of completed upgrades
 	std::unordered_set<UpgradeID> completed_upgrades;
 
-	// pair to check which one is being researched
-	std::pair<ABILITY_ID, bool> Is_researching_bay = { ABILITY_ID::RESEARCH_TERRANINFANTRYWEAPONSLEVEL1, false };
-
 	// Order of upgrades for Armory
 	std::vector<UPGRADE_ID> armory_upgrade_order = {
 		UPGRADE_ID::TERRANVEHICLEANDSHIPARMORSLEVEL1,
